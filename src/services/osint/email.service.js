@@ -1,6 +1,6 @@
 import dns from "dns/promises";
 import crypto from "crypto";
-import { checkEmail } from "diablinda";
+import { checkEmail } from "../../lib/diablinda/index.js";
 import { investigateGoogle } from "rimuhunt";
 
 /**

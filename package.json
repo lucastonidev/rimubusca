@@ -9,7 +9,8 @@
     "start:dev": "npx nodemon --config nodemon.json src/dev.js",
     "start:start": "node src/dev.js",
     "create-admin": "node scripts/criar-admin.js",
-    "tool:patrickuser": "patrickuser"
+    "tool:patrickuser": "patrickuser",
+    "postinstall": "node scripts/patch-diablinda.js"
   },
   "keywords": [
     "osint",
