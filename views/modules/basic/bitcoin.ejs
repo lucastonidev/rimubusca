@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+  <style>
+    .btc-grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-5);
+    }
+
+    @media (max-width: 1024px) {
+      .btc-grid-2col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .btc-kv-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+
+    .btc-kv {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+
+    .btc-kv-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      color: var(--color-text-dim);
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .btc-kv-val {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--color-text);
+      word-break: break-word;
+      font-family: var(--font-mono);
+    }
+
+    .btc-chip {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 5px 11px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+      font-family: var(--font-mono);
+    }
+
+    .btc-chip:hover {
+      border-color: #F59E0B;
+      color: #FBBF24;
+      background: rgba(245, 158, 11, 0.08);
+    }
+
+    .btc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .btc-table th {
+      text-align: left;
+      padding: 9px 10px;
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .btc-table td {
+      padding: 10px;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+      vertical-align: top;
+    }
+
+    .btc-tx-row:hover td {
+      background: rgba(245, 158, 11, 0.04);
+    }
+
+    .btc-tab-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--color-text-muted);
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .btc-tab-btn.active {
+      color: #F59E0B;
+      border-bottom-color: #F59E0B;
+    }
+
+    .btc-hit-card {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-bottom: 10px;
+      transition: border-color var(--transition-fast);
+    }
+
+    .btc-hit-card:hover {
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    .modal-relatorio-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 6, 9, 0.88);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-relatorio-dialog {
+      width: 100%;
+      max-width: 1060px;
+      max-height: 92vh;
+      background: #080B11;
+      border: 1px solid #1E2538;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+    }
+
+    .modal-relatorio-header {
+      padding: 16px 20px;
+      background: #0D111A;
+      border-bottom: 1px solid #1E2538;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .modal-relatorio-body {
+      padding: 24px;
+      overflow-y: auto;
+      background: #080B11;
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <%- include('../../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Cabeçalho do Módulo -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-5);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+              <span class="badge" style="background: rgba(245, 158, 11, 0.16); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.35);">
+                <i data-lucide="bitcoin" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle;"></i> On-Chain &bull; Blockchain API
+              </span>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.14); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3);">
+                Surface Web &bull; Google SERP
+              </span>
+              <span class="badge" style="background: rgba(167, 139, 250, 0.16); color: #C4B5FD; border: 1px solid rgba(167, 139, 250, 0.35);">
+                Dark Web &bull; Tor .onion (Ahmia)
+              </span>
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: 800; color: var(--color-text); margin: 0;">
+              Investigação de Carteiras Bitcoin (BTC)
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px; max-width: 860px;">
+              Desanonimização cruzada e rastreamento forense de endereços Bitcoin: saldo e movimentações on-chain, cotação atual, menções na Surface Web (GitHub, Reddit, Fóruns) e varredura de sites .onion na Dark Web em paralelo.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <a href="/basic/financeiro" class="btn btn-outline btn-sm">
+              <i data-lucide="qr-code" style="width: 14px; height: 14px;"></i>
+              PIX &amp; Boletos BR
+            </a>
+          </div>
+        </div>
+
+        <!-- Formulário de Consulta -->
+        <div class="card" style="margin-bottom: var(--space-5); border-top: 3px solid #F59E0B;">
+          <form id="formBitcoin">
+            <div style="margin-bottom: var(--space-4);">
+              <label for="btcAddressInput" style="display: block; font-size: 0.8rem; font-weight: 600; color: var(--color-text); margin-bottom: 6px;">
+                Endereço da Carteira Bitcoin (P2PKH, P2SH, SegWit ou Taproot)
+              </label>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input
+                  id="btcAddressInput"
+                  type="text"
+                  class="form-control"
+                  style="flex: 1; min-width: 280px; font-family: var(--font-mono); font-size: 0.88rem; padding: 11px 14px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text);"
+                  placeholder="Ex: 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa ou bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq"
+                  autocomplete="off"
+                  spellcheck="false"
+                  required
+                />
+                <button type="submit" id="btnInvestigarBtc" class="btn btn-primary" style="background: linear-gradient(135deg, #D97706 0%, #B45309 100%); border-color: #F59E0B; padding: 0 20px;">
+                  <i data-lucide="search" style="width: 16px; height: 16px;"></i>
+                  <span>Investigar Carteira</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Exemplos rápidos para teste do analista -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding-top: var(--space-3); border-top: 1px solid var(--color-border);">
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                <span style="font-size: 0.74rem; color: var(--color-text-dim);">Alvos rápidos para teste:</span>
+                <button type="button" class="btc-chip" data-example="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa" title="Bloco Gênese de Satoshi Nakamoto (1A1zP...)">
+                  <i data-lucide="key-round" style="width: 12px; height: 12px; color: #F59E0B;"></i>
+                  Gênese (Satoshi)
+                </button>
+                <button type="button" class="btc-chip" data-example="1F1tAaz5x1HUXrCNLbtMDqcw6o5GNn4xqX" title="Carteira apreendida do Silk Road pelo FBI">
+                  <i data-lucide="shield-alert" style="width: 12px; height: 12px; color: #EF4444;"></i>
+                  Silk Road Seized
+                </button>
+                <button type="button" class="btc-chip" data-example="34xp4vRoCGJym3xR7yCVPFHoCNxv4Twseo" title="Cold Wallet Histórica da Binance (34xp4...)">
+                  <i data-lucide="vault" style="width: 12px; height: 12px; color: #38BDF8;"></i>
+                  Binance Cold Wallet
+                </button>
+                <button type="button" class="btc-chip" data-example="bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq" title="Endereço Native SegWit (Bech32)">
+                  <i data-lucide="zap" style="width: 12px; height: 12px; color: #10B981;"></i>
+                  Native SegWit (bc1q)
+                </button>
+              </div>
+
+              <div>
+                <button type="button" id="btnLimparBtc" class="btn btn-secondary btn-sm">Limpar</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Alerta de Erro -->
+        <div id="btcAvisoErro" style="display: none; margin-bottom: var(--space-5);">
+          <div class="card" style="border-color: rgba(239, 68, 68, 0.45); background: var(--color-error-bg); padding: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i data-lucide="alert-triangle" style="color: var(--color-error); width: 22px; height: 22px; flex-shrink: 0;"></i>
+              <span id="btcErroMsg" style="color: #FCA5A5; font-size: 0.88rem; font-weight: 500;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Indicador de Carregamento (Paralelo) -->
+        <div id="btcLoadingBox" style="display: none; margin-bottom: var(--space-5);">
+          <div class="card" style="text-align: center; padding: 32px 20px;">
+            <div style="color: #F59E0B; font-weight: 700; font-size: 1.05rem; margin-bottom: 8px;">
+              Cruzando inteligência da carteira Bitcoin em paralelo...
+            </div>
+            <div style="font-size: 0.82rem; color: var(--color-text-muted); max-width: 600px; margin: 0 auto 16px;">
+              Consultando <strong>Blockchain API</strong> (on-chain), <strong>SERP API Google</strong> (surface web) e <strong>Ahmia Tor</strong> (dark web .onion) simultaneamente.
+            </div>
+            <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap;">
+              <span class="badge" style="background: rgba(245, 158, 11, 0.12); color: #FBBF24;">
+                <i data-lucide="loader-2" style="width: 12px; height: 12px; animation: spin 1s linear infinite;"></i> On-Chain
+              </span>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.12); color: #38BDF8;">
+                <i data-lucide="loader-2" style="width: 12px; height: 12px; animation: spin 1s linear infinite;"></i> Google SERP
+              </span>
+              <span class="badge" style="background: rgba(167, 139, 250, 0.12); color: #C4B5FD;">
+                <i data-lucide="loader-2" style="width: 12px; height: 12px; animation: spin 1s linear infinite;"></i> Ahmia Dark Web
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resultados da Investigação -->
+        <div id="btcResultadosContainer" style="display: none;">
+          <!-- Alerta de Risco / Abuso se detectado -->
+          <div id="btcAlertaAbusoCard" style="display: none; margin-bottom: var(--space-4);">
+            <div class="card" style="border-left: 4px solid #EF4444; background: rgba(239, 68, 68, 0.08); padding: 14px 18px;">
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <i data-lucide="shield-alert" style="color: #EF4444; width: 22px; height: 22px; flex-shrink: 0;"></i>
+                <div>
+                  <strong style="color: #F87171; font-size: 0.9rem;">Alerta de Risco: Palavras-chave de Abuso / Scam Detectadas</strong>
+                  <div style="font-size: 0.8rem; color: #FCA5A5; margin-top: 2px;">
+                    Foram identificadas menções associadas a ransomware, extorsão, golpe ou lista de denúncias públicas nos resultados coletados.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Banner Resumo Principal -->
+          <div class="card" style="margin-bottom: var(--space-5); border-left: 4px solid #F59E0B;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4);">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+                  <span id="btcBadgeFormato" class="badge" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; border: 1px solid rgba(245, 158, 11, 0.35); font-family: var(--font-mono);">-</span>
+                  <span id="btcBadgeStatus" class="badge badge-purple">-</span>
+                  <span id="btcBadgeCache" class="badge badge-dark" style="display: none;">Cache 15m</span>
+                  <span id="btcTempoExec" class="badge badge-dark">-</span>
+                </div>
+                <h2 id="btcAddressHeader" style="font-size: 1.15rem; font-weight: 800; color: var(--color-text); margin: 0; font-family: var(--font-mono); word-break: break-all;">-</h2>
+                <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">
+                  Cotação base BTC/USD: <span id="btcCotacaoUsd" style="font-family: var(--font-mono); color: var(--color-text);">-</span> &bull; BTC/BRL: <span id="btcCotacaoBrl" style="font-family: var(--font-mono); color: var(--color-text);">-</span>
+                </div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <button type="button" id="btnCopiarEndereco" class="btn btn-secondary btn-sm" title="Copiar endereço Bitcoin">
+                  <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  Copiar Endereço
+                </button>
+                <button type="button" id="btnGerarRelatorioBtc" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); border-color: #8B5CF6;">
+                  <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+                  Gerar Dossiê Dark
+                </button>
+                <button type="button" id="btnCopiarJsonBtc" class="btn btn-outline btn-sm">
+                  <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                  JSON
+                </button>
+              </div>
+            </div>
+
+            <!-- KPIs Financeiros e de Inteligência -->
+            <div class="btc-kv-grid" style="margin-top: var(--space-4);">
+              <div class="btc-kv">
+                <div class="btc-kv-label">Saldo Atual</div>
+                <div class="btc-kv-val" style="color: #FBBF24;" id="kpiSaldoBtc">- BTC</div>
+                <div style="font-size: 0.72rem; color: var(--color-text-dim); margin-top: 2px;" id="kpiSaldoFiat">-</div>
+              </div>
+
+              <div class="btc-kv">
+                <div class="btc-kv-label">Total Recebido</div>
+                <div class="btc-kv-val" style="color: #34D399;" id="kpiRecebidoBtc">- BTC</div>
+                <div style="font-size: 0.72rem; color: var(--color-text-dim); margin-top: 2px;" id="kpiRecebidoFiat">-</div>
+              </div>
+
+              <div class="btc-kv">
+                <div class="btc-kv-label">Total Enviado</div>
+                <div class="btc-kv-val" style="color: #F87171;" id="kpiEnviadoBtc">- BTC</div>
+                <div style="font-size: 0.72rem; color: var(--color-text-dim); margin-top: 2px;">Saídas confirmadas</div>
+              </div>
+
+              <div class="btc-kv">
+                <div class="btc-kv-label">Transações On-Chain</div>
+                <div class="btc-kv-val" style="color: #38BDF8;" id="kpiTotalTx">-</div>
+                <div style="font-size: 0.72rem; color: var(--color-text-dim); margin-top: 2px;">Histórico blockchain</div>
+              </div>
+
+              <div class="btc-kv">
+                <div class="btc-kv-label">Surface Web (Google)</div>
+                <div class="btc-kv-val" style="color: #60A5FA;" id="kpiSurfaceWeb">-</div>
+                <div style="font-size: 0.72rem; color: var(--color-text-dim); margin-top: 2px;">Fóruns, GitHub, etc.</div>
+              </div>
+
+              <div class="btc-kv">
+                <div class="btc-kv-label">Dark Web (.onion)</div>
+                <div class="btc-kv-val" style="color: #A78BFA;" id="kpiDarkWeb">-</div>
+                <div style="font-size: 0.72rem; color: var(--color-text-dim); margin-top: 2px;">Serviços Tor Ahmia</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Layout Dividido em 2 Colunas: On-Chain de um lado, Surface/Dark Web do outro -->
+          <div class="btc-grid-2col">
+            <!-- COLUNA ESQUERDA: Dados On-Chain & Transações -->
+            <div>
+              <div class="card" style="margin-bottom: var(--space-4);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                  <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--color-text); margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="layers" style="width: 16px; height: 16px; color: #F59E0B;"></i>
+                    Atividade On-Chain &amp; Transações
+                  </h3>
+                  <span id="btcOnchainProvedor" class="badge badge-dark" style="font-size: 0.68rem;">Blockchain.com</span>
+                </div>
+
+                <div id="btcListaTransacoes" style="overflow-x: auto; max-height: 480px; overflow-y: auto;">
+                  <!-- Preenchido via JavaScript -->
+                </div>
+
+                <!-- Exploradores de Bloco Externos -->
+                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--color-border); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                  <span style="font-size: 0.72rem; color: var(--color-text-dim);">Exploradores Oficiais:</span>
+                  <a id="lnkExplorerMempool" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 3px 8px;">
+                    <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Mempool.space
+                  </a>
+                  <a id="lnkExplorerBlockchain" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 3px 8px;">
+                    <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Blockchain.com
+                  </a>
+                  <a id="lnkExplorerBlockstream" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 3px 8px;">
+                    <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Blockstream
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <!-- COLUNA DIREITA: Surface Web & Dark Web (Ahmia) -->
+            <div>
+              <div class="card" style="margin-bottom: var(--space-4);">
+                <!-- Seletor de Abas Surface / Dark Web -->
+                <div style="display: flex; border-bottom: 1px solid var(--color-border); margin-bottom: 14px;">
+                  <button type="button" class="btc-tab-btn active" id="tabBtnSurface" data-tab="surface">
+                    <i data-lucide="globe" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i>
+                    Surface Web (<span id="countTabSurface">0</span>)
+                  </button>
+                  <button type="button" class="btc-tab-btn" id="tabBtnDark" data-tab="dark">
+                    <i data-lucide="eye-off" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i>
+                    Dark Web Tor (<span id="countTabDark">0</span>)
+                  </button>
+                  <button type="button" class="btc-tab-btn" id="tabBtnPivots" data-tab="pivots">
+                    <i data-lucide="shield-alert" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i>
+                    Pivôs Anti-Scam
+                  </button>
+                </div>
+
+                <!-- Conteúdo Aba: Surface Web (Google / SERP) -->
+                <div id="tabContentSurface" style="display: block;">
+                  <div id="btcSurfaceLista" style="max-height: 440px; overflow-y: auto;">
+                    <!-- Preenchido via JavaScript -->
+                  </div>
+                </div>
+
+                <!-- Conteúdo Aba: Dark Web (.onion Ahmia) -->
+                <div id="tabContentDark" style="display: none;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.75rem; color: var(--color-text-dim);">
+                    <span>Resultados indexados em serviços ocultos (.onion):</span>
+                    <a id="lnkAhmiaDirect" href="#" target="_blank" rel="noopener noreferrer" style="color: #A78BFA; text-decoration: none;">
+                      Abrir no Ahmia Clearnet &rarr;
+                    </a>
+                  </div>
+                  <div id="btcDarkLista" style="max-height: 440px; overflow-y: auto;">
+                    <!-- Preenchido via JavaScript -->
+                  </div>
+                </div>
+
+                <!-- Conteúdo Aba: Pivôs Anti-Scam / Threat Intel -->
+                <div id="tabContentPivots" style="display: none;">
+                  <p style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 12px;">
+                    Consulte bases públicas de denúncias de ransomware, golpes e rastreamento de clusters de carteiras:
+                  </p>
+                  <div id="btcPivotsList" style="display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Preenchido via JavaScript -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <%- include('../../partials/footer') %>
+    </div>
+  </div>
+
+  <!-- Modal Relatório Dark -->
+  <div class="modal-relatorio-backdrop" id="modalRelatorioBtc">
+    <div class="modal-relatorio-dialog">
+      <div class="modal-relatorio-header">
+        <div>
+          <h3 style="font-size: 1.1rem; font-weight: 700; color: #F1F5F9; margin: 0;">Dossiê Forense de Carteira Bitcoin</h3>
+          <span style="font-size: 0.75rem; color: #94A3B8;">On-Chain + Surface Web + Dark Web &bull; RimuBusca OSINT</span>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnHtmlBtc" class="btn btn-secondary btn-sm">Baixar HTML</button>
+          <button type="button" id="btnPdfBtc" class="btn btn-primary btn-sm">Exportar PDF</button>
+          <button type="button" id="btnFecharModalBtc" class="btn btn-outline btn-sm">Fechar</button>
+        </div>
+      </div>
+      <div class="modal-relatorio-body" id="modalRelatorioBtcBody"></div>
+    </div>
+  </div>
+
+  <%- include('../../partials/command-palette') %>
+
+  <!-- Scripts -->
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/osint-dark-report.js"></script>
+  <script src="/js/bitcoin.js"></script>
+</body>
+</html>

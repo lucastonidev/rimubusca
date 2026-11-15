@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <%- include('partials/head') %>
+  </head>
+  <body>
+    <div class="app-layout">
+      <!-- Backdrop Mobile -->
+      <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+      <!-- Barra Lateral -->
+      <%- include('partials/sidebar') %>
+
+      <!-- Área Principal de Conteúdo -->
+      <div class="app-main">
+        <%- include('partials/header') %>
+
+        <main class="app-content">
+          <!-- 1. HERO PRINCIPAL -->
+          <section class="dashboard-hero">
+            <div>
+              <h1 class="hero-title">
+                Seja bem-vindo,
+                <span class="gradient-text"
+                  ><%= typeof profile !== 'undefined' && profile?.nome ?
+                  profile.nome : (typeof user !== 'undefined' && user?.email ?
+                  user.email.split('@')[0] : 'Operador') %></span
+                >
+              </h1>
+
+              <p class="hero-description">
+                Puxe dados cadastrais completos de pessoas físicas, investigue
+                domínios e telecomunicações de forma segura e centralizada.
+              </p>
+
+              <div class="hero-meta-pills">
+                <span class="meta-pill">
+                  <i data-lucide="mail"></i>
+                  <%= typeof user !== 'undefined' && user?.email ? user.email :
+                  'operador@rimubusca.internal' %>
+                </span>
+
+                <span class="meta-pill">
+                  <i data-lucide="shield-check"></i>
+                  Nível: <%= typeof profile !== 'undefined' && profile?.role ?
+                  profile.role.toUpperCase() : 'OPERADOR' %>
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 2. MÉTRICAS RÁPIDAS (KPIS) - EXCLUSIVAS DE PUXAR DADOS & CONSULTAS PESSOAIS -->
+          <section class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-icon-wrap kpi-icon-purple">
+                <i data-lucide="activity" style="width: 22px; height: 22px"></i>
+              </div>
+              <div class="kpi-info">
+                <span class="kpi-value" id="kpi-consultas-hoje"
+                  ><%= typeof estatisticas !== 'undefined' ?
+                  estatisticas.totalHoje : 0 %></span
+                >
+                <span class="kpi-label">Consultas Realizadas Hoje</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-icon-wrap kpi-icon-red">
+                <i data-lucide="database" style="width: 22px; height: 22px"></i>
+              </div>
+              <div class="kpi-info">
+                <span class="kpi-value" id="kpi-total-historico"
+                  ><%= typeof estatisticas !== 'undefined' ?
+                  estatisticas.totalHistorico : 0 %></span
+                >
+                <span class="kpi-label">Total de Buscas no Histórico</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-icon-wrap kpi-icon-purple">
+                <i data-lucide="layers" style="width: 22px; height: 22px"></i>
+              </div>
+              <div class="kpi-info">
+                <span class="kpi-value" id="kpi-total-modules"
+                  ><%= typeof estatisticas !== 'undefined' ?
+                  estatisticas.totalModulos : 15 %></span
+                >
+                <span class="kpi-label">Módulos & Tipos de Busca</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-icon-wrap kpi-icon-dark">
+                <i
+                  data-lucide="gauge"
+                  style="width: 22px; height: 22px; color: var(--color-primary)"
+                ></i>
+              </div>
+              <div class="kpi-info">
+                <span
+                  class="kpi-value"
+                  id="kpi-requisicoes-hoje"
+                  style="font-size: 1.25rem; color: var(--color-primary)"
+                  ><%= typeof estatisticas !== 'undefined' ?
+                  (estatisticas.consumoFormatado ||
+                  estatisticas.disponiveisFormatado) : '0 / 100' %></span
+                >
+                <span class="kpi-label">Requisições Utilizadas Hoje</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- BANNER DE DESTAQUE: CATÁLOGO HUB DE APIS PAY-PER-USE -->
+          <section class="hubapi-dashboard-banner">
+            <div class="hubapi-banner-left">
+              <div class="hubapi-banner-icon">
+                <i data-lucide="coins" style="width: 24px; height: 24px"></i>
+              </div>
+              <div class="hubapi-banner-text">
+                <div class="hubapi-banner-heading">
+                  <h3 class="hubapi-banner-title">
+                    Catálogo de Puxar Dados 2
+                  </h3>
+                  <span
+                    class="badge badge-warning"
+                    style="font-size: 0.7rem; font-weight: 700"
+                    >46 MÓDULOS</span
+                  >
+                </div>
+                <p class="hubapi-banner-desc">
+                  Explore nossa central de módulos de busca e dados cadastrais para pessoas físicas e empresas. O consumo é descontado do saldo disponível na sua carteira.
+                </p>
+              </div>
+            </div>
+
+            <div class="hubapi-banner-right">
+              <div class="hubapi-banner-wallet">
+                <div class="hubapi-wallet-label">
+                  Saldo Carteira
+                </div>
+                <div class="hubapi-banner-wallet-values">
+                  <div class="hubapi-wallet-balance" id="dashHubSaldo">
+                    <%= typeof estatisticas !== 'undefined' ?
+                    estatisticas.saldoFormatado : 'R$ 30,00' %>
+                  </div>
+                  <div class="hubapi-wallet-cap" id="dashHubTeto">
+                    <%= typeof estatisticas !== 'undefined' ?
+                    estatisticas.tetoFormatado : 'Teto: R$ 30,00/mês' %>
+                  </div>
+                </div>
+              </div>
+              <a href="/hub-api" class="btn btn-primary hubapi-banner-btn">
+                <span>Explorar Catálogo</span>
+                <i
+                  data-lucide="arrow-right"
+                  style="width: 16px; height: 16px"
+                ></i>
+              </a>
+            </div>
+          </section>
+
+          <!-- 3. CATEGORIA 1: PUXAR DADOS & CONSULTAS CADASTRAIS -->
+          <section class="category-block" id="category-consultas">
+            <div class="category-header">
+              <div class="category-title">
+                <i data-lucide="user-search"></i>
+                <span>Puxar Dados & Consultas Pessoais</span>
+              </div>
+              <span class="badge badge-red" id="badge-count-consultas"
+                >Carregando...</span
+              >
+              <p class="category-subtitle">
+                Módulos dedicados à busca cadastral de pessoas físicas via bases
+                integradas e adaptadores de API
+              </p>
+            </div>
+
+            <div class="puxar-grid" id="modules-consultas-grid">
+              <!-- Renderizado dinamicamente via /js/dashboard.js -->
+            </div>
+          </section>
+
+          <!-- 4. CATEGORIA 2: INTELIGÊNCIA CIBERNÉTICA & INFRAESTRUTURA (OSINT) -->
+          <section class="category-block" id="category-osint">
+            <div class="category-header">
+              <div class="category-title">
+                <i data-lucide="globe"></i>
+                <span
+                  >Inteligência Cibernética, Jurídica & Infraestrutura
+                  (OSINT)</span
+                >
+              </div>
+              <span class="badge badge-purple" id="badge-count-osint"
+                >Carregando...</span
+              >
+              <p class="category-subtitle">
+                Investigação de processos judiciais no DataJud, redes sociais,
+                domínios, telecom e credenciais
+              </p>
+            </div>
+
+            <div class="modules-grid" id="modules-osint-grid">
+              <!-- Renderizado dinamicamente via /js/dashboard.js -->
+            </div>
+          </section>
+
+          <!-- 5. CATEGORIA 3: FORENSE DE ARQUIVOS & MÍDIAS -->
+          <section class="category-block" id="category-forense">
+            <div class="category-header">
+              <div class="category-title">
+                <i data-lucide="file-check"></i>
+                <span>Forense de Arquivos & Mídias</span>
+              </div>
+              <span class="badge badge-purple" id="badge-count-forense"
+                >Carregando...</span
+              >
+              <p class="category-subtitle">
+                Extração de metadados, EXIF, GPS e cálculo criptográfico de
+                integridade de arquivos
+              </p>
+            </div>
+
+            <div class="modules-grid" id="modules-forense-grid">
+              <!-- Renderizado dinamicamente via /js/dashboard.js -->
+            </div>
+          </section>
+
+          <!-- Rodapé do Layout -->
+          <%- include('partials/footer') %>
+        </main>
+      </div>
+    </div>
+
+    <!-- Barra de Navegação Inferior (Mobile) -->
+    <%- include('partials/bottom-nav') %>
+
+    <!-- Modal de Busca Global (Ctrl + K) -->
+    <%- include('partials/command-palette') %>
+
+    <!-- Container de Mensagens Toast -->
+    <%- include('partials/toast') %>
+
+    <!-- Scripts Base do Frontend -->
+    <script src="/js/ui.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/main.js"></script>
+    <script src="/js/dashboard.js"></script>
+  </body>
+</html>

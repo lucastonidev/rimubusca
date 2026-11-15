@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Termos de Uso e Diretrizes Éticas | RimuBusca</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <style>
+    .legal-container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: var(--space-6);
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+    }
+    .legal-header {
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+    .legal-title {
+      font-size: 1.75rem;
+      margin-bottom: var(--space-2);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--color-primary);
+    }
+    .legal-section {
+      margin-bottom: var(--space-6);
+    }
+    .legal-section h2 {
+      font-size: 1.15rem;
+      color: var(--color-text);
+      margin-bottom: var(--space-2);
+    }
+    .legal-section p, .legal-section ul {
+      color: var(--color-text-muted);
+      font-size: 0.9375rem;
+      line-height: 1.7;
+    }
+    .legal-section ul {
+      padding-left: 20px;
+      margin-top: 8px;
+    }
+    .warning-box {
+      background: rgba(239, 68, 68, 0.1);
+      border-left: 4px solid var(--color-error);
+      padding: var(--space-4);
+      border-radius: var(--radius-sm);
+      margin: var(--space-4) 0;
+    }
+    .warning-box strong {
+      color: var(--color-error);
+    }
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: var(--space-6);
+      padding: 8px 16px;
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+    }
+    .btn-back:hover {
+      background: var(--color-surface-3);
+    }
+  </style>
+</head>
+<body>
+  <div class="legal-container">
+    <header class="legal-header">
+      <h1 class="legal-title">
+        <i data-lucide="shield-alert"></i>
+        <span>Termos de Uso e Diretrizes Éticas</span>
+      </h1>
+      <p>Normas de Conduta Operacional e Conformidade Legal da Plataforma RimuBusca</p>
+    </header>
+
+    <div class="warning-box">
+      <strong>AVISO LEGAL E DE SEGURANÇA NACIONAL:</strong> O RimuBusca é uma plataforma corporativa e interna destinada exclusivamente a auditoria de segurança, resposta a incidentes e inteligência autorizada. O uso desta ferramenta para perseguição (stalking), assédio, extorsão ou violação ilícita de privacidade constitui infração penal grave (Art. 154-A do Código Penal Brasileiro e Lei 13.709/2018 - LGPD).
+    </div>
+
+    <section class="legal-section">
+      <h2>1. Finalidade Exclusiva</h2>
+      <p>O acesso a esta plataforma é intransferível e monitorado. Todas as consultas realizadas ficam registradas de forma imutável com carimbo de data/hora, endereço IP, identificador do operador e parâmetros da investigação.</p>
+    </section>
+
+    <section class="legal-section">
+      <h2>2. Responsabilidades do Operador</h2>
+      <ul>
+        <li>Garantir a existência de consentimento explícito, obrigação legal ou interesse legítimo para cada consulta.</li>
+        <li>Manter sigilo absoluto sobre dados pessoais e resultados extraídos no ambiente de investigação.</li>
+        <li>Não compartilhar credenciais individuais sob nenhuma hipótese.</li>
+      </ul>
+    </section>
+
+    <section class="legal-section">
+      <h2>3. Auditoria e Rastreabilidade</h2>
+      <p>A administração da plataforma reserva-se o direito de auditar periodicamente os logs e suspender preventivamente qualquer credencial em caso de atividade anômala.</p>
+    </section>
+
+    <a href="/login" class="btn-back">
+      <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+      <span>Voltar para Autenticação</span>
+    </a>
+  </div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
+

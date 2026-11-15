@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' && title ? title : 'Autenticação Restrita - RimuBusca' %></title>
+  
+  <!-- Favicon Oficial -->
+  <link rel="icon" type="image/jpeg" href="/images/logo.jpeg">
+
+  <!-- Fontes Google: Inter e JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Ícones Lucide -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Estilos Globais -->
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #050608;
+      color: #FFFFFF;
+      font-family: var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* Container Principal */
+    .auth-viewport {
+      position: relative;
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+      z-index: 2;
+    }
+
+    /* ==============================================================================
+       ANIMAÇÃO FLUIDA E LEVE DE FUNDO (Canvas + Mesh Aurora)
+       ============================================================================== */
+    .ambient-bg-wrapper {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    #ambientCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+      opacity: 0.65;
+    }
+
+    /* Orbes Fluidos de Aurora Boreal (Acelerados por Hardware) */
+    .fluid-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.38;
+      will-change: transform;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .orb-1 {
+      width: 480px;
+      height: 480px;
+      background: radial-gradient(circle, #8B5CF6 0%, #6D28D9 60%, transparent 80%);
+      top: -120px;
+      left: -100px;
+      animation: floatOrb1 26s ease-in-out infinite alternate;
+    }
+
+    .orb-2 {
+      width: 520px;
+      height: 520px;
+      background: radial-gradient(circle, #06B6D4 0%, #0284C7 60%, transparent 80%);
+      bottom: -150px;
+      right: -120px;
+      animation: floatOrb2 30s ease-in-out infinite alternate;
+    }
+
+    .orb-3 {
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, #EC4899 0%, #A855F7 60%, transparent 80%);
+      top: 40%;
+      left: 55%;
+      animation: floatOrb3 34s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatOrb1 {
+      0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+      50% { transform: translate3d(180px, 120px, 0) scale(1.15) rotate(90deg); }
+      100% { transform: translate3d(60px, 240px, 0) scale(0.95) rotate(180deg); }
+    }
+
+    @keyframes floatOrb2 {
+      0% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
+      50% { transform: translate3d(-160px, -140px, 0) scale(1.2) rotate(-90deg); }
+      100% { transform: translate3d(-90px, -60px, 0) scale(0.9) rotate(-180deg); }
+    }
+
+    @keyframes floatOrb3 {
+      0% { transform: translate3d(0, 0, 0) scale(0.9) rotate(0deg); opacity: 0.25; }
+      50% { transform: translate3d(-140px, 100px, 0) scale(1.18) rotate(120deg); opacity: 0.42; }
+      100% { transform: translate3d(120px, -120px, 0) scale(1) rotate(240deg); opacity: 0.28; }
+    }
+
+    /* Grid Tecnológico Suave */
+    .cyber-grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, #000 30%, transparent 100%);
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    /* ==============================================================================
+       CARD DE LOGIN (GLASSMORPHISM PREMIUM)
+       ============================================================================== */
+    .auth-card {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(12, 14, 22, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 20px;
+      padding: 36px 32px;
+      box-shadow: 
+        0 24px 60px -12px rgba(0, 0, 0, 0.85),
+        0 0 0 1px rgba(139, 92, 246, 0.15),
+        0 0 40px rgba(139, 92, 246, 0.1);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      position: relative;
+      z-index: 10;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      animation: cardEntrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes cardEntrance {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .auth-card:hover {
+      border-color: rgba(139, 92, 246, 0.35);
+      box-shadow: 
+        0 30px 70px -12px rgba(0, 0, 0, 0.9),
+        0 0 0 1px rgba(139, 92, 246, 0.25),
+        0 0 50px rgba(139, 92, 246, 0.18);
+    }
+
+    /* Cabeçalho & Logo */
+    .auth-header {
+      text-align: center;
+      margin-bottom: 26px;
+    }
+
+    .auth-logo-container {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+
+    .auth-logo-img {
+      width: 68px;
+      height: 68px;
+      border-radius: 18px;
+      object-fit: cover;
+      display: block;
+      position: relative;
+      z-index: 2;
+      border: 2px solid rgba(139, 92, 246, 0.45);
+      box-shadow: 
+        0 10px 25px rgba(0, 0, 0, 0.5),
+        0 0 25px rgba(139, 92, 246, 0.4);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+    }
+
+    .auth-logo-container:hover .auth-logo-img {
+      transform: scale(1.06) rotate(2deg);
+      box-shadow: 
+        0 14px 30px rgba(0, 0, 0, 0.6),
+        0 0 35px rgba(139, 92, 246, 0.6),
+        0 0 50px rgba(6, 182, 212, 0.35);
+    }
+
+    .auth-logo-ring {
+      position: absolute;
+      inset: -6px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.4) 0%, rgba(6, 182, 212, 0.3) 100%);
+      filter: blur(8px);
+      z-index: 1;
+      opacity: 0.7;
+      animation: logoGlow 4s ease-in-out infinite alternate;
+    }
+
+    @keyframes logoGlow {
+      0% { opacity: 0.5; transform: scale(0.96); }
+      100% { opacity: 0.85; transform: scale(1.04); }
+    }
+
+    .auth-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: #F8FAFC;
+      line-height: 1.2;
+    }
+
+    .auth-title .gradient-text {
+      background: linear-gradient(135deg, #C084FC 0%, #A855F7 40%, #06B6D4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+
+    .auth-subtitle {
+      font-size: 0.84rem;
+      color: #94A3B8;
+      margin-top: 6px;
+      font-weight: 400;
+    }
+
+    .auth-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.7rem;
+      font-family: var(--font-mono, monospace);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      background: rgba(16, 185, 129, 0.08);
+      color: #34D399;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      margin-top: 10px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      background-color: #10B981;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #10B981;
+      animation: pulseDot 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+
+    /* Alertas Estilizados */
+    .auth-alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-size: 0.83rem;
+      line-height: 1.4;
+      margin-bottom: 20px;
+      animation: alertSlide 0.3s ease-out;
+    }
+
+    @keyframes alertSlide {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-alert-error {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+    }
+
+    .auth-alert-info {
+      background: rgba(139, 92, 246, 0.12);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      color: #C4B5FD;
+    }
+
+    /* Formulário e Controles */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: #E2E8F0;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      color: #64748B;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      transition: color 0.2s ease;
+    }
+
+    .form-input {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px 0 42px;
+      background: rgba(18, 21, 33, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      color: #FFFFFF;
+      font-size: 0.875rem;
+      font-family: inherit;
+      transition: all 0.2s ease;
+    }
+
+    .form-input::placeholder {
+      color: #475569;
+    }
+
+    .form-input:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(22, 26, 40, 0.85);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #8B5CF6;
+      background: rgba(14, 17, 28, 0.95);
+      box-shadow: 
+        0 0 0 3px rgba(139, 92, 246, 0.22),
+        0 0 16px rgba(139, 92, 246, 0.2);
+    }
+
+    .form-input:focus ~ .input-icon {
+      color: #A855F7;
+    }
+
+    .btn-toggle-password {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      color: #64748B;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-toggle-password:hover {
+      color: #E2E8F0;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* Botão Principal de Login */
+    .btn-submit {
+      width: 100%;
+      height: 46px;
+      margin-top: 12px;
+      background: linear-gradient(135deg, #7C3AED 0%, #6366F1 50%, #06B6D4 100%);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.925rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 
+        0 4px 18px rgba(124, 58, 237, 0.4),
+        0 0 30px rgba(6, 182, 212, 0.2);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-submit::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 40%;
+      height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+      transform: rotate(25deg);
+      transition: none;
+    }
+
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 
+        0 8px 24px rgba(124, 58, 237, 0.55),
+        0 0 38px rgba(6, 182, 212, 0.35);
+    }
+
+    .btn-submit:hover::after {
+      left: 130%;
+      transition: left 0.75s ease-in-out;
+    }
+
+    .btn-submit:active {
+      transform: translateY(0);
+      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-submit .btn-arrow-icon {
+      transition: transform 0.2s ease;
+    }
+
+    .btn-submit:hover .btn-arrow-icon {
+      transform: translateX(3px);
+    }
+
+    /* Rodapé Limpo */
+    .auth-footer {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      text-align: center;
+    }
+
+    .auth-footer-help {
+      font-size: 0.78rem;
+      color: #94A3B8;
+      margin-bottom: 8px;
+    }
+
+    .auth-footer-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      font-size: 0.74rem;
+      color: #64748B;
+    }
+
+    .auth-footer-links a {
+      color: #94A3B8;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .auth-footer-links a:hover {
+      color: #38BDF8;
+      text-decoration: underline;
+    }
+
+    /* Ícone girando no loading */
+    @keyframes spinLoader {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .spin-icon {
+      animation: spinLoader 0.9s linear infinite;
+    }
+
+    /* Responsividade */
+    @media (max-width: 480px) {
+      .auth-card {
+        padding: 28px 20px;
+        border-radius: 16px;
+      }
+
+      .auth-logo-img {
+        width: 60px;
+        height: 60px;
+      }
+
+      .auth-title {
+        font-size: 1.4rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Fundo Animado Fluido (Orbes Mesh + Canvas de Partículas Suaves) -->
+  <div class="ambient-bg-wrapper" aria-hidden="true">
+    <div class="fluid-orb orb-1"></div>
+    <div class="fluid-orb orb-2"></div>
+    <div class="fluid-orb orb-3"></div>
+    <div class="cyber-grid-overlay"></div>
+    <canvas id="ambientCanvas"></canvas>
+  </div>
+
+  <!-- Janela de Autenticação -->
+  <div class="auth-viewport">
+    <main class="auth-card" role="main">
+      <header class="auth-header">
+        <div class="auth-logo-container">
+          <div class="auth-logo-ring"></div>
+          <img src="/images/logo.jpeg" alt="Logo RimuBusca" class="auth-logo-img">
+        </div>
+        <h1 class="auth-title">Rimu<span class="gradient-text">Busca</span></h1>
+        <p class="auth-subtitle">Plataforma Avançada de Inteligência OSINT</p>
+        <div class="auth-status-badge">
+          <span class="status-dot"></span>
+          <span>ACESSO RESTRITO A OPERADORES</span>
+        </div>
+      </header>
+
+      <!-- Alerta de Erro -->
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="auth-alert auth-alert-error" role="alert" aria-live="assertive">
+          <i data-lucide="alert-triangle" style="width: 17px; height: 17px; flex-shrink: 0; margin-top: 2px;"></i>
+          <div><%= error %></div>
+        </div>
+      <% } %>
+
+      <!-- Alerta de Informação (Ex: Desconectado com sucesso) -->
+      <% if (typeof info !== 'undefined' && info) { %>
+        <div class="auth-alert auth-alert-info" role="status" aria-live="polite">
+          <i data-lucide="info" style="width: 17px; height: 17px; flex-shrink: 0; margin-top: 2px;"></i>
+          <div><%= info %></div>
+        </div>
+      <% } %>
+
+      <!-- Formulário de Login -->
+      <form action="/auth/login" method="POST" id="loginForm">
+        <input type="hidden" name="redirect" value="<%= typeof redirect !== 'undefined' && redirect ? redirect : '/dashboard' %>">
+
+        <div class="form-group">
+          <label for="email" class="form-label">E-mail Corporativo</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <i data-lucide="mail" style="width: 16px; height: 16px;"></i>
+            </span>
+            <input 
+              type="email" 
+              id="email" 
+              name="email" 
+              class="form-input" 
+              placeholder="agente@rimubusca.internal" 
+              value="<%= typeof email !== 'undefined' && email ? email : '' %>"
+              required 
+              autocomplete="email"
+              autofocus
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">Senha de Acesso</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <i data-lucide="lock" style="width: 16px; height: 16px;"></i>
+            </span>
+            <input 
+              type="password" 
+              id="password" 
+              name="password" 
+              class="form-input" 
+              placeholder="••••••••••••" 
+              required 
+              autocomplete="current-password"
+            >
+            <button 
+              type="button" 
+              class="btn-toggle-password" 
+              id="togglePassword" 
+              aria-label="Alternar visibilidade da senha"
+              title="Exibir ou ocultar senha"
+            >
+              <i data-lucide="eye" id="eyeIcon" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <span>Acessar Plataforma</span>
+          <i data-lucide="arrow-right" class="btn-arrow-icon" style="width: 18px; height: 18px;"></i>
+        </button>
+      </form>
+
+      <footer class="auth-footer">
+        <p class="auth-footer-help">Não possui acesso? Solicite credenciais ao administrador.</p>
+        <div class="auth-footer-links">
+          <a href="/termos">Termos de Uso</a>
+          <span>&bull;</span>
+          <a href="/privacidade">Privacidade LGPD</a>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    // 1. Inicializa Ícones Lucide
+    if (window.lucide) {
+      lucide.createIcons();
+    }
+
+    // 2. Alternador de Visibilidade da Senha
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const eyeIcon = document.getElementById('eyeIcon');
+
+    if (togglePassword && passwordInput && eyeIcon) {
+      togglePassword.addEventListener('click', () => {
+        const isPassword = passwordInput.getAttribute('type') === 'password';
+        passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+        eyeIcon.setAttribute('data-lucide', isPassword ? 'eye-off' : 'eye');
+        if (window.lucide) lucide.createIcons();
+      });
+    }
+
+    // 3. Efeito de Carregamento ao Submeter
+    const loginForm = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (loginForm && submitBtn) {
+      loginForm.addEventListener('submit', () => {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+          <span>Autenticando...</span>
+          <i data-lucide="loader-2" class="spin-icon" style="width: 18px; height: 18px;"></i>
+        `;
+        if (window.lucide) lucide.createIcons();
+      });
+    }
+
+    // ==============================================================================
+    // 4. ANIMAÇÃO FLUIDA & ULTRA-LEVE DE FUNDO (HTML5 CANVAS 60FPS)
+    // Partículas luminosas digitais conectadas com suavidade e economia de bateria
+    // ==============================================================================
+    (function initAmbientAnimation() {
+      const canvas = document.getElementById('ambientCanvas');
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      let width = (canvas.width = window.innerWidth);
+      let height = (canvas.height = window.innerHeight);
+
+      // Quantidade contida para 60 FPS absoluto sem lag
+      const isMobile = width < 768;
+      const PARTICLE_COUNT = isMobile ? 22 : 42;
+      const MAX_DISTANCE = isMobile ? 110 : 150;
+      let animationFrameId = null;
+      let isVisible = true;
+
+      // Mouse interativo suave
+      const mouse = { x: null, y: null, radius: 130 };
+
+      window.addEventListener('mousemove', (e) => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
+
+      window.addEventListener('mouseleave', () => {
+        mouse.x = null;
+        mouse.y = null;
+      });
+
+      // Redimensionamento inteligente
+      let resizeTimeout;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+          width = canvas.width = window.innerWidth;
+          height = canvas.height = window.innerHeight;
+        }, 150);
+      });
+
+      // Partícula fluida
+      class FluidNode {
+        constructor() {
+          this.reset(true);
+        }
+
+        reset(initial = false) {
+          this.x = Math.random() * width;
+          this.y = initial ? Math.random() * height : (Math.random() > 0.5 ? -10 : height + 10);
+          this.vx = (Math.random() - 0.5) * 0.45;
+          this.vy = (Math.random() - 0.5) * 0.45;
+          this.size = Math.random() * 2 + 1.2;
+          this.baseAlpha = Math.random() * 0.35 + 0.15;
+          this.color = Math.random() > 0.4 ? '139, 92, 246' : (Math.random() > 0.5 ? '6, 182, 212' : '168, 85, 247');
+        }
+
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+
+          // Efeito de suave repulsão do mouse
+          if (mouse.x !== null && mouse.y !== null) {
+            const dx = this.x - mouse.x;
+            const dy = this.y - mouse.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < mouse.radius) {
+              const force = (mouse.radius - dist) / mouse.radius;
+              const angle = Math.atan2(dy, dx);
+              this.x += Math.cos(angle) * force * 1.5;
+              this.y += Math.sin(angle) * force * 1.5;
+            }
+          }
+
+          // Retorno suave das bordas
+          if (this.x < -20) this.x = width + 20;
+          if (this.x > width + 20) this.x = -20;
+          if (this.y < -20) this.y = height + 20;
+          if (this.y > height + 20) this.y = -20;
+        }
+
+        draw() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${this.color}, ${this.baseAlpha})`;
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = `rgba(${this.color}, 0.6)`;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      const particles = Array.from({ length: PARTICLE_COUNT }, () => new FluidNode());
+
+      function animate() {
+        if (!isVisible) return;
+
+        ctx.clearRect(0, 0, width, height);
+
+        // Conexões suaves em teia
+        for (let i = 0; i < particles.length; i++) {
+          const p1 = particles[i];
+          p1.update();
+          p1.draw();
+
+          for (let j = i + 1; j < particles.length; j++) {
+            const p2 = particles[j];
+            const dx = p1.x - p2.x;
+            const dy = p1.y - p2.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist < MAX_DISTANCE) {
+              const alpha = (1 - dist / MAX_DISTANCE) * 0.18;
+              ctx.beginPath();
+              ctx.moveTo(p1.x, p1.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = `rgba(139, 92, 246, ${alpha})`;
+              ctx.lineWidth = 0.9;
+              ctx.stroke();
+            }
+          }
+        }
+
+        animationFrameId = requestAnimationFrame(animate);
+      }
+
+      // Economia de bateria: pausa quando a aba estiver em segundo plano
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          isVisible = false;
+          if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        } else {
+          isVisible = true;
+          animate();
+        }
+      });
+
+      animate();
+    })();
+  </script>
+</body>
+</html>

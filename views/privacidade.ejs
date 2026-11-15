@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidade e LGPD | RimuBusca</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/css/tokens.css">
+  <link rel="stylesheet" href="/css/base.css">
+  <style>
+    .legal-container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: var(--space-6);
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+    }
+    .legal-header {
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+    .legal-title {
+      font-size: 1.75rem;
+      margin-bottom: var(--space-2);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--color-secondary);
+    }
+    .legal-section {
+      margin-bottom: var(--space-6);
+    }
+    .legal-section h2 {
+      font-size: 1.15rem;
+      color: var(--color-text);
+      margin-bottom: var(--space-2);
+    }
+    .legal-section p, .legal-section ul {
+      color: var(--color-text-muted);
+      font-size: 0.9375rem;
+      line-height: 1.7;
+    }
+    .legal-section ul {
+      padding-left: 20px;
+      margin-top: 8px;
+    }
+    .info-box {
+      background: rgba(34, 211, 238, 0.08);
+      border-left: 4px solid var(--color-primary);
+      padding: var(--space-4);
+      border-radius: var(--radius-sm);
+      margin: var(--space-4) 0;
+    }
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: var(--space-6);
+      padding: 8px 16px;
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+    }
+    .btn-back:hover {
+      background: var(--color-surface-3);
+    }
+  </style>
+</head>
+<body>
+  <div class="legal-container">
+    <header class="legal-header">
+      <h1 class="legal-title">
+        <i data-lucide="lock"></i>
+        <span>Política de Privacidade e LGPD</span>
+      </h1>
+      <p>Tratamento de Dados Pessoais em Conformidade com a Lei Federal 13.709/2018</p>
+    </header>
+
+    <div class="info-box">
+      <strong>COMPROMISSO COM A PRIVACIDADE:</strong> O módulo de extração de metadados opera 100% no navegador do cliente (client-side), sem tráfego de arquivos para servidores remotos. Consultas a bases externas requerem justificativa legal registrada em log.
+    </div>
+
+    <section class="legal-section">
+      <h2>1. Coleta e Finalidade de Dados</h2>
+      <p>A plataforma coleta exclusivamente os dados indispensáveis para o controle de acesso e auditoria de segurança dos analistas (e-mail, nome, endereço IP e user-agent de requisição).</p>
+    </section>
+
+    <section class="legal-section">
+      <h2>2. Processamento Client-side de Metadados</h2>
+      <p>Arquivos carregados na ferramenta de análise de metadados não são transmitidos para nossos servidores. Todas as rotinas de extração de EXIF, GPS, hashes e cabeçalhos ocorrem estritamente na memória volátil do navegador do operador.</p>
+    </section>
+
+    <section class="legal-section">
+      <h2>3. Direitos do Titular e Encarregado (DPO)</h2>
+      <p>Para dúvidas sobre registros de auditoria ou exercício de direitos previstos na LGPD, contate o administrador responsável pelo sistema na sua organização.</p>
+    </section>
+
+    <a href="/login" class="btn-back">
+      <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+      <span>Voltar para Autenticação</span>
+    </a>
+  </div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
+

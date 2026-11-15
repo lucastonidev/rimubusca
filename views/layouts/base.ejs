@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../partials/head') %>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Backdrop para Fechar Menu no Mobile -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- Barra Lateral (Sidebar) -->
+    <%- include('../partials/sidebar') %>
+
+    <!-- Área Principal de Conteúdo -->
+    <div class="app-main">
+      <%- include('../partials/header') %>
+
+      <main class="app-content">
+        <%- typeof body !== 'undefined' ? body : '' %>
+        <%- include('../partials/footer') %>
+      </main>
+    </div>
+  </div>
+
+  <!-- Barra de Navegação Inferior para Telas Pequenas -->
+  <%- include('../partials/bottom-nav') %>
+
+  <!-- Modal de Busca Global (Ctrl + K) -->
+  <%- include('../partials/command-palette') %>
+
+  <!-- Container de Mensagens Toast -->
+  <%- include('../partials/toast') %>
+
+  <!-- Scripts Base do Frontend -->
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/historico.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,208 @@
+<div class="cmd-palette-backdrop" id="cmdPaletteModal" role="dialog" aria-modal="true" aria-label="Busca Rápida de Módulos">
+  <div class="cmd-palette-modal">
+    <div class="cmd-palette-header">
+      <i data-lucide="search" style="width: 20px; height: 20px;"></i>
+      <input 
+        type="text" 
+        class="cmd-palette-input" 
+        id="cmdPaletteInput" 
+        placeholder="Digite para buscar módulos, ferramentas ou ações..."
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <kbd class="kbd-shortcut">ESC para fechar</kbd>
+    </div>
+
+    <div class="cmd-palette-list" id="cmdPaletteList">
+      <!-- Hub de APIs Pay-per-Use -->
+      <a href="/hub-api" class="cmd-palette-item">
+        <i data-lucide="coins" style="color: #F59E0B;"></i>
+        <div class="cmd-palette-item-info">
+          <span>Catálogo de APIs Pay-per-Use (Aspect Hub)</span>
+          <span class="cmd-palette-item-desc">46 módulos (CPF, CNPJ, Veículos, Birôs, TJ) com saldo de R$ 30,00</span>
+        </div>
+        <span class="badge badge-warning">Pay-per-Use</span>
+      </a>
+
+      <!-- Módulos de Investigação & Cadastral -->
+      <a href="/consulta?tipo=cpf" class="cmd-palette-item">
+        <i data-lucide="credit-card"></i>
+        <div class="cmd-palette-item-info">
+          <span>Puxar por CPF</span>
+          <span class="cmd-palette-item-desc">Situação na Receita, nascimento, filiação e cadastro completo</span>
+        </div>
+        <span class="badge badge-red">Dados</span>
+      </a>
+
+      <a href="/consulta?tipo=telefone" class="cmd-palette-item">
+        <i data-lucide="phone-forwarded"></i>
+        <div class="cmd-palette-item-info">
+          <span>Puxar por Telefone (Titularidade)</span>
+          <span class="cmd-palette-item-desc">Nome do dono, CPF vinculado, endereço e fatura</span>
+        </div>
+        <span class="badge badge-red">Dados</span>
+      </a>
+
+      <a href="/consulta" class="cmd-palette-item">
+        <i data-lucide="layers"></i>
+        <div class="cmd-palette-item-info">
+          <span>Central de Consultas Cadastrais</span>
+          <span class="cmd-palette-item-desc">12 tipos: CPF, Nome, RG, Telefone, NIS, PIS, CEP, Vizinhos, etc.</span>
+        </div>
+        <span class="badge badge-dark">12 Tipos</span>
+      </a>
+
+      <a href="/telefone" class="cmd-palette-item">
+        <i data-lucide="phone-call"></i>
+        <div class="cmd-palette-item-info">
+          <span>Telefone OSINT (Telecom)</span>
+          <span class="cmd-palette-item-desc">Operadora original, DDD/ANATEL, tipo de linha e Google Dorks</span>
+        </div>
+        <span class="badge badge-purple">OSINT</span>
+      </a>
+
+      <a href="/email" class="cmd-palette-item">
+        <i data-lucide="mail-search"></i>
+        <div class="cmd-palette-item-info">
+          <span>Consulta de E-mail & Breaches</span>
+          <span class="cmd-palette-item-desc">Verificação de vazamentos (HIBP), MX, SPF, DMARC e Gravatar</span>
+        </div>
+        <span class="badge badge-purple">OSINT</span>
+      </a>
+
+      <a href="/dominio" class="cmd-palette-item">
+        <i data-lucide="globe-2"></i>
+        <div class="cmd-palette-item-info">
+          <span>Consulta de Domínio & DNS</span>
+          <span class="cmd-palette-item-desc">WHOIS, RDAP, zonas A/AAAA/MX/TXT/NS, SSL/TLS e segurança HTTP</span>
+        </div>
+        <span class="badge badge-purple">OSINT</span>
+      </a>
+
+      <a href="/processos" class="cmd-palette-item">
+        <i data-lucide="scale"></i>
+        <div class="cmd-palette-item-info">
+          <span>Processos Judiciais & Monitoramento</span>
+          <span class="cmd-palette-item-desc">DataJud CNJ, validação Módulo 97, polos, movimentações e diários</span>
+        </div>
+        <span class="badge badge-purple">DataJud</span>
+      </a>
+
+      <a href="/redes" class="cmd-palette-item">
+        <i data-lucide="users"></i>
+        <div class="cmd-palette-item-info">
+          <span>Redes Sociais & Contas Online</span>
+          <span class="cmd-palette-item-desc">Varredura em 80+ plataformas e correlação por Nome, E-mail ou Telefone</span>
+        </div>
+        <span class="badge badge-purple">80+ Redes</span>
+      </a>
+
+      <a href="/metadados" class="cmd-palette-item">
+        <i data-lucide="file-search"></i>
+        <div class="cmd-palette-item-info">
+          <span>Extração de Metadados de Arquivos</span>
+          <span class="cmd-palette-item-desc">EXIF, GPS, hashes SHA-256 e análise 100% no navegador</span>
+        </div>
+        <span class="badge badge-purple">🔒 Local</span>
+      </a>
+
+      <a href="/basic/financeiro" class="cmd-palette-item">
+        <i data-lucide="qr-code"></i>
+        <div class="cmd-palette-item-info">
+          <span>Decodificador PIX &amp; Boleto FEBRABAN</span>
+          <span class="cmd-palette-item-desc">BR Code (CRC16), vencimento 2025, DVs Mod 10/11 e pivô CNPJ/CPF</span>
+        </div>
+        <span class="badge badge-purple">Forense</span>
+      </a>
+
+      <a href="/basic/servidores" class="cmd-palette-item">
+        <i data-lucide="landmark"></i>
+        <div class="cmd-palette-item-info">
+          <span>Servidores Públicos Federais (SIAPE)</span>
+          <span class="cmd-palette-item-desc">Executivo Federal, professores federais (UF/IF), vínculos e remuneração</span>
+        </div>
+        <span class="badge badge-purple">CGU SIAPE</span>
+      </a>
+
+      <a href="/basic/auxilios" class="cmd-palette-item">
+        <i data-lucide="hand-coins"></i>
+        <div class="cmd-palette-item-info">
+          <span>Benefícios &amp; Auxílios Sociais (CGU)</span>
+          <span class="cmd-palette-item-desc">Novo Bolsa Família, BPC/LOAS, Auxílio Emergencial, Defeso, Safra e PETI</span>
+        </div>
+        <span class="badge badge-purple">CGU Social</span>
+      </a>
+
+      <a href="/basic/bitcoin" class="cmd-palette-item">
+        <i data-lucide="bitcoin" style="color: #F59E0B;"></i>
+        <div class="cmd-palette-item-info">
+          <span>Investigação Bitcoin (BTC)</span>
+          <span class="cmd-palette-item-desc">On-chain (saldo, transações), Surface Web (Google) e Dark Web (.onion Ahmia)</span>
+        </div>
+        <span class="badge badge-warning">On-Chain + Dark</span>
+      </a>
+
+      <!-- Ações Administrativas -->
+      <% if ((typeof isAdmin !== 'undefined' && isAdmin) || (typeof user !== 'undefined' && user?.profile?.role === 'admin')) { %>
+        <a href="/admin" class="cmd-palette-item">
+          <i data-lucide="shield-alert"></i>
+          <div class="cmd-palette-item-info">
+            <span>Painel Geral Administrativo</span>
+            <span class="cmd-palette-item-desc">Visão executiva, métricas de operadores e status</span>
+          </div>
+          <span class="badge badge-red">Admin</span>
+        </a>
+
+        <a href="/admin/usuarios" class="cmd-palette-item">
+          <i data-lucide="users"></i>
+          <div class="cmd-palette-item-info">
+            <span>Gerenciar Operadores</span>
+            <span class="cmd-palette-item-desc">Criar, ativar/desativar contas e definir papéis</span>
+          </div>
+          <span class="badge badge-red">Admin</span>
+        </a>
+
+        <a href="/admin/logs" class="cmd-palette-item">
+          <i data-lucide="scroll-text"></i>
+          <div class="cmd-palette-item-info">
+            <span>Trilha de Auditoria</span>
+            <span class="cmd-palette-item-desc">Consultar histórico imutável de eventos e investigações</span>
+          </div>
+          <span class="badge badge-red">Admin</span>
+        </a>
+
+        <a href="/admin/api-keys" class="cmd-palette-item">
+          <i data-lucide="key"></i>
+          <div class="cmd-palette-item-info">
+            <span>Chaves de API & Conectores</span>
+            <span class="cmd-palette-item-desc">Monitorar credenciais externas e integrações</span>
+          </div>
+          <span class="badge badge-red">Admin</span>
+        </a>
+      <% } %>
+
+      <!-- Configurações e Ajuda -->
+      <a href="/configuracoes" class="cmd-palette-item">
+        <i data-lucide="settings"></i>
+        <div class="cmd-palette-item-info">
+          <span>Configurações do Perfil</span>
+          <span class="cmd-palette-item-desc">Preferências de interface e credenciais</span>
+        </div>
+      </a>
+
+      <a href="/ajuda" class="cmd-palette-item">
+        <i data-lucide="help-circle"></i>
+        <div class="cmd-palette-item-info">
+          <span>Guia Operacional</span>
+          <span class="cmd-palette-item-desc">Documentação de uso das ferramentas e normas legais</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="cmd-palette-footer">
+      <span>Navegação: Use as setas ou clique</span>
+      <span>RimuBusca Core v1.0</span>
+    </div>
+  </div>
+</div>
+

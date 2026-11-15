@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../partials/head') %>
+  <link rel="stylesheet" href="/css/pages/admin/modules.css">
+</head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/sidebar', { user, isAdmin, currentPath }) %>
+  <div class="app-main">
+    <%- include('../partials/header', { pageTitle }) %>
+    <div class="page-content">
+
+      <!-- Hero / KPI -->
+      <div class="admin-mod-hero">
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon">
+              <i data-lucide="layers"></i>
+            </div>
+            <div class="kpi-info">
+              <span class="kpi-value" id="kpiTotal">--</span>
+              <span class="kpi-label">Total de Módulos</span>
+            </div>
+          </div>
+          <div class="kpi-card kpi-card--success">
+            <div class="kpi-icon">
+              <i data-lucide="check-circle-2"></i>
+            </div>
+            <div class="kpi-info">
+              <span class="kpi-value" id="kpiAtivos">--</span>
+              <span class="kpi-label">Ativos</span>
+            </div>
+          </div>
+          <div class="kpi-card kpi-card--warning">
+            <div class="kpi-icon">
+              <i data-lucide="wrench"></i>
+            </div>
+            <div class="kpi-info">
+              <span class="kpi-value" id="kpiManutencao">--</span>
+              <span class="kpi-label">Em Manutenção</span>
+            </div>
+          </div>
+          <div class="kpi-card kpi-card--primary">
+            <div class="kpi-icon">
+              <i data-lucide="search"></i>
+            </div>
+            <div class="kpi-info">
+              <span class="kpi-value" id="kpiConsultas">--</span>
+              <span class="kpi-label">Consultas</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barra de filtros + ações -->
+      <div class="filter-bar">
+        <div class="filter-bar__left">
+          <div class="search-wrap">
+            <i data-lucide="search" class="search-icon"></i>
+            <input
+              type="text"
+              id="inputBuscaModulos"
+              class="search-input"
+              placeholder="Buscar módulo por nome, slug ou rota…"
+            />
+          </div>
+
+          <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">Todos</button>
+            <button class="filter-btn" data-filter="consultas">Consultas</button>
+            <button class="filter-btn" data-filter="osint">OSINT</button>
+            <button class="filter-btn" data-filter="forense">Forense</button>
+            <button class="filter-btn" data-filter="outros">Outros</button>
+          </div>
+
+          <select id="selectFiltroStatus" class="form-select filter-select">
+            <option value="all">Todos os status</option>
+            <option value="ativo">Ativo</option>
+            <option value="manutencao">Manutenção</option>
+            <option value="em_breve">Em Breve</option>
+            <option value="inativo">Inativo</option>
+          </select>
+        </div>
+
+        <div class="filter-bar__right">
+          <button class="btn btn-ghost btn-sm" id="btnRecarregar" title="Recarregar lista">
+            <i data-lucide="refresh-cw" id="iconRecarregar"></i>
+            Recarregar
+          </button>
+          <button class="btn btn-primary btn-sm" id="btnNovoModulo">
+            <i data-lucide="plus"></i>
+            Novo Módulo
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabela de módulos -->
+      <div class="modules-table-wrap">
+        <table class="modules-table">
+          <thead>
+            <tr>
+              <th style="width:52px;">#</th>
+              <th style="width:48px;">Ícone</th>
+              <th>Nome / Slug</th>
+              <th style="width:110px;">Categoria</th>
+              <th>Rota</th>
+              <th style="width:120px;">Status</th>
+              <th style="width:96px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="modulesTableBody">
+            <tr class="table-loading">
+              <td colspan="7">
+                <div class="loading-inner">
+                  <span class="spinner"></span>
+                  <span>Carregando módulos…</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- /.page-content -->
+  </div><!-- /.app-main -->
+</div><!-- /.app-layout -->
+
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+<!-- ======================================================
+     Modal Criar / Editar Módulo
+     ====================================================== -->
+<div class="modal-backdrop" id="modalModulo" role="dialog" aria-modal="true" aria-labelledby="modalModuloTitle">
+  <div class="modal-dialog modal-dialog--lg">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modalModuloTitle">Novo Módulo</h2>
+      <button class="modal-close" id="btnFecharModal" aria-label="Fechar">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form id="formModulo" autocomplete="off" novalidate>
+
+        <!-- Live preview -->
+        <div class="live-preview-box" id="livePreviewBox">
+          <div class="live-preview-icon" id="livePreviewIcon">
+            <i data-lucide="box" id="liveIconEl" style="color:#A78BFA;"></i>
+          </div>
+          <div class="live-preview-info">
+            <span class="live-preview-name" id="livePreviewName">Nome do módulo</span>
+            <span class="live-preview-slug" id="livePreviewSlug">slug</span>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <!-- Slug -->
+          <div class="form-group">
+            <label class="form-label" for="fieldSlug">Slug <span class="required">*</span></label>
+            <input type="text" id="fieldSlug" class="form-input" placeholder="ex: cpf" required />
+            <span class="form-hint">Identificador único, sem espaços.</span>
+          </div>
+
+          <!-- Nome -->
+          <div class="form-group">
+            <label class="form-label" for="fieldNome">Nome <span class="required">*</span></label>
+            <input type="text" id="fieldNome" class="form-input" placeholder="ex: Puxar por CPF" required />
+          </div>
+
+          <!-- Ícone -->
+          <div class="form-group">
+            <label class="form-label" for="fieldIcone">Ícone Lucide <span class="required">*</span></label>
+            <input type="text" id="fieldIcone" class="form-input" placeholder="ex: credit-card" required />
+            <span class="form-hint">Nome do ícone em lucide.dev.</span>
+          </div>
+
+          <!-- Cor do ícone -->
+          <div class="form-group">
+            <label class="form-label" for="fieldCorIcone">Cor do Ícone <span class="required">*</span></label>
+            <div class="color-input-wrap">
+              <input type="color" id="fieldCorIconeColor" class="color-swatch" value="#A78BFA" />
+              <input type="text" id="fieldCorIcone" class="form-input" placeholder="#A78BFA" required />
+            </div>
+          </div>
+
+          <!-- Rota -->
+          <div class="form-group form-group--full">
+            <label class="form-label" for="fieldRota">Rota <span class="required">*</span></label>
+            <input type="text" id="fieldRota" class="form-input" placeholder="ex: /advanced/person?tipo=cpf" required />
+          </div>
+
+          <!-- Categoria -->
+          <div class="form-group">
+            <label class="form-label" for="fieldCategoria">Categoria <span class="required">*</span></label>
+            <select id="fieldCategoria" class="form-select" required>
+              <option value="">Selecione…</option>
+              <option value="consultas">Consultas</option>
+              <option value="osint">OSINT</option>
+              <option value="forense">Forense</option>
+              <option value="outros">Outros</option>
+            </select>
+          </div>
+
+          <!-- Ordem -->
+          <div class="form-group">
+            <label class="form-label" for="fieldOrdem">Ordem</label>
+            <input type="number" id="fieldOrdem" class="form-input" placeholder="1" min="0" />
+          </div>
+
+          <!-- Badge texto -->
+          <div class="form-group">
+            <label class="form-label" for="fieldBadgeTexto">Badge Texto</label>
+            <input type="text" id="fieldBadgeTexto" class="form-input" placeholder="ex: Cadastral" />
+          </div>
+
+          <!-- Badge cor -->
+          <div class="form-group">
+            <label class="form-label" for="fieldBadgeCor">Badge Cor</label>
+            <select id="fieldBadgeCor" class="form-select">
+              <option value="">Nenhuma</option>
+              <option value="badge-purple">Roxo</option>
+              <option value="badge-red">Vermelho</option>
+              <option value="badge-green">Verde</option>
+              <option value="badge-warning">Amarelo</option>
+              <option value="badge-dark">Escuro</option>
+            </select>
+          </div>
+
+          <!-- Descrição -->
+          <div class="form-group form-group--full">
+            <label class="form-label" for="fieldDescricao">Descrição</label>
+            <textarea id="fieldDescricao" class="form-textarea" rows="3" placeholder="Breve descrição do módulo…"></textarea>
+          </div>
+        </div>
+
+        <!-- Toggles -->
+        <div class="toggle-group">
+          <label class="toggle-item">
+            <div class="toggle-switch">
+              <input type="checkbox" id="fieldAtivo" />
+              <span class="toggle-slider"></span>
+            </div>
+            <span class="toggle-label">Ativo</span>
+            <span class="toggle-hint">Módulo visível e funcional</span>
+          </label>
+          <label class="toggle-item">
+            <div class="toggle-switch">
+              <input type="checkbox" id="fieldEmBreve" />
+              <span class="toggle-slider"></span>
+            </div>
+            <span class="toggle-label">Em Breve</span>
+            <span class="toggle-hint">Exibe badge "Em Breve"</span>
+          </label>
+          <label class="toggle-item">
+            <div class="toggle-switch">
+              <input type="checkbox" id="fieldManutencao" />
+              <span class="toggle-slider"></span>
+            </div>
+            <span class="toggle-label">Manutenção</span>
+            <span class="toggle-hint">Bloqueia acesso temporariamente</span>
+          </label>
+        </div>
+
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnCancelarModal">Cancelar</button>
+      <button class="btn btn-primary" id="btnSalvarModulo">
+        <i data-lucide="save"></i>
+        Salvar Módulo
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================
+     Modal Confirmação de Exclusão
+     ====================================================== -->
+<div class="modal-backdrop" id="modalConfirmDelete" role="dialog" aria-modal="true" aria-labelledby="modalDeleteTitle">
+  <div class="modal-dialog modal-dialog--sm">
+    <div class="modal-header modal-header--danger">
+      <h2 class="modal-title" id="modalDeleteTitle">Confirmar Exclusão</h2>
+      <button class="modal-close" id="btnFecharDelete" aria-label="Fechar">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
+    <div class="modal-body modal-body--center">
+      <div class="delete-icon-wrap">
+        <i data-lucide="trash-2"></i>
+      </div>
+      <p class="delete-message">
+        Tem certeza que deseja excluir o módulo
+        <strong id="deleteNomeModulo"></strong>?
+      </p>
+      <p class="delete-warning">Esta ação não pode ser desfeita.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btnCancelarDelete">Cancelar</button>
+      <button class="btn btn-danger" id="btnConfirmarDelete">
+        <i data-lucide="trash-2"></i>
+        Excluir
+      </button>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/command-palette') %>
+<%- include('../partials/toast') %>
+
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/main.js"></script>
+<script src="/js/admin-modulos.js"></script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<aside class="app-sidebar app-sidebar-admin" id="appSidebar">
+  <!-- Cabeçalho do Workspace Administrativo -->
+  <div class="sidebar-header" style="border-bottom: 1px solid rgba(239, 68, 68, 0.2);">
+    <a href="/admin" class="sidebar-brand" title="RimuBusca - Painel de Administração">
+      <div class="sidebar-brand-icon" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #EF4444;">
+        <img src="/images/logo.jpeg" alt="Logo RimuBusca" class="sidebar-logo">
+      </div>
+      <div class="sidebar-brand-text">
+        Rimu<span>Busca</span>
+        <span style="display: inline-block; background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.65rem; padding: 1px 6px; border-radius: 4px; font-weight: 800; margin-left: 6px; letter-spacing: 0.5px;">ADMIN</span>
+      </div>
+    </a>
+  </div>
+
+  <!-- Navegação Exclusiva do Painel Administrativo -->
+  <div class="sidebar-content">
+    <div class="nav-section nav-section-top">
+      <!-- Botão para Alternar de volta à Plataforma Principal -->
+      <a href="/dashboard" class="nav-item nav-item-back-to-app" style="background: var(--color-surface-2); border: 1px solid var(--color-border); margin-bottom: 12px; border-radius: var(--radius-md);" title="Retornar à plataforma de buscas e ferramentas">
+        <span class="nav-item-icon"><i data-lucide="arrow-left" style="color: var(--color-primary);"></i></span>
+        <span class="nav-item-text" style="font-weight: 600; color: var(--color-text);">Voltar ao Sistema</span>
+      </a>
+
+      <div class="nav-section-title" style="color: #EF4444; display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+        <i data-lucide="shield" style="width: 11px; height: 11px;"></i> GESTÃO & CONTROLE
+      </div>
+
+      <!-- 1. Visão Geral / Métricas -->
+      <a href="/admin" class="nav-item <%= typeof currentPath !== 'undefined' && currentPath === '/admin' ? 'active' : '' %>" title="Painel Geral de Administração">
+        <span class="nav-item-icon"><i data-lucide="layout-dashboard" style="color: #EF4444;"></i></span>
+        <span class="nav-item-text">Visão Geral</span>
+      </a>
+
+      <!-- 2. Gerenciar Módulos do Banco -->
+      <a href="/admin/modulos" class="nav-item <%= typeof currentPath !== 'undefined' && currentPath === '/admin/modulos' ? 'active' : '' %>" title="Gerenciar Módulos do Banco de Dados">
+        <span class="nav-item-icon"><i data-lucide="layers" style="color: #A78BFA;"></i></span>
+        <span class="nav-item-text">Gerenciar Módulos</span>
+      </a>
+
+      <!-- 3. Usuários & Equipe -->
+      <a href="/admin/usuarios" class="nav-item <%= typeof currentPath !== 'undefined' && currentPath === '/admin/usuarios' ? 'active' : '' %>" title="Gestão de Usuários & Operadores">
+        <span class="nav-item-icon"><i data-lucide="users" style="color: #38BDF8;"></i></span>
+        <span class="nav-item-text">Usuários & Equipe</span>
+      </a>
+
+      <!-- 4. Logs de Auditoria -->
+      <a href="/admin/logs" class="nav-item <%= typeof currentPath !== 'undefined' && currentPath === '/admin/logs' ? 'active' : '' %>" title="Trilha de Auditoria & Conformidade">
+        <span class="nav-item-icon"><i data-lucide="shield-check" style="color: #10B981;"></i></span>
+        <span class="nav-item-text">Logs de Auditoria</span>
+      </a>
+
+      <!-- 5. Chaves de API -->
+      <a href="/admin/api-keys" class="nav-item <%= typeof currentPath !== 'undefined' && currentPath === '/admin/api-keys' ? 'active' : '' %>" title="Conexões e Chaves de API">
+        <span class="nav-item-icon"><i data-lucide="key" style="color: #F59E0B;"></i></span>
+        <span class="nav-item-text">Chaves de API</span>
+      </a>
+
+      <!-- 6. Hub Pay-per-Use (Atalho para auditoria da carteira e testes) -->
+      <a href="/hub-api" class="nav-item <%= typeof currentPath !== 'undefined' && currentPath === '/hub-api' ? 'active' : '' %>" title="Catálogo de APIs Pay-per-Use">
+        <span class="nav-item-icon"><i data-lucide="coins" style="color: #F59E0B;"></i></span>
+        <span class="nav-item-text">Hub Pay-per-Use</span>
+        <span class="nav-badge badge-warning" style="font-size: 0.68rem; padding: 2px 6px; font-weight: 700;">R$ 20</span>
+      </a>
+    </div>
+
+    <!-- Seção Inferior -->
+    <div class="nav-section nav-section-bottom">
+      <a href="/configuracoes" class="nav-item <%= typeof currentPath !== 'undefined' && currentPath === '/configuracoes' ? 'active' : '' %>" title="Configurações">
+        <span class="nav-item-icon"><i data-lucide="settings"></i></span>
+        <span class="nav-item-text">Configurações</span>
+      </a>
+
+      <a href="/auth/logout" class="nav-item" style="color: #EF4444;" title="Sair da Conta">
+        <span class="nav-item-icon"><i data-lucide="log-out"></i></span>
+        <span class="nav-item-text">Sair</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Rodapé com Perfil do Administrador -->
+  <a href="/configuracoes" class="sidebar-footer" title="Perfil do Administrador">
+    <div class="user-avatar" style="background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%); color: #FFF; font-weight: 800;">
+      <%= typeof user !== 'undefined' && user?.profile?.nome ? user.profile.nome.charAt(0).toUpperCase() : (typeof user !== 'undefined' && user?.email ? user.email.charAt(0).toUpperCase() : 'A') %>
+    </div>
+    <div class="user-profile-info">
+      <div class="user-profile-name">
+        <%= typeof user !== 'undefined' && user?.profile?.nome ? user.profile.nome : (typeof user !== 'undefined' && user?.email ? user.email.split('@')[0] : 'Administrador') %>
+      </div>
+      <div class="user-profile-role" style="color: #EF4444; font-weight: 700;">
+        ADMINISTRADOR
+      </div>
+    </div>
+  </a>
+</aside>
+

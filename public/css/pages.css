@@ -1,0 +1,584 @@
+/* ==============================================================================
+   RIMUBUSCA DESIGN SYSTEM - PAGES.CSS
+   Estilos Específicos para o Dashboard, Módulos e Tabelas de Investigação
+   Paleta: Preto Profundo (#070709), Roxo Neon (#8B5CF6) e Vermelho (#EF4444)
+   ============================================================================== */
+
+/* --------------------------------------------------------------------------
+   DASHBOARD: FORMATO HERO PRINCIPAL
+   -------------------------------------------------------------------------- */
+.dashboard-hero {
+  background: radial-gradient(circle at 85% 15%, rgba(139, 92, 246, 0.16) 0%, transparent 55%),
+              radial-gradient(circle at 15% 85%, rgba(239, 68, 68, 0.12) 0%, transparent 55%),
+              linear-gradient(180deg, #0D0D15 0%, #08080C 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-8);
+  margin-bottom: var(--space-8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 30px rgba(139, 92, 246, 0.08);
+}
+
+.dashboard-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #8B5CF6 0%, #EF4444 100%);
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  background: rgba(139, 92, 246, 0.15);
+  color: #C4B5FD;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  margin-bottom: var(--space-3);
+  letter-spacing: 0.05em;
+}
+
+.hero-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: var(--space-2);
+}
+
+.hero-title .gradient-text {
+  background: linear-gradient(135deg, #FFFFFF 20%, #C4B5FD 60%, #F87171 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-description {
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
+  max-width: 650px;
+  line-height: 1.6;
+}
+
+.hero-meta-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  background-color: rgba(21, 21, 32, 0.85);
+  border: 1px solid var(--color-border);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+}
+
+.meta-pill i {
+  color: #A78BFA;
+}
+
+/* --------------------------------------------------------------------------
+   DASHBOARD: CARDS DE MÉTRICAS / KPIS RÁPIDOS
+   -------------------------------------------------------------------------- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.kpi-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  transition: all var(--transition-fast);
+}
+
+.kpi-card:hover {
+  border-color: rgba(139, 92, 246, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+}
+
+.kpi-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-icon-purple {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #A78BFA;
+}
+
+.kpi-icon-red {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #F87171;
+}
+
+.kpi-icon-dark {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-text);
+}
+
+.kpi-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.kpi-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   SEÇÕES POR CATEGORIA DE MÓDULOS
+   -------------------------------------------------------------------------- */
+.category-block {
+  margin-bottom: var(--space-8);
+}
+
+.category-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--space-2);
+}
+
+.category-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  letter-spacing: -0.01em;
+}
+
+.category-title i {
+  color: #A78BFA;
+}
+
+.category-subtitle {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  width: 100%;
+  margin-top: 2px;
+}
+
+/* Grade Compacta para Puxar Dados (12 módulos) */
+.puxar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.puxar-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-base);
+}
+
+.puxar-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #8B5CF6, #EF4444, transparent);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.puxar-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7), 0 0 15px rgba(139, 92, 246, 0.15);
+}
+
+.puxar-card:hover::after {
+  opacity: 1;
+}
+
+.puxar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.puxar-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #A78BFA;
+  transition: all var(--transition-fast);
+}
+
+.puxar-card:hover .puxar-icon {
+  background-color: rgba(139, 92, 246, 0.2);
+  border-color: #8B5CF6;
+  color: #FFFFFF;
+}
+
+.puxar-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.puxar-title i {
+  color: var(--color-text-dim);
+  transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.puxar-card:hover .puxar-title i {
+  color: #EF4444;
+  transform: translateX(3px);
+}
+
+.puxar-desc {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* Grade de Infraestrutura e Forense */
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+
+/* --------------------------------------------------------------------------
+   DASHBOARD: HISTÓRICO DE BUSCAS RECENTES
+   -------------------------------------------------------------------------- */
+.history-section {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.osint-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.osint-table th {
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-border);
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.osint-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.osint-table tr:hover td {
+  background-color: var(--color-surface-2);
+}
+
+.osint-input-code {
+  font-family: var(--font-mono);
+  background-color: var(--color-surface-2);
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--color-border);
+  color: #C4B5FD;
+  font-size: 0.8125rem;
+}
+
+.action-btns {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface-2);
+  color: var(--color-text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-3);
+}
+
+.empty-state-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--space-1);
+}
+
+.empty-state-text {
+  font-size: 0.8125rem;
+  max-width: 400px;
+  margin: 0 auto var(--space-4);
+}
+
+/* ==============================================================================
+   BANNER DO CATÁLOGO DE PUXAR DADOS 2 / HUB DE APIS PAY-PER-USE
+   ============================================================================== */
+.hubapi-dashboard-banner {
+  background: linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.08) 0%,
+    rgba(139, 92, 246, 0.05) 50%,
+    var(--color-surface) 100%
+  );
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  margin-bottom: var(--space-8);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.hubapi-dashboard-banner:hover {
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 8px 24px -2px rgba(0, 0, 0, 0.45);
+}
+
+.hubapi-banner-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 280px;
+  flex: 1;
+}
+
+.hubapi-banner-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.hubapi-banner-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.hubapi-banner-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.hubapi-banner-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0;
+  line-height: 1.45;
+}
+
+.hubapi-banner-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.hubapi-banner-wallet {
+  text-align: right;
+  min-width: 140px;
+}
+
+.hubapi-wallet-label {
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.hubapi-wallet-balance {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #10b981;
+  font-family: var(--font-mono);
+}
+
+.hubapi-wallet-cap {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.hubapi-banner-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  padding: 10px 18px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Responsividade de Telas */
+@media (max-width: 768px) {
+  .dashboard-hero {
+    padding: var(--space-6) var(--space-4);
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .hero-title {
+    font-size: 1.5rem;
+  }
+  .puxar-grid,
+  .modules-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Banner Mobile Otimizado */
+  .hubapi-dashboard-banner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--space-4);
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .hubapi-banner-left {
+    min-width: 0;
+    width: 100%;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .hubapi-banner-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .hubapi-banner-title {
+    font-size: 1.05rem;
+  }
+
+  .hubapi-banner-right {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: var(--space-3);
+  }
+
+  .hubapi-banner-wallet {
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    border-radius: var(--radius-md);
+    padding: 10px 14px;
+  }
+
+  .hubapi-banner-wallet-values {
+    text-align: right;
+  }
+
+  .hubapi-banner-btn {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 0.925rem;
+  }
+}

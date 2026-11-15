@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <%- include('partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('partials/header') %>
+
+      <main class="app-content">
+        <div style="margin-bottom: var(--space-6);">
+          <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="help-circle" style="color: var(--color-primary); width: 28px; height: 28px;"></i>
+            <span>Guia Operacional & Documentação OSINT</span>
+          </h1>
+          <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+            Instruções técnicas para os módulos de investigação e conformidade com a LGPD e Art. 154-A do CP.
+          </p>
+        </div>
+
+        <%- include('partials/disclaimer') %>
+
+        <div style="display: flex; flex-direction: column; gap: var(--space-5);">
+          <!-- 1. Metadados -->
+          <div class="card">
+            <h2 style="font-size: 1.125rem; font-weight: 600; margin-bottom: var(--space-2); color: var(--color-success); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="file-search"></i>
+              <span>1. Módulo de Metadados de Arquivos (100% Client-Side)</span>
+            </h2>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); line-height: 1.6;">
+              Projetado para análise forense imediata sem risco de vazamento de dados confidenciais. O processamento ocorre na memória RAM do navegador do analista via Web APIs.
+            </p>
+            <ul style="padding-left: 20px; margin-top: 8px; font-size: 0.875rem; color: var(--color-text-muted); line-height: 1.6;">
+              <li><strong>Imagens:</strong> Extração de EXIF, IPTC, XMP e coordenadas GPS com renderização de mapa OpenStreetMap.</li>
+              <li><strong>Hashes:</strong> Geração de SHA-256 e MD5 para atestar a cadeia de custódia e integridade do arquivo.</li>
+              <li><strong>Documentos PDF & Áudio:</strong> Leitura de metadados de autoria, softwares geradores e duração.</li>
+            </ul>
+          </div>
+
+          <!-- 2. Atalhos e Navegação -->
+          <div class="card">
+            <h2 style="font-size: 1.125rem; font-weight: 600; margin-bottom: var(--space-2); color: var(--color-primary); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="command"></i>
+              <span>2. Atalhos de Teclado & Eficiência</span>
+            </h2>
+            <ul style="padding-left: 20px; font-size: 0.875rem; color: var(--color-text-muted); line-height: 1.7;">
+              <li><kbd class="kbd-shortcut">Ctrl K</kbd> ou <kbd class="kbd-shortcut">Cmd K</kbd>: Abre a Command Palette global para pular imediatamente para qualquer módulo ou ação.</li>
+              <li><kbd class="kbd-shortcut">Ctrl V</kbd>: Na página de metadados, permite colar imagens diretamente da área de transferência para análise sem salvar em disco.</li>
+              <li><kbd class="kbd-shortcut">ESC</kbd>: Fecha modais, painéis de busca rápida e menus abertos.</li>
+            </ul>
+          </div>
+
+          <!-- 3. Princípios de Segurança e Auditoria -->
+          <div class="card">
+            <h2 style="font-size: 1.125rem; font-weight: 600; margin-bottom: var(--space-2); color: var(--color-warning); display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="shield-alert"></i>
+              <span>3. Diretrizes de Segurança e LGPD</span>
+            </h2>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); line-height: 1.6;">
+              Todas as operações efetuadas na plataforma (autenticações, logouts, pesquisas cadastrais) são registradas de forma imutável na tabela <code>logs_auditoria</code> com carimbo temporal, IP e identificador do analista. O compartilhamento de contas é estritamente proibido pelas normas de segurança.
+            </p>
+          </div>
+        </div>
+
+        <%- include('partials/footer') %>
+      </main>
+    </div>
+  </div>
+
+  <%- include('partials/bottom-nav') %>
+  <%- include('partials/command-palette') %>
+  <%- include('partials/toast') %>
+
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/historico.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
+

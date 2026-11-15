@@ -1,0 +1,9 @@
+<% 
+  const currentUrl = typeof currentPath !== 'undefined' && currentPath ? currentPath : '';
+  const isNaAreaAdmin = currentUrl.startsWith('/admin') || (typeof isAdminSection !== 'undefined' && isAdminSection);
+%>
+<% if (isNaAreaAdmin) { %>
+  <%- include('sidebar-admin') %>
+<% } else { %>
+  <%- include('sidebar-user') %>
+<% } %>

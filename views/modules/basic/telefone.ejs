@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+
+  <style>
+    .tel-search-card {
+      background: radial-gradient(circle at 95% 5%, rgba(34, 211, 238, 0.06) 0%, transparent 60%),
+                  var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tel-input-group {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+    }
+
+    .tel-select-ddi {
+      width: 180px;
+      padding: 10px 12px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 0.875rem;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .tel-select-ddi:focus {
+      border-color: var(--color-primary);
+    }
+
+    .tel-main-input {
+      flex: 1;
+      padding: 10px 16px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 1rem;
+      font-family: var(--font-mono);
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .tel-main-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-glow);
+      background-color: var(--color-surface);
+    }
+
+    .demo-pills-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .demo-phone-btn {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .demo-phone-btn:hover {
+      background: var(--color-surface-3);
+      color: var(--color-primary);
+      border-color: var(--color-border-glow);
+    }
+
+    /* Grid de Resultados */
+    .results-grid-telecom {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+
+    .dorks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--space-3);
+      margin-top: var(--space-3);
+    }
+
+    @media (max-width: 640px) {
+      .tel-input-group {
+        flex-direction: column;
+      }
+      .tel-select-ddi {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <%- include('../../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Cabeçalho do Módulo -->
+        <div style="margin-bottom: var(--space-6);">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <span class="badge badge-purple">Carrier Lookup API</span>
+            <span class="badge badge-dark">Anatel & Telecom Footprint</span>
+          </div>
+          <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="phone-call" style="color: var(--color-primary); width: 28px; height: 28px;"></i>
+            <span>Inteligência de Telefonia & Carrier Lookup</span>
+          </h1>
+          <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+            Identifique a operadora em tempo real via Carrier Lookup API, tipo de linha (móvel/fixo), localização geográfica por DDD/DDI e rastreie a pegada OSINT na web.
+          </p>
+        </div>
+
+        <%- include('../../partials/disclaimer') %>
+
+        <!-- Formulário de Consulta -->
+        <div class="tel-search-card">
+          <form id="telefoneForm">
+            <label for="telefoneInput" style="display: block; font-size: 0.875rem; font-weight: 500; color: var(--color-text);">
+              Informe o Número de Telefone para Investigação:
+            </label>
+
+            <div class="tel-input-group">
+              <select id="ddiSelect" class="tel-select-ddi" aria-label="País / DDI">
+                <option value="+55" selected>🇧🇷 Brasil (+55)</option>
+                <option value="+1">🇺🇸 EUA / CAN (+1)</option>
+                <option value="+351">🇵🇹 Portugal (+351)</option>
+                <option value="+34">🇪🇸 Espanha (+34)</option>
+                <option value="+44">🇬🇧 Reino Unido (+44)</option>
+                <option value="+49">🇩🇪 Alemanha (+49)</option>
+                <option value="+33">🇫🇷 França (+33)</option>
+                <option value="+54">🇦🇷 Argentina (+54)</option>
+                <option value="+598">🇺🇾 Uruguai (+598)</option>
+                <option value="+595">🇵🇾 Paraguai (+595)</option>
+              </select>
+
+              <input 
+                type="tel" 
+                id="telefoneInput" 
+                class="tel-main-input" 
+                placeholder="(11) 99876-5432" 
+                required 
+                autocomplete="off" 
+                autofocus
+              >
+
+              <button type="submit" class="btn btn-primary" id="btnSubmitTelefone" style="padding: 10px 24px;">
+                <i data-lucide="search" style="width: 16px; height: 16px;"></i>
+                <span>Investigar</span>
+              </button>
+            </div>
+
+            <!-- Exemplos / Demos Rápidos -->
+            <div class="demo-pills-row">
+              <span style="font-size: 0.75rem; color: var(--color-text-dim); font-family: var(--font-mono);">
+                Testes Rápidos:
+              </span>
+
+              <button type="button" class="demo-phone-btn" data-number="11998765432" data-ddi="+55">
+                <span>📱 SP Móvel (11 99876-5432)</span>
+              </button>
+
+              <button type="button" class="demo-phone-btn" data-number="21987654321" data-ddi="+55">
+                <span>📱 RJ Móvel (21 98765-4321)</span>
+              </button>
+
+              <button type="button" class="demo-phone-btn" data-number="31991234567" data-ddi="+55">
+                <span>📱 MG Móvel (31 99123-4567)</span>
+              </button>
+
+              <button type="button" class="demo-phone-btn" data-number="4132345678" data-ddi="+55">
+                <span>☎️ PR Fixo (41 3234-5678)</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Estado de Carregamento (Loading) -->
+        <div id="telLoadingState" style="display: none; margin-bottom: var(--space-6);">
+          <div class="card" style="padding: var(--space-10); text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid var(--color-primary); border-top-color: transparent; animation: spin 0.8s linear infinite; margin-bottom: var(--space-4);"></div>
+            <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--color-text); margin-bottom: 4px;">
+              Cruzando Dados de Telecomunicações...
+            </h3>
+            <p style="font-size: 0.875rem; color: var(--color-primary); font-family: var(--font-mono);">
+              Consultando prefixos regulatórios da ANATEL e adaptadores PhoneInfoga...
+            </p>
+          </div>
+        </div>
+
+        <!-- Estado de Erro -->
+        <div id="telErrorState" style="display: none; margin-bottom: var(--space-6);">
+          <div class="card" style="border-color: rgba(239, 68, 68, 0.4); background-color: var(--color-error-bg); padding: var(--space-4);">
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+              <i data-lucide="alert-circle" style="color: var(--color-error); width: 20px; height: 20px;"></i>
+              <div>
+                <strong style="color: var(--color-error);">Erro na Consulta:</strong>
+                <span id="telErrorMessage" style="color: #FCA5A5; font-size: 0.875rem; margin-left: 6px;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resultados da Investigação -->
+        <div id="telResultsState" style="display: none;">
+          <!-- Barra Superior de Ações -->
+          <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-5);">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <span id="resTelStatusBadge" class="badge badge-success">Número Válido</span>
+              <span class="badge badge-purple" id="resTelFonteBadge">Carrier Lookup API</span>
+            </div>
+
+            <div style="display: flex; gap: var(--space-2);">
+              <button type="button" class="btn btn-outline btn-sm" id="btnCopyTelJson">
+                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                <span>Copiar JSON</span>
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btnNovaConsultaTel">
+                <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                <span>Nova Consulta</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Grade Principal de Informações Telecom -->
+          <div class="results-grid-telecom">
+            <!-- Card 1: Formatos e Normalização -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title" style="display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="hash" style="color: var(--color-primary); width: 18px; height: 18px;"></i>
+                  <span>Formatos Padronizados</span>
+                </h3>
+              </div>
+
+              <table class="osint-table">
+                <tbody>
+                  <tr>
+                    <td style="color: var(--color-text-muted); width: 40%;">Formato E.164:</td>
+                    <td style="font-family: var(--font-mono); font-weight: 600; color: var(--color-primary);" id="resTelE164"></td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--color-text-muted);">Formato Nacional:</td>
+                    <td style="font-family: var(--font-mono);" id="resTelNacional"></td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--color-text-muted);">Internacional:</td>
+                    <td style="font-family: var(--font-mono);" id="resTelInternacional"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Card 2: Operadora e Tipo de Linha -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title" style="display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="smartphone" id="iconTipoLinha" style="color: var(--color-secondary); width: 18px; height: 18px;"></i>
+                  <span>Telecom & Operadora</span>
+                </h3>
+              </div>
+
+              <table class="osint-table">
+                <tbody>
+                  <tr>
+                    <td style="color: var(--color-text-muted); width: 40%;">Operadora:</td>
+                    <td style="font-weight: 600; color: var(--color-text);" id="resTelOperadora"></td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--color-text-muted);">Tipo de Linha:</td>
+                    <td>
+                      <span class="badge badge-violet" id="resTelTipoLinha"></span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--color-text-muted);">Portabilidade:</td>
+                    <td style="font-size: 0.75rem; color: var(--color-text-dim);" id="resTelNotaPortabilidade"></td>
+                  </tr>
+                  <tr id="rowMccMnc" style="display: none;">
+                    <td style="color: var(--color-text-muted);">Rede (MCC / MNC):</td>
+                    <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-primary);" id="resTelMccMnc"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Card 3: Geolocalização e DDD -->
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title" style="display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="map-pin" style="color: var(--color-warning); width: 18px; height: 18px;"></i>
+                  <span>Geolocalização & Área</span>
+                </h3>
+              </div>
+
+              <table class="osint-table">
+                <tbody>
+                  <tr>
+                    <td style="color: var(--color-text-muted); width: 40%;">País de Origem:</td>
+                    <td style="font-weight: 600;" id="resTelPais"></td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--color-text-muted);">DDI / DDD:</td>
+                    <td style="font-family: var(--font-mono); color: var(--color-primary);" id="resTelDdiDdd"></td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--color-text-muted);">Estado / UF:</td>
+                    <td id="resTelEstado"></td>
+                  </tr>
+                  <tr>
+                    <td style="color: var(--color-text-muted);">Região / Cidades:</td>
+                    <td style="font-size: 0.8125rem; color: var(--color-text-muted);" id="resTelRegiao"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Ações Diretas & Mensageiros -->
+          <div class="card" style="margin-bottom: var(--space-6);">
+            <div class="card-header">
+              <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="send" style="color: var(--color-success); width: 18px; height: 18px;"></i>
+                <span>Abertura Direta & Mensageiros</span>
+              </h3>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: var(--space-3);">
+              <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline" id="btnLinkWhatsapp" style="border-color: rgba(16, 185, 129, 0.3);">
+                <i data-lucide="message-circle" style="color: var(--color-success); width: 16px; height: 16px;"></i>
+                <span>Abrir no WhatsApp</span>
+              </a>
+
+              <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline" id="btnLinkTelegram" style="border-color: rgba(59, 130, 246, 0.3);">
+                <i data-lucide="send" style="color: #60A5FA; width: 16px; height: 16px;"></i>
+                <span>Checar no Telegram</span>
+              </a>
+
+              <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline" id="btnLinkTruecaller">
+                <i data-lucide="shield" style="width: 16px; height: 16px;"></i>
+                <span>Buscar no Truecaller</span>
+              </a>
+
+              <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline" id="btnLinkSyncme">
+                <i data-lucide="users" style="width: 16px; height: 16px;"></i>
+                <span>Buscar no Sync.me</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Google Dorks OSINT Gerados (Padrão: Oculto) -->
+          <div class="card" style="margin-bottom: var(--space-6); display: none;">
+            <div class="card-header">
+              <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="search-code" style="color: var(--color-primary); width: 18px; height: 18px;"></i>
+                <span>Google Dorks & Rastreamento da Pegada Digital</span>
+              </h3>
+              <span class="badge badge-cyan">Automated Footprint</span>
+            </div>
+            <p style="font-size: 0.8125rem; color: var(--color-text-muted);">
+              Dorks pré-formatados para localizar menções públicas a este número em redes sociais, listas vazadas ou queixas de golpes.
+            </p>
+
+            <div class="dorks-grid" id="telDorksContainer"></div>
+          </div>
+
+          <!-- JSON Bruto Estruturado -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="code" style="color: var(--color-primary); width: 18px; height: 18px;"></i>
+                <span>Dados Brutos (JSON)</span>
+              </h3>
+            </div>
+            <pre style="background: var(--color-bg); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 0.8125rem; color: var(--color-primary); overflow-x: auto; max-height: 400px;"><code id="telRawJson"></code></pre>
+          </div>
+        </div>
+
+        <%- include('../../partials/footer') %>
+      </main>
+    </div>
+  </div>
+
+  <%- include('../../partials/bottom-nav') %>
+  <%- include('../../partials/command-palette') %>
+  <%- include('../../partials/toast') %>
+
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/historico.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/telefone.js"></script>
+</body>
+</html>
+

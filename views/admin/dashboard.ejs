@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../partials/head') %>
+  <style>
+    .admin-hero {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(139, 92, 246, 0.06) 100%), var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+    }
+
+    .kpi-stat-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .kpi-icon-admin {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--color-secondary);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+
+    .kpi-icon-purple-admin {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(139, 92, 246, 0.1);
+      color: var(--color-primary);
+      border: 1px solid rgba(139, 92, 246, 0.25);
+    }
+
+    .admin-grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+
+    @media (max-width: 900px) {
+      .admin-grid-2col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .log-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--color-border);
+      font-size: 0.85rem;
+    }
+
+    .log-item-row:last-child {
+      border-bottom: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <%- include('../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../partials/header') %>
+
+      <main class="app-content">
+        <!-- Hero Header Admin -->
+        <div class="admin-hero">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <span class="badge badge-red">ACESSO RESTRITO</span>
+              <span class="badge badge-purple">Nível Master / Admin</span>
+            </div>
+            <h1 style="font-size: 1.6rem; font-weight: 700; color: var(--color-text); margin: 0;">
+              Painel de Administração do RimuBusca
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+              Gerenciamento global de operadores, trilha de auditoria e status de conectores.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btnAdminLimparCache" title="Limpar registros expirados de cache do banco e memória">
+              <i data-lucide="trash" style="width: 14px; height: 14px;"></i>
+              Limpar Cache
+            </button>
+            <a href="/admin/modulos" class="btn btn-secondary btn-sm">
+              <i data-lucide="layers" style="width: 14px; height: 14px;"></i>
+              Gerenciar Módulos
+            </a>
+            <a href="/admin/usuarios" class="btn btn-primary btn-sm">
+              <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
+              Operadores & Carteira
+            </a>
+            <a href="/admin/logs" class="btn btn-secondary btn-sm">
+              <i data-lucide="scroll-text" style="width: 14px; height: 14px;"></i>
+              Ver Auditoria
+            </a>
+          </div>
+        </div>
+
+        <!-- 4 KPIs Administrativos -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6);">
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-purple-admin">
+              <i data-lucide="users" style="width: 24px; height: 24px;"></i>
+            </div>
+            <div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text);">
+                <%= metricas.totalUsuarios %>
+              </div>
+              <div style="font-size: 0.8rem; color: var(--color-text-muted);">
+                Operadores (<%= metricas.usuariosAtivos %> Ativos)
+              </div>
+            </div>
+          </div>
+
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-admin">
+              <i data-lucide="search" style="width: 24px; height: 24px;"></i>
+            </div>
+            <div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text);">
+                <%= metricas.totalBuscas %>
+              </div>
+              <div style="font-size: 0.8rem; color: var(--color-text-muted);">
+                Total de Consultas Executadas
+              </div>
+            </div>
+          </div>
+
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-admin">
+              <i data-lucide="shield-check" style="width: 24px; height: 24px;"></i>
+            </div>
+            <div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-text);">
+                <%= metricas.totalLogs %>
+              </div>
+              <div style="font-size: 0.8rem; color: var(--color-text-muted);">
+                Eventos Imutáveis Auditados
+              </div>
+            </div>
+          </div>
+
+          <div class="kpi-stat-card">
+            <div class="kpi-icon-purple-admin">
+              <i data-lucide="cpu" style="width: 24px; height: 24px;"></i>
+            </div>
+            <div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: var(--color-primary);">
+                <%= statusSistema.uptimeHoras %>h Uptime
+              </div>
+              <div style="font-size: 0.8rem; color: var(--color-text-muted);">
+                RAM: <%= statusSistema.memoriaMb %> MB (Node <%= statusSistema.nodeVersao %>)
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid de 2 Colunas: Logs Recentes & Consultas por Módulo -->
+        <div class="admin-grid-2col">
+          <!-- Coluna 1: Logs Recentes -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="history" style="color: var(--color-secondary);"></i>
+                <span>Trilha de Auditoria Recente</span>
+              </div>
+              <a href="/admin/logs" class="btn btn-secondary btn-sm" style="font-size: 0.75rem;">Ver Todos</a>
+            </div>
+            <div class="card-body">
+              <% if (logsRecentes && logsRecentes.length > 0) { %>
+                <% logsRecentes.forEach(log => { %>
+                  <div class="log-item-row">
+                    <div>
+                      <div style="font-weight: 600; color: var(--color-text); display: flex; align-items: center; gap: 6px;">
+                        <span class="badge badge-purple" style="font-size: 0.7rem;"><%= log.acao %></span>
+                        <span style="font-size: 0.8rem; color: var(--color-text-dim);"><%= log.profiles?.email || 'Sistema' %></span>
+                      </div>
+                      <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 2px;">
+                        IP: <%= log.ip %>
+                      </div>
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--color-text-dim); font-family: var(--font-mono);">
+                      <%= new Date(log.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) %>
+                    </div>
+                  </div>
+                <% }) %>
+              <% } else { %>
+                <div style="text-align: center; padding: var(--space-4); color: var(--color-text-dim);">
+                  Nenhum evento registrado ainda.
+                </div>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- Coluna 2: Status do Sistema & Módulos -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="layers" style="color: var(--color-primary);"></i>
+                <span>Módulos de Investigação Ativos</span>
+              </div>
+              <a href="/admin/modulos" class="btn btn-secondary btn-sm" style="font-size: 0.75rem;">Gerenciar Módulos</a>
+            </div>
+            <div class="card-body">
+              <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--color-border);">
+                  <span style="font-size: 0.85rem; color: var(--color-text);">Puxar Dados (12 Submódulos Cadastrais)</span>
+                  <span class="badge badge-red">Online (Live/Mock)</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--color-border);">
+                  <span style="font-size: 0.85rem; color: var(--color-text);">Telefone OSINT (Telecom & ANATEL)</span>
+                  <span class="badge badge-purple">Online</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--color-border);">
+                  <span style="font-size: 0.85rem; color: var(--color-text);">E-mail & Breaches (DNS / HIBP)</span>
+                  <span class="badge badge-purple">Online</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--color-border);">
+                  <span style="font-size: 0.85rem; color: var(--color-text);">Domínio & DNS (RDAP / SSL)</span>
+                  <span class="badge badge-purple">Online</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 0.85rem; color: var(--color-text);">Metadados de Mídia (100% Client-Side)</span>
+                  <span class="badge badge-purple">🔒 Zero Upload</span>
+                </div>
+              </div>
+
+              <div style="margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.8rem; color: var(--color-text-dim);">Modo Mock (Fallback):</span>
+                <span class="badge <%= statusSistema.mockMode ? 'badge-dark' : 'badge-purple' %>">
+                  <%= statusSistema.mockMode ? 'Ativo' : 'Desativado (Live Only)' %>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <%- include('../partials/footer') %>
+    </div>
+  </div>
+
+  <%- include('../partials/bottom-nav') %>
+  <%- include('../partials/command-palette') %>
+  <%- include('../partials/toast') %>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnLimpar = document.getElementById('btnAdminLimparCache');
+      btnLimpar?.addEventListener('click', async () => {
+        if (!confirm('Deseja limpar todos os registros de cache expirados do banco e da memória?')) return;
+        btnLimpar.disabled = true;
+        try {
+          const res = await window.api.post('/api/admin/cache/limpar', {});
+          if (res.success) {
+            window.toast?.success(res.message || 'Cache limpo com sucesso!');
+          } else {
+            window.toast?.error(res.error || 'Falha ao limpar cache.');
+          }
+        } catch (err) {
+          window.toast?.error(err.message || 'Erro de comunicação.');
+        } finally {
+          btnLimpar.disabled = false;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+  <style>
+    .cgufed-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: var(--space-4);
+    }
+
+    .cgufed-input, .cgufed-select {
+      width: 100%;
+      padding: 10px 14px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .cgufed-input:focus, .cgufed-select:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-glow);
+    }
+
+    .cgufed-chip {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 5px 11px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .cgufed-chip:hover {
+      border-color: var(--color-primary);
+      color: var(--color-text);
+      background: rgba(56, 189, 248, 0.08);
+    }
+
+    .cgufed-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .cgufed-table th {
+      text-align: left;
+      padding: 9px 10px;
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .cgufed-table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+      vertical-align: top;
+    }
+
+    .cgufed-kv-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 10px;
+    }
+
+    .cgufed-kv {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+    }
+
+    .cgufed-kv-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      color: var(--color-text-dim);
+      margin-bottom: 3px;
+    }
+
+    .cgufed-kv-val {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--color-text);
+      word-break: break-word;
+    }
+
+    .modal-relatorio-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 6, 9, 0.88);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-relatorio-dialog {
+      width: 100%;
+      max-width: 1040px;
+      max-height: 92vh;
+      background: #080B11;
+      border: 1px solid #1E2538;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+    }
+
+    .modal-relatorio-header {
+      padding: 16px 20px;
+      background: #0D111A;
+      border-bottom: 1px solid #1E2538;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .modal-relatorio-body {
+      padding: 24px;
+      overflow-y: auto;
+      background: #080B11;
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <%- include('../../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Cabeçalho -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-5);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+              <span class="badge badge-purple">CGU Portal da Transparência</span>
+              <span class="badge" style="background: rgba(56, 189, 248, 0.14); color: #38BDF8; border: 1px solid rgba(56, 189, 248, 0.3);">
+                Executivo Federal &bull; SIAPE &amp; Folha Salarial
+              </span>
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: 800; color: var(--color-text); margin: 0;">
+              Servidores Públicos Federais (SIAPE / CGU)
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px; max-width: 820px;">
+              Consulta oficial ao Poder Executivo Federal: vínculos ativos, inativos e pensionistas, professores de Universidades Federais, Institutos Federais (IFs) e Colégios Federais, cargos, funções, remuneração detalhada e diárias/viagens a serviço.
+            </p>
+          </div>
+          <div>
+            <a href="/basic/auxilios" class="btn btn-outline btn-sm">
+              <i data-lucide="hand-coins" style="width: 14px; height: 14px;"></i>
+              Ir para Benefícios &amp; Auxílios
+            </a>
+          </div>
+        </div>
+
+        <!-- Aviso de Escopo -->
+        <div class="card" style="margin-bottom: var(--space-5); border-left: 3px solid #38BDF8; background: rgba(56, 189, 248, 0.05);">
+          <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 0.82rem; color: var(--color-text-muted);">
+            <i data-lucide="info" style="width: 18px; height: 18px; color: #38BDF8; flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <strong style="color: var(--color-text);">Escopo Federal (Executivo Federal):</strong>
+              Cobre órgãos federais, ministérios, autarquias, Universidades Federais, IFs e militares via API oficial da CGU. Escolas estaduais/municipais (SEE/SEDUC/prefeituras) não integram a base federal do SIAPE.
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulário de Consulta -->
+        <div class="card" style="margin-bottom: var(--space-5); border-top: 3px solid #38BDF8;">
+          <form id="formServidores">
+            <div class="cgufed-grid" style="margin-bottom: var(--space-4);">
+              <div>
+                <label for="srvCpf" style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: 6px;">
+                  CPF do Servidor (11 dígitos)
+                </label>
+                <input id="srvCpf" type="text" class="cgufed-input" style="font-family: var(--font-mono);" placeholder="Ex: 000.000.000-00" autocomplete="off" />
+              </div>
+
+              <div>
+                <label for="srvNome" style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: 6px;">
+                  Ou Nome Completo / Parcial
+                </label>
+                <input id="srvNome" type="text" class="cgufed-input" placeholder="Ex: Maria da Silva" autocomplete="off" />
+                <div id="srvNomeHelperBox" style="margin-top: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px;">
+                  <span style="font-size: 0.71rem; color: var(--color-text-dim);">Dica: Busca por nome exige selecionar a Instituição ao lado.</span>
+                  <a id="lnkBuscarCpfPorNome" href="/advanced/person" target="_blank" style="display: none; font-size: 0.72rem; color: #38BDF8; text-decoration: none; align-items: center; gap: 4px;">
+                    <i data-lucide="user-search" style="width: 12px; height: 12px;"></i>
+                    <span>Descobrir CPF deste Nome &rarr;</span>
+                  </a>
+                </div>
+              </div>
+
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <label for="srvOrgao" style="font-size: 0.78rem; font-weight: 600; color: var(--color-text-muted);">
+                    Instituição / Órgão SIAPE
+                  </label>
+                  <button type="button" id="btnToggleOrgaosHelper" style="background: none; border: none; color: #38BDF8; font-size: 0.72rem; cursor: pointer; padding: 0;">
+                    <i data-lucide="search" style="width: 11px; height: 11px; vertical-align: middle;"></i> Buscar Outros
+                  </button>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <select id="srvSelectOrgaoPreset" class="cgufed-select" style="font-size: 0.78rem; padding: 7px 10px;">
+                    <option value="">-- Selecione a Instituição / IF / Universidade --</option>
+                    <optgroup label="Espírito Santo (ES)">
+                      <option value="26406">26406 • IFES - Instituto Federal do Espírito Santo</option>
+                      <option value="26234">26234 • UFES - Universidade Federal do Espírito Santo</option>
+                    </optgroup>
+                    <optgroup label="São Paulo (SP)">
+                      <option value="26439">26439 • IFSP - Instituto Federal de São Paulo</option>
+                      <option value="26262">26262 • UNIFESP - Universidade Federal de São Paulo</option>
+                      <option value="26352">26352 • UFABC - Universidade Federal do ABC</option>
+                      <option value="26260">26260 • UFSCar - Universidade Federal de São Carlos</option>
+                    </optgroup>
+                    <optgroup label="Rio de Janeiro (RJ)">
+                      <option value="26245">26245 • UFRJ - Universidade Federal do Rio de Janeiro</option>
+                      <option value="26236">26236 • UFF - Universidade Federal Fluminense</option>
+                      <option value="26433">26433 • IFRJ - Instituto Federal do Rio de Janeiro</option>
+                      <option value="26434">26434 • IFF - Instituto Federal Fluminense</option>
+                      <option value="26249">26249 • UFRRJ - Rural do Rio de Janeiro</option>
+                      <option value="26259">26259 • UNIRIO - Univ. Fed. do Estado do RJ</option>
+                      <option value="26265">26265 • Colégio Pedro II</option>
+                      <option value="26264">26264 • CEFET-RJ</option>
+                    </optgroup>
+                    <optgroup label="Minas Gerais (MG)">
+                      <option value="26238">26238 • UFMG - Universidade Federal de Minas Gerais</option>
+                      <option value="26409">26409 • IFMG - Instituto Federal de Minas Gerais</option>
+                      <option value="26237">26237 • UFJF - Universidade Federal de Juiz de Fora</option>
+                      <option value="26410">26410 • IFNMG - Inst. Fed. do Norte de MG</option>
+                      <option value="26411">26411 • IF Sudeste MG</option>
+                      <option value="26412">26412 • IFSULDEMINAS</option>
+                      <option value="26413">26413 • IFTM - Inst. Fed. do Triângulo Mineiro</option>
+                      <option value="26266">26266 • CEFET-MG</option>
+                    </optgroup>
+                    <optgroup label="Distrito Federal / Ministérios">
+                      <option value="26000">26000 • MEC - Ministério da Educação</option>
+                      <option value="26252">26252 • UnB - Universidade de Brasília</option>
+                      <option value="26356">26356 • IFB - Instituto Federal de Brasília</option>
+                      <option value="20000">20000 • MJSP - Ministério da Justiça e Seg. Pública</option>
+                      <option value="36000">36000 • MS - Ministério da Saúde</option>
+                      <option value="20001">20001 • PF - Polícia Federal</option>
+                      <option value="20002">20002 • PRF - Polícia Rodoviária Federal</option>
+                      <option value="40701">40701 • INSS</option>
+                    </optgroup>
+                    <optgroup label="Paraná (PR)">
+                      <option value="26241">26241 • UFPR - Universidade Federal do Paraná</option>
+                      <option value="26432">26432 • IFPR - Instituto Federal do Paraná</option>
+                      <option value="26257">26257 • UTFPR - Universidade Tecnológica</option>
+                    </optgroup>
+                    <optgroup label="Santa Catarina (SC)">
+                      <option value="26246">26246 • UFSC - Universidade Federal de Santa Catarina</option>
+                      <option value="26438">26438 • IFSC - Instituto Federal de Santa Catarina</option>
+                      <option value="26422">26422 • IFC - Instituto Federal Catarinense</option>
+                    </optgroup>
+                    <optgroup label="Rio Grande do Sul (RS)">
+                      <option value="26244">26244 • UFRGS - Univ. Fed. do Rio Grande do Sul</option>
+                      <option value="26419">26419 • IFRS - Instituto Federal do Rio Grande do Sul</option>
+                      <option value="26247">26247 • UFSM - Univ. Fed. de Santa Maria</option>
+                      <option value="26420">26420 • IFFar - Instituto Federal Farroupilha</option>
+                      <option value="26436">26436 • IFSUL - Inst. Fed. Sul-rio-grandense</option>
+                    </optgroup>
+                    <optgroup label="Bahia (BA)">
+                      <option value="26232">26232 • UFBA - Universidade Federal da Bahia</option>
+                      <option value="26427">26427 • IFBA - Instituto Federal da Bahia</option>
+                      <option value="26404">26404 • IF Baiano</option>
+                    </optgroup>
+                    <optgroup label="Ceará (CE)">
+                      <option value="26233">26233 • UFC - Universidade Federal do Ceará</option>
+                      <option value="26405">26405 • IFCE - Instituto Federal do Ceará</option>
+                    </optgroup>
+                    <optgroup label="Pernambuco (PE)">
+                      <option value="26242">26242 • UFPE - Universidade Federal de Pernambuco</option>
+                      <option value="26418">26418 • IFPE - Instituto Federal de Pernambuco</option>
+                      <option value="26430">26430 • IFSertãoPE</option>
+                    </optgroup>
+                    <optgroup label="Goiás (GO)">
+                      <option value="26235">26235 • UFG - Universidade Federal de Goiás</option>
+                      <option value="26429">26429 • IFG - Instituto Federal de Goiás</option>
+                      <option value="26407">26407 • IF Goiano</option>
+                    </optgroup>
+                  </select>
+                  <input id="srvOrgao" type="text" class="cgufed-input" style="font-family: var(--font-mono);" placeholder="Ou digite o código/sigla (ex: 26406 ou IFES)" autocomplete="off" />
+                </div>
+              </div>
+
+              <div>
+                <label for="srvMesAno" style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: 6px;">
+                  Competência Folha (AAAAMM)
+                </label>
+                <input id="srvMesAno" type="text" class="cgufed-input" style="font-family: var(--font-mono);" placeholder="Automático (última folha)" maxlength="6" autocomplete="off" />
+              </div>
+            </div>
+
+            <div class="cgufed-grid" style="margin-bottom: var(--space-4);">
+              <div>
+                <label for="srvTipo" style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: 6px;">
+                  Tipo de Servidor
+                </label>
+                <select id="srvTipo" class="cgufed-select">
+                  <option value="">Todos (Civil + Militar)</option>
+                  <option value="1">Civil (1)</option>
+                  <option value="2">Militar (2)</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="srvSituacao" style="display: block; font-size: 0.78rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: 6px;">
+                  Situação Funcional
+                </label>
+                <select id="srvSituacao" class="cgufed-select">
+                  <option value="">Todas as situações</option>
+                  <option value="1">Ativo (1)</option>
+                  <option value="2">Inativo / Aposentado (2)</option>
+                  <option value="3">Pensionista (3)</option>
+                </select>
+              </div>
+
+              <div style="display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; padding-bottom: 4px;">
+                <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--color-text); cursor: pointer;">
+                  <input id="srvIncluirRem" type="checkbox" checked />
+                  Consultar folha salarial (/remuneracao)
+                </label>
+                <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--color-text); cursor: pointer;">
+                  <input id="srvIncluirViagens" type="checkbox" checked />
+                  Cruzar viagens &amp; diárias (quando CPF informado)
+                </label>
+              </div>
+            </div>
+
+            <!-- Drawer auxiliar de órgãos SIAPE -->
+            <div id="srvOrgaosBox" style="display: none; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 14px; margin-bottom: var(--space-4);">
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+                <input id="srvOrgaoSearchInput" type="text" class="cgufed-input" style="flex: 1; min-width: 220px;" placeholder="Digite parte do nome (ex: Universidade Federal, Instituto Federal, Educação)..." value="Universidade Federal" />
+                <button type="button" id="btnBuscarOrgaoSiape" class="btn btn-secondary btn-sm">
+                  <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+                  Buscar na CGU
+                </button>
+              </div>
+              <div id="srvOrgaosResultados" style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.78rem; color: var(--color-text-muted);">
+                Clique em "Buscar na CGU" para listar códigos SIAPE de Universidades Federais e IFs.
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding-top: var(--space-3); border-top: 1px solid var(--color-border);">
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                <span style="font-size: 0.75rem; color: var(--color-text-dim);">Instituições rápidas:</span>
+                <button type="button" class="cgufed-chip" data-quick-orgao="26406" title="Instituto Federal do Espírito Santo">
+                  <i data-lucide="graduation-cap" style="width: 13px; height: 13px; color: #38BDF8;"></i>
+                  IFES (26406)
+                </button>
+                <button type="button" class="cgufed-chip" data-quick-orgao="26234" title="Universidade Federal do Espírito Santo">
+                  <i data-lucide="graduation-cap" style="width: 13px; height: 13px; color: #38BDF8;"></i>
+                  UFES (26234)
+                </button>
+                <button type="button" class="cgufed-chip" data-quick-orgao="26439" title="Instituto Federal de São Paulo">
+                  <i data-lucide="graduation-cap" style="width: 13px; height: 13px; color: #38BDF8;"></i>
+                  IFSP (26439)
+                </button>
+                <button type="button" class="cgufed-chip" data-quick-orgao="26245" title="Universidade Federal do Rio de Janeiro">
+                  <i data-lucide="graduation-cap" style="width: 13px; height: 13px; color: #38BDF8;"></i>
+                  UFRJ (26245)
+                </button>
+                <button type="button" class="cgufed-chip" data-quick-orgao="26238" title="Universidade Federal de Minas Gerais">
+                  <i data-lucide="graduation-cap" style="width: 13px; height: 13px; color: #38BDF8;"></i>
+                  UFMG (26238)
+                </button>
+                <button type="button" class="cgufed-chip" data-quick-orgao="26000" title="Ministério da Educação">
+                  <i data-lucide="building-2" style="width: 13px; height: 13px; color: #A78BFA;"></i>
+                  MEC (26000)
+                </button>
+              </div>
+
+              <div style="display: flex; gap: 8px;">
+                <button type="button" id="btnLimparSrv" class="btn btn-secondary btn-sm">Limpar</button>
+                <button type="submit" id="btnConsultarSrv" class="btn btn-primary">
+                  <i data-lucide="search" style="width: 16px; height: 16px;"></i>
+                  Consultar Servidor Federal
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Caixa de Erro & Orientação CGU -->
+        <div id="srvErroBox" style="display: none; margin-bottom: var(--space-5);">
+          <div class="card" style="border-color: rgba(239, 68, 68, 0.45); background: var(--color-error-bg); padding: 18px;">
+            <div style="display: flex; align-items: flex-start; gap: 12px;">
+              <i data-lucide="alert-triangle" style="color: var(--color-error); width: 22px; height: 22px; flex-shrink: 0; margin-top: 2px;"></i>
+              <div style="flex: 1;">
+                <div id="srvErroMsg" style="color: #FCA5A5; font-size: 0.9rem; font-weight: 600; line-height: 1.4;"></div>
+                <div id="srvErroDica" style="color: var(--color-text-muted); font-size: 0.8rem; margin-top: 6px; line-height: 1.45;"></div>
+                
+                <div id="srvErroAcoes" style="display: none; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(239, 68, 68, 0.2); display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                  <span style="font-size: 0.75rem; color: #FCA5A5;">Escolher Instituição:</span>
+                  <button type="button" class="cgufed-chip" data-quick-orgao="26406">IFES (26406)</button>
+                  <button type="button" class="cgufed-chip" data-quick-orgao="26234">UFES (26234)</button>
+                  <button type="button" class="cgufed-chip" data-quick-orgao="26439">IFSP (26439)</button>
+                  <button type="button" class="cgufed-chip" data-quick-orgao="26245">UFRJ (26245)</button>
+                  <button type="button" class="cgufed-chip" data-quick-orgao="26238">UFMG (26238)</button>
+                  <a id="btnErroPivotPessoa" href="/advanced/person" target="_blank" class="btn btn-primary btn-sm" style="margin-left: auto;">
+                    <i data-lucide="user-search" style="width: 14px; height: 14px;"></i>
+                    <span>Descobrir CPF deste Nome na Receita &rarr;</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="srvLoadingBox" style="display: none; margin-bottom: var(--space-5);">
+          <div class="card" style="text-align: center; padding: 28px;">
+            <div style="color: #38BDF8; font-weight: 700; margin-bottom: 6px;">Consultando API do Portal da Transparência Federal (CGU)...</div>
+            <div style="font-size: 0.8rem; color: var(--color-text-muted);">Extraindo vínculos SIAPE, fichas funcionais, folha de remuneração e diárias.</div>
+          </div>
+        </div>
+
+        <!-- Resultados -->
+        <div id="srvResultados" style="display: none;">
+          <!-- Aviso de Busca Aproximada quando aplicado -->
+          <div id="srvAvisoAproximado" style="display: none; margin-bottom: var(--space-4);">
+            <div class="card" style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.08); padding: 12px 16px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <i data-lucide="sparkles" style="color: #FBBF24; width: 18px; height: 18px; flex-shrink: 0;"></i>
+                <div style="font-size: 0.82rem; color: #FDE68A;" id="srvAvisoAproximadoTexto">
+                  A busca nominal exata retornou 0 resultados. O sistema aplicou pesquisa expandida pelos primeiros nomes no órgão selecionado e localizou o servidor correspondente.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: var(--space-5); border-left: 4px solid #38BDF8;" id="srvBanner">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+                  <span id="srvStatusBadge" class="badge badge-purple">-</span>
+                  <span id="srvEduBadge" class="badge" style="display: none; background: rgba(167, 139, 250, 0.16); color: #C4B5FD; border: 1px solid rgba(167, 139, 250, 0.35);">
+                    Educação / Magistério Federal Detectado
+                  </span>
+                  <span id="srvCacheBadge" class="badge badge-dark" style="display: none;">Cache 6h</span>
+                </div>
+                <h2 id="srvResTitulo" style="font-size: 1.25rem; font-weight: 800; color: var(--color-text); margin: 0;">-</h2>
+                <div id="srvResSubtitulo" style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 4px;">-</div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <button type="button" id="btnGerarRelatorioSrv" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); border-color: #8B5CF6;">
+                  <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+                  Gerar Relatório Dark
+                </button>
+                <button type="button" id="btnCopiarJsonSrv" class="btn btn-outline btn-sm">
+                  <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  Copiar JSON
+                </button>
+              </div>
+            </div>
+
+            <!-- KPIs -->
+            <div class="cgufed-kv-grid" id="srvKpiGrid" style="margin-top: var(--space-4);"></div>
+
+            <!-- Botões Pivô -->
+            <div id="srvPivotWrap" style="display: none; margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border); flex-wrap: wrap; gap: 8px; align-items: center;">
+              <span style="font-size: 0.75rem; color: var(--color-text-dim);">Pivô OSINT:</span>
+              <div id="srvPivotBtns" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            </div>
+          </div>
+
+          <!-- Flags /pessoa-fisica -->
+          <div id="srvPerfilFlagsCard" class="card" style="display: none; margin-bottom: var(--space-5);">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="shield-check" style="color: #A78BFA;"></i>
+                <span>Indicadores Oficiais /pessoa-fisica (CGU)</span>
+              </div>
+              <span id="srvNisBadge" class="badge badge-dark">-</span>
+            </div>
+            <div class="card-body" id="srvPerfilFlagsBody"></div>
+          </div>
+
+          <!-- Lista de Servidores -->
+          <div id="srvListaCards"></div>
+
+          <!-- Viagens & Diárias -->
+          <div id="srvViagensCard" class="card" style="display: none; margin-bottom: var(--space-5);">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="plane" style="color: #F472B6;"></i>
+                <span>Viagens a Serviço &amp; Diárias Pagas (/viagens-por-cpf)</span>
+              </div>
+              <span id="srvViagensBadge" class="badge badge-dark">-</span>
+            </div>
+            <div class="card-body" style="overflow-x: auto;" id="srvViagensBody"></div>
+          </div>
+        </div>
+      </main>
+
+      <%- include('../../partials/footer') %>
+    </div>
+  </div>
+
+  <!-- Modal Relatório Dark -->
+  <div id="modalRelatorioServidores" class="modal-relatorio-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-relatorio-dialog">
+      <div class="modal-relatorio-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #0284C7 0%, #6D28D9 100%); display: flex; align-items: center; justify-content: center; color: #FFFFFF;">
+            <i data-lucide="landmark" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div>
+            <h2 style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF; margin: 0;">
+              Dossiê CGU • Servidores Públicos Federais
+            </h2>
+            <p style="font-size: 0.75rem; color: #94A3B8; margin: 2px 0 0;">
+              Relatório estruturado em Dark Mode para exportação em PDF ou HTML offline.
+            </p>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnPdfSrv" class="btn btn-primary btn-sm">Exportar PDF</button>
+          <button type="button" id="btnHtmlSrv" class="btn btn-outline btn-sm" style="border-color: rgba(16, 185, 129, 0.4); color: #34D399;">Baixar HTML</button>
+          <button type="button" id="btnFecharModalSrv" class="btn btn-ghost btn-sm" style="color: #94A3B8;">
+            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+          </button>
+        </div>
+      </div>
+      <div id="modalRelatorioServidoresBody" class="modal-relatorio-body"></div>
+    </div>
+  </div>
+
+  <%- include('../../partials/bottom-nav') %>
+  <%- include('../../partials/command-palette') %>
+  <%- include('../../partials/toast') %>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/osint-dark-report.js"></script>
+  <script src="/js/servidores.js"></script>
+</body>
+</html>

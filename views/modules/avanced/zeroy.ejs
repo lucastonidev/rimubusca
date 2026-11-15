@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+
+  <style>
+    .zeroy-box {
+      background: radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 60%),
+                  radial-gradient(circle at 10% 90%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+                  var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Barra de Seleção de Tipos / Abas */
+    .tipo-tabs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-bottom: var(--space-5);
+      padding-bottom: var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .tipo-tab-btn {
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 7px 14px;
+      border-radius: var(--radius-md);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .tipo-tab-btn:hover {
+      background-color: var(--color-surface-3);
+      color: var(--color-text);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .tipo-tab-btn.active {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(139, 92, 246, 0.18) 100%);
+      border-color: #10B981;
+      color: #FFFFFF;
+      font-weight: 600;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+    }
+
+    .tipo-tab-btn.active i {
+      color: #34D399;
+    }
+
+    .consulta-input-row {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-2);
+    }
+
+    .consulta-input-field {
+      flex: 1;
+      padding: 12px 18px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 1.0625rem;
+      font-family: var(--font-mono);
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .consulta-input-field:focus {
+      border-color: #10B981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
+      background-color: var(--color-surface);
+    }
+
+    .consulta-demo-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .demo-consulta-btn {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .demo-consulta-btn:hover {
+      background: var(--color-surface-3);
+      color: #6EE7B7;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    @media (max-width: 640px) {
+      .consulta-input-row {
+        flex-direction: column;
+      }
+    }
+
+    /* ==========================================================================
+       INTERPRETADOR VISUAL ZEROY API (ESTILOS MODERNOS & INVESTIGATIVOS)
+       ========================================================================== */
+    .zeroy-kpi-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+
+    .zeroy-kpi-item {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .zeroy-kpi-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .zeroy-token-pill {
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.25);
+      border-radius: var(--radius-md);
+      padding: 8px 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8125rem;
+      color: #C4B5FD;
+      flex-wrap: wrap;
+    }
+
+    /* Tabela Rica de Homônimos / Registros Múltiplos */
+    .zeroy-table-container {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: var(--space-4);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .zeroy-table-header {
+      padding: var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .zeroy-table-search {
+      position: relative;
+      min-width: 260px;
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .zeroy-table-search input {
+      width: 100%;
+      padding: 8px 12px 8px 34px;
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 0.85rem;
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .zeroy-table-search input:focus {
+      border-color: #10B981;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    }
+
+    .zeroy-table-search i {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-text-dim);
+      width: 14px;
+      height: 14px;
+      pointer-events: none;
+    }
+
+    .zeroy-data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+
+    .zeroy-data-table th {
+      background: var(--color-surface-2);
+      padding: 12px 16px;
+      font-weight: 600;
+      color: var(--color-text-dim);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .zeroy-data-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+      vertical-align: middle;
+    }
+
+    .zeroy-data-table tr:hover td {
+      background: rgba(16, 185, 129, 0.04);
+    }
+
+    /* Score Badges */
+    .score-badge-100 {
+      background: rgba(16, 185, 129, 0.18);
+      color: #10B981;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .score-badge-high {
+      background: rgba(139, 92, 246, 0.18);
+      color: #A78BFA;
+      border: 1px solid rgba(139, 92, 246, 0.4);
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+    }
+
+    .score-badge-mid {
+      background: rgba(245, 158, 11, 0.15);
+      color: #F59E0B;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-family: var(--font-mono);
+    }
+
+    /* Botão de Ação Rápida Puxar CPF */
+    .btn-action-puxar {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #10B981;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all var(--transition-fast);
+      text-decoration: none;
+    }
+
+    .btn-action-puxar:hover {
+      background: rgba(16, 185, 129, 0.28);
+      color: #FFFFFF;
+      border-color: #10B981;
+      transform: translateY(-1px);
+    }
+
+    .btn-action-copy {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-dim);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all var(--transition-fast);
+    }
+
+    .btn-action-copy:hover {
+      color: var(--color-text);
+      border-color: var(--color-primary);
+    }
+
+    /* Placa Automotiva Estilizada */
+    .placa-box-mercosul {
+      display: inline-flex;
+      flex-direction: column;
+      border: 2px solid #FFFFFF;
+      border-radius: 6px;
+      background: #FFFFFF;
+      overflow: hidden;
+      width: 140px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .placa-header-mercosul {
+      background: #003399;
+      color: #FFFFFF;
+      font-size: 0.55rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-align: center;
+      padding: 2px 4px;
+      text-transform: uppercase;
+    }
+
+    .placa-body-mercosul {
+      background: #FFFFFF;
+      color: #000000;
+      font-family: var(--font-mono);
+      font-size: 1.4rem;
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: 2px;
+      padding: 2px 0;
+    }
+
+    /* Estilos de Impressão Limpa do Dossiê */
+    @media print {
+      .sidebar, .app-header, .zeroy-box, .app-footer, .bottom-nav, #btnCopiarJsonZeroy, .btn-action-copy, .btn-action-puxar, #zeroyRawJson, pre {
+        display: none !important;
+      }
+      .app-layout, .app-main, .app-content, #zeroyResultsArea {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #FFFFFF !important;
+        color: #000000 !important;
+      }
+      .card {
+        border: 1px solid #CCCCCC !important;
+        background: #FFFFFF !important;
+        color: #000000 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+      }
+      h2, h3, strong, td, th, span, div {
+        color: #000000 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <% 
+    const modulosList = (typeof locals.modulosHub !== 'undefined' && Array.isArray(locals.modulosHub) && locals.modulosHub.length > 0) ? locals.modulosHub : [];
+    const activeMod = (typeof locals.moduloAtivo !== 'undefined' && locals.moduloAtivo) ? locals.moduloAtivo : (modulosList[0] || null);
+    const activeId = activeMod ? activeMod.id : (typeof locals.moduloId !== 'undefined' ? locals.moduloId : (typeof locals.tipoAtivo !== 'undefined' ? locals.tipoAtivo : 'cpf-zeroy'));
+  %>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <%- include('../../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Título do Módulo -->
+        <div style="margin-bottom: var(--space-6); display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-3);">
+          <div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); display: flex; align-items: center; gap: 10px;">
+              <i data-lucide="shield-check" style="color: #10B981; width: 28px; height: 28px;"></i>
+              <span>Central Zeroy API (Veicular, Cadastral & Biometria)</span>
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+              Conexão oficial com o motor da Zeroy API: selecione o módulo desejado pelo ID para realizar a consulta em tempo real.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <div id="zeroyWalletPill" style="display: inline-flex; align-items: center; gap: 8px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 5px 12px; font-size: 0.8125rem;">
+              <i data-lucide="wallet" style="width: 14px; height: 14px; color: #10B981;"></i>
+              <span style="color: var(--color-text-muted);">Saldo Carteira:</span>
+              <strong id="zeroyHeaderSaldoDisplay" style="color: #34D399; font-family: var(--font-mono); font-size: 0.95rem;">
+                <%= typeof carteira !== 'undefined' && carteira && carteira.saldoFormatado ? carteira.saldoFormatado : 'R$ 20,00' %>
+              </strong>
+            </div>
+            <a href="/hub-api" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px; gap: 6px; border-color: rgba(245, 158, 11, 0.4); color: #F59E0B;">
+              <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+              <span>Hub Pay-per-Use</span>
+            </a>
+            <a href="https://zeroyapi.online/docs" target="_blank" rel="noopener noreferrer" class="btn btn-outline" style="font-size: 0.8rem; padding: 6px 12px; gap: 6px;">
+              <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+              <span>Docs Zeroy API</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Caixa Principal de Consulta -->
+        <div class="zeroy-box">
+          <!-- Abas Dinâmicas para Selecionar o Tipo/Módulo a partir do JSON Central -->
+          <div class="tipo-tabs-bar" id="zeroyTabsBar">
+            <% if (modulosList.length > 0) { %>
+              <% modulosList.forEach(mod => { 
+                   const isSelected = activeMod ? (activeMod.id === mod.id) : (mod.id === activeId);
+              %>
+                <button 
+                  type="button" 
+                  class="tipo-tab-btn <%= isSelected ? 'active' : '' %>" 
+                  data-id="<%= mod.id %>"
+                  data-tipo="<%= mod.id %>"
+                  data-param="<%= mod.parametro %>"
+                  data-label="<%= mod.parametroLabel %>"
+                  data-placeholder="<%= mod.placeholder %>"
+                  data-path="<%= mod.path %>"
+                  data-nome="<%= mod.nome %>"
+                  data-custo="<%= mod.custo %>"
+                  data-icone="<%= mod.icone %>"
+                  data-cor="<%= mod.corIcone %>"
+                  title="<%= mod.descricao %>"
+                >
+                  <i data-lucide="<%= mod.icone || 'search' %>" style="width: 14px; height: 14px; color: <%= mod.corIcone || '#10B981' %>;"></i>
+                  <span><%= mod.nome.replace(/^Módulo\s+/i, '') %></span>
+                </button>
+              <% }); %>
+            <% } %>
+          </div>
+
+          <!-- Formulário de Consulta Adaptativo -->
+          <form id="formZeroyConsulta">
+            <input type="hidden" id="zeroyTipoInput" value="<%= activeMod ? activeMod.id : activeId %>">
+            <input type="hidden" id="zeroyPathInput" value="<%= activeMod ? activeMod.path : '/api/v1/cpf' %>">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+              <label for="zeroyTermoInput" id="zeroyInputLabel" style="font-size: 0.875rem; font-weight: 600; color: var(--color-text);">
+                <%= activeMod ? activeMod.parametroLabel : 'Número do CPF' %>
+              </label>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="zeroyPathBadge" style="display: none;"><%= activeMod ? activeMod.path : '/api/v1/cpf' %></span>
+                <span id="zeroyCustoBadge" style="font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: #10B981; background: rgba(16, 185, 129, 0.12); padding: 3px 10px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.25);">
+                  <%= activeMod ? ('R$ ' + Number(activeMod.custo).toFixed(2).replace('.', ',')) : 'R$ 0,10' %>
+                </span>
+              </div>
+            </div>
+
+            <!-- Seletor de Tipo para PIX Bacen (CPF, CNPJ, Telefone, E-mail, EVP ou CPF do titular) -->
+            <div id="zeroySelectTipoPixContainer" style="display: none; margin-bottom: 12px; padding: 12px 14px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
+                <label for="zeroySelectTipoPix" style="font-size: 0.8125rem; font-weight: 700; color: var(--color-text); display: flex; align-items: center; gap: 6px;">
+                  <i data-lucide="key" style="width: 15px; height: 15px; color: #10B981;"></i>
+                  <span>Tipo de Consulta PIX Bacen:</span>
+                </label>
+                <span id="zeroyTipoPixParamHint" style="font-family: var(--font-mono); font-size: 0.72rem; color: #10B981; background: rgba(16, 185, 129, 0.12); padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.25);">
+                  Param Zeroy: cpf
+                </span>
+              </div>
+              <select 
+                id="zeroySelectTipoPix" 
+                class="consulta-input-field" 
+                style="width: 100%; padding: 9px 12px; font-size: 0.875rem; border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text); cursor: pointer; border: 1px solid var(--color-border);"
+              >
+                <option value="cpf_titular" selected>CPF do Titular (Parâmetro 'cpf')</option>
+                <option value="chave_cpf">Chave PIX: CPF (Parâmetro 'chave')</option>
+                <option value="chave_cnpj">Chave PIX: CNPJ (Parâmetro 'chave')</option>
+                <option value="chave_telefone">Chave PIX: Telefone / Celular (Parâmetro 'chave')</option>
+                <option value="chave_email">Chave PIX: E-mail (Parâmetro 'chave')</option>
+                <option value="chave_evp">Chave PIX: EVP / Chave Aleatória (Parâmetro 'chave')</option>
+              </select>
+            </div>
+
+            <div class="consulta-input-row">
+              <input 
+                type="text" 
+                id="zeroyTermoInput" 
+                class="consulta-input-field" 
+                placeholder="<%= activeMod ? activeMod.placeholder : '000.000.000-00' %>"
+                autocomplete="off"
+                spellcheck="false"
+                required
+              >
+              <button type="submit" class="btn btn-primary" id="btnZeroyConsultar" style="background: #10B981; border-color: #059669; padding: 0 24px;">
+                <i data-lucide="search" style="width: 18px; height: 18px;"></i>
+                <span id="btnZeroyText">Consultar</span>
+              </button>
+            </div>
+
+            <!-- Indicador Inteligente de Tipo Detectado -->
+            <div id="zeroyDetectadoRow" style="display: none; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.75rem;">
+              <span style="color: var(--color-text-dim);">Formato identificado:</span>
+              <span id="zeroyTipoDetectadoBadge" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-family: var(--font-mono); background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);">
+                <i data-lucide="check" style="width: 11px; height: 11px;"></i>
+                <span id="zeroyTipoDetectadoTexto">CPF</span>
+              </span>
+            </div>
+
+            <!-- Filtros Extras Inteligentes (ex: Banco para SISBAJUD) -->
+            <div id="zeroyFiltrosExtras" style="display: none; margin-top: 12px; padding: 12px; background: var(--color-surface-2); border: 1px dashed var(--color-border); border-radius: var(--radius-md);">
+              <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                <div style="flex: 1; min-width: 220px;">
+                  <label for="zeroyBancoInput" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); margin-bottom: 4px;">
+                    <i data-lucide="landmark" style="width: 13px; height: 13px; color: #F59E0B;"></i>
+                    <span>Filtro por Banco (Opcional - SISBAJUD)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    id="zeroyBancoInput" 
+                    class="consulta-input-field" 
+                    placeholder="Ex: NUBANK, BRADESCO, CAIXA, ITAU..." 
+                    style="font-size: 0.875rem; padding: 8px 12px;"
+                  >
+                </div>
+                <div style="font-size: 0.75rem; color: var(--color-text-dim); max-width: 320px;">
+                  <i data-lucide="info" style="width: 12px; height: 12px; display: inline;"></i>
+                  Permite restringir o retorno das chaves ativas a uma instituição financeira específica.
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <!-- Exemplos Rápidos de Demonstração -->
+          <div class="consulta-demo-row">
+            <span style="font-size: 0.75rem; color: var(--color-text-dim); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">
+              Amostras Rápidas:
+            </span>
+            <button type="button" class="demo-consulta-btn" data-demo="022.590.137-40" data-demo-id="cpf-zeroy">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>CPF Zeroy</span>
+            </button>
+            <button type="button" class="demo-consulta-btn" data-demo="(27) 99697-7634" data-demo-id="telefone">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>Telefone Móvel</span>
+            </button>
+            <button type="button" class="demo-consulta-btn" data-demo="022.590.137-40" data-demo-id="pix-bacen" data-demo-tipo-pix="cpf_titular">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>PIX Bacen (CPF)</span>
+            </button>
+            <button type="button" class="demo-consulta-btn" data-demo="contato@empresa.com.br" data-demo-id="pix-bacen" data-demo-tipo-pix="chave_email">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>PIX Bacen (E-mail)</span>
+            </button>
+            <button type="button" class="demo-consulta-btn" data-demo="022.590.137-40" data-demo-id="chave-pix">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>Chave PIX (CPF/CNPJ)</span>
+            </button>
+            <button type="button" class="demo-consulta-btn" data-demo="022.590.137-40" data-demo-id="pix-sisbajud">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>PIX SISBAJUD</span>
+            </button>
+            <button type="button" class="demo-consulta-btn" data-demo="BRA2E19" data-demo-id="placa">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>Placa Veicular</span>
+            </button>
+            <button type="button" class="demo-consulta-btn" data-demo="9BWZZZ377VT004251" data-demo-id="chassi">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>Chassi</span>
+            </button>
+            <button type="button" class="demo-consulta-btn" data-demo="CEZAR HENRIQUE MANZINI RODRIGUES" data-demo-id="nome">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>Nome Completo</span>
+            </button>
+            <button type="button" class="demo-consulta-btn" data-demo="02259013740" data-demo-id="foto-cnh">
+              <i data-lucide="play" style="width: 10px; height: 10px;"></i>
+              <span>Foto CNH</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Área de Loading -->
+        <div id="zeroyLoading" style="display: none; padding: var(--space-8); text-align: center;">
+          <div class="spinner" style="margin: 0 auto var(--space-3); border-top-color: #10B981;"></div>
+          <p style="color: var(--color-text-muted); font-size: 0.95rem;">
+            Consultando Zeroy API e decodificando telemetria...
+          </p>
+        </div>
+
+        <!-- Área de Resultados -->
+        <div id="zeroyResultsArea" style="display: none;">
+          <!-- Resumo Superior com Badges -->
+          <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #10B981;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3);">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span class="badge" id="resZeroyFonteBadge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3);">Zeroy API</span>
+                <span class="badge" id="resZeroyDebitoBadge" style="display: none; background: rgba(59, 130, 246, 0.15); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.3);"></span>
+                <span class="badge" id="resZeroySaldoBadge" style="display: none; background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3);"></span>
+                <span style="font-size: 0.8125rem; color: var(--color-text-muted);" id="resZeroyTimestamp"></span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-outline" id="btnAbrirGrafoZeroy" style="display: inline-flex; font-size: 0.75rem; padding: 4px 12px; gap: 6px; border-color: rgba(6, 182, 212, 0.4); color: #22D3EE; background: rgba(6, 182, 212, 0.08);">
+                  <i data-lucide="share-2" style="width: 13px; height: 13px;"></i>
+                  <span>Grafo de Vínculos</span>
+                </button>
+                <button type="button" class="btn btn-primary" id="btnGerarRelatorioZeroy" style="display: inline-flex; font-size: 0.75rem; padding: 4px 12px; gap: 6px; background: linear-gradient(135deg, #6D28D9 0%, #4C1D95 100%); border: 1px solid #8B5CF6; color: #FFFFFF;">
+                  <i data-lucide="file-text" style="width: 13px; height: 13px;"></i>
+                  <span>Gerar Relatório</span>
+                </button>
+                <button type="button" class="btn btn-outline" id="btnCopiarJsonZeroy" style="font-size: 0.75rem; padding: 4px 10px;">
+                  <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                  <span>Copiar JSON</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conteúdo Renderizado dos Resultados -->
+          <div id="zeroyResultsContent"></div>
+
+          <!-- JSON Bruto Estruturado (Conectado às Configurações Globais: padrão oculto) -->
+          <div class="card" id="zeroyRawJsonContainer" style="margin-top: var(--space-5); display: none;">
+            <div class="card-header">
+              <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="code" style="color: #34D399; width: 18px; height: 18px;"></i>
+                <span>Dados Brutos (JSON Oficial Zeroy)</span>
+              </h3>
+            </div>
+            <pre style="background: var(--color-bg); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 0.8125rem; color: #6EE7B7; overflow-x: auto; max-height: 400px;"><code id="zeroyRawJson"></code></pre>
+          </div>
+        </div>
+
+        <%- include('../../partials/footer') %>
+      </main>
+    </div>
+  </div>
+
+  <!-- Modal Lightbox para Foto Biométrica / Base64 Ampliada -->
+  <div id="zeroyFotoModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0, 0, 0, 0.88); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
+    <div style="position: relative; max-width: 90vw; max-height: 90vh; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); text-align: center;">
+      <button type="button" id="btnFecharFotoModal" style="position: absolute; top: -14px; right: -14px; width: 34px; height: 34px; border-radius: 50%; background: #EF4444; color: #FFF; border: 2px solid #FFF; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; box-shadow: 0 4px 10px rgba(0,0,0,0.5);">&times;</button>
+      <img id="imgZeroyModal" src="" alt="Foto Cadastral Ampliada" style="max-width: 100%; max-height: 75vh; border-radius: var(--radius-md); object-fit: contain; border: 2px solid #10B981; box-shadow: 0 0 30px rgba(16, 185, 129, 0.35);">
+      <div id="legendaZeroyModal" style="margin-top: 12px; font-weight: 700; color: #FFFFFF; font-size: 1rem;">Foto Cadastral Ampliada</div>
+    </div>
+  </div>
+
+  <%- include('../../partials/bottom-nav') %>
+  <%- include('../../partials/command-palette') %>
+  <%- include('../../partials/toast') %>
+
+  <script>
+    window.MODULOS_HUB = <%- JSON.stringify(modulosList) %>;
+    window.MODULO_ATIVO = <%- JSON.stringify(activeMod) %>;
+  </script>
+
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/main.js"></script>
+  <script type="module" src="/js/interpreters/zeroy-interpreters.js"></script>
+  <!-- Modal Dark OSINT Report para Zeroy -->
+  <div id="modalRelatorioOsint" style="display: none; position: fixed; inset: 0; background: rgba(4, 6, 9, 0.88); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: #0D111A; border: 1px solid #2D1F55; border-radius: 12px; width: 100%; max-width: 1120px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);">
+      <div style="padding: 16px 24px; border-bottom: 1px solid #1E2538; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: linear-gradient(90deg, #0D111A 0%, #151029 100%);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(109, 40, 217, 0.25); border: 1px solid #6D28D9; display: flex; align-items: center; justify-content: center; color: #C4B5FD;">
+            <i data-lucide="file-text" style="width: 20px; height: 20px;"></i>
+          </div>
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <strong style="font-size: 1rem; color: #F8FAFC;">Dossiê de Inteligência OSINT — Zeroy</strong>
+              <span style="background: rgba(139, 92, 246, 0.2); color: #C4B5FD; font-size: 0.65rem; font-weight: 700; padding: 2px 7px; border-radius: 4px;">CONFIDENCIAL</span>
+            </div>
+            <div style="font-size: 0.78rem; color: #94A3B8;">Dossiê oficial estruturado com padrão Dark Mode para exportação em PDF e HTML.</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <button type="button" id="btnGrafoModalRelatorioZeroy" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.82rem; border-color: rgba(6, 182, 212, 0.4); color: #22D3EE; background: rgba(6, 182, 212, 0.1);">
+            <i data-lucide="share-2" style="width: 15px; height: 15px;"></i>
+            <span>Ver Grafo de Vínculos</span>
+          </button>
+          <button type="button" id="btnGerarPdfRelatorioZeroy" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.82rem; background: #6D28D9; border-color: #8B5CF6; color: #FFF;">
+            <i data-lucide="printer" style="width: 15px; height: 15px;"></i>
+            <span>Exportar PDF</span>
+          </button>
+          <button type="button" id="btnDownloadHtmlRelatorioZeroy" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; font-size: 0.82rem; border-color: #10B981; color: #34D399;">
+            <i data-lucide="download" style="width: 15px; height: 15px;"></i>
+            <span>Baixar HTML</span>
+          </button>
+          <button type="button" id="btnFecharModalRelatorioZeroy" class="btn btn-ghost" style="padding: 6px; color: #94A3B8;" title="Fechar Dossiê">
+            <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+          </button>
+        </div>
+      </div>
+      <div id="modalRelatorioContentZeroy" style="padding: 24px; overflow-y: auto; background: #080B11; flex: 1;"></div>
+    </div>
+  </div>
+
+  <script src="/js/settings.js"></script>
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <script src="/js/osint-graph.js"></script>
+  <script src="/js/osint-dark-report.js"></script>
+  <script src="/js/zeroy.js"></script>
+</body>
+</html>
+

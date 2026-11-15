@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+
+  <style>
+    .redes-search-card {
+      background: radial-gradient(circle at 95% 5%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+                  var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .redes-input-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: var(--space-3);
+      margin-top: var(--space-2);
+    }
+
+    .redes-input-field {
+      width: 100%;
+      padding: 10px 14px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .redes-input-field:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-glow);
+      background-color: var(--color-surface);
+    }
+
+    .demo-pills-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .demo-redes-btn {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .demo-redes-btn:hover {
+      background: var(--color-surface-3);
+      color: var(--color-primary);
+      border-color: rgba(139, 92, 246, 0.4);
+    }
+
+    .profile-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      margin-bottom: var(--space-4);
+      display: flex;
+      gap: var(--space-4);
+      align-items: flex-start;
+      transition: all var(--transition-fast);
+    }
+
+    .profile-card:hover {
+      border-color: var(--color-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .profile-avatar-box {
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius-full);
+      background: var(--color-surface-3);
+      overflow: hidden;
+      flex-shrink: 0;
+      border: 2px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .match-pill-high {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--color-secondary);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      font-weight: 700;
+    }
+
+    .match-pill-medium {
+      background: rgba(139, 92, 246, 0.15);
+      color: var(--color-primary);
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      font-weight: 700;
+    }
+
+    .match-pill-low {
+      background: var(--color-surface-3);
+      color: var(--color-text-dim);
+      border: 1px solid var(--color-border);
+    }
+
+    .dorks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--space-3);
+    }
+
+    .dork-item {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .dork-item:hover {
+      border-color: var(--color-primary-glow);
+    }
+
+    /* Estilos Avançados de Probabilidade e Máscaras YesItsMe */
+    .prob-bar-track {
+      width: 100%;
+      height: 8px;
+      background: var(--color-surface-3);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .prob-bar-fill {
+      height: 100%;
+      border-radius: var(--radius-full);
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .factors-checklist {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--space-2);
+      margin-top: var(--space-3);
+    }
+
+    .factor-item {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 0.78rem;
+    }
+
+    .factor-item.factor-match {
+      border-color: rgba(34, 197, 94, 0.35);
+      background: rgba(34, 197, 94, 0.05);
+    }
+
+    .factor-item.factor-mismatch {
+      border-color: rgba(239, 68, 68, 0.25);
+      background: rgba(239, 68, 68, 0.03);
+    }
+
+    .mask-summary-box {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+      align-items: center;
+      margin-bottom: var(--space-4);
+    }
+
+    /* Avatar interativo com badge HD */
+    .profile-avatar-wrapper {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    .profile-avatar-wrapper:hover .avatar-hd-badge {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+
+    .avatar-hd-badge {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      background: var(--color-primary);
+      color: #fff;
+      font-size: 0.62rem;
+      font-weight: 800;
+      padding: 2px 5px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      transition: all var(--transition-fast);
+      pointer-events: none;
+    }
+
+    /* Badge de Idade da Conta via ID Numérico */
+    .account-age-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: var(--radius-full);
+      font-size: 0.72rem;
+      font-weight: 600;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface-2);
+      transition: all var(--transition-fast);
+    }
+
+    .account-age-badge:hover {
+      border-color: var(--color-primary);
+      background: var(--color-surface-3);
+    }
+
+    /* Entidades da Bio (WhatsApp, E-mail, Pix, Links) */
+    .bio-entities-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 8px 0;
+    }
+
+    .entity-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 0.72rem;
+      text-decoration: none;
+      transition: all var(--transition-fast);
+    }
+
+    .entity-pill-whatsapp {
+      background: rgba(34, 197, 94, 0.12);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      font-weight: 600;
+    }
+
+    .entity-pill-whatsapp:hover {
+      background: rgba(34, 197, 94, 0.22);
+      color: #4ade80;
+    }
+
+    .entity-pill-email {
+      background: rgba(139, 92, 246, 0.12);
+      color: var(--color-primary);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    .entity-pill-email:hover {
+      background: rgba(139, 92, 246, 0.22);
+    }
+
+    .entity-pill-pix {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f59e0b;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      font-family: var(--font-mono);
+    }
+
+    .entity-pill-link {
+      background: rgba(59, 130, 246, 0.12);
+      color: #3b82f6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .entity-pill-link:hover {
+      background: rgba(59, 130, 246, 0.22);
+    }
+
+    .entity-pill-mention {
+      background: var(--color-surface-3);
+      color: var(--color-text);
+      border: 1px solid var(--color-border);
+      font-family: var(--font-mono);
+    }
+
+    .entity-pill-mention:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    /* Toolbar de Pivotamento Social Cross-Platform */
+    .pivot-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: 6px 10px;
+      margin-top: 10px;
+    }
+
+    .pivot-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: var(--radius-xs);
+      font-size: 0.72rem;
+      color: var(--color-text-dim);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      text-decoration: none;
+      transition: all var(--transition-fast);
+    }
+
+    .pivot-btn:hover {
+      color: var(--color-text);
+      border-color: var(--color-primary);
+      background: var(--color-surface-3);
+    }
+
+    .reverse-search-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      font-size: 0.68rem;
+      border-radius: var(--radius-xs);
+      background: var(--color-surface-2);
+      color: var(--color-text-dim);
+      border: 1px solid var(--color-border);
+      text-decoration: none;
+      transition: all var(--transition-fast);
+    }
+
+    .reverse-search-btn:hover {
+      color: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+
+    /* Layout alinhado para Coleta Social Profunda (Bright Data) */
+    .bd-form-grid-top {
+      display: grid;
+      grid-template-columns: minmax(150px, 0.9fr) minmax(200px, 1.2fr) minmax(240px, 1.6fr);
+      gap: var(--space-3);
+      align-items: end;
+    }
+
+    .bd-form-grid-kw {
+      margin-top: var(--space-3);
+      display: grid;
+      grid-template-columns: 1fr;
+    }
+
+    .bd-field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .bd-field-label {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--color-text-dim);
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bd-field-control {
+      height: 42px;
+      box-sizing: border-box;
+      padding: 0 12px;
+      line-height: 40px;
+    }
+
+    .bd-form-controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: var(--space-3);
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .bd-toggle-pill {
+      height: 42px;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 14px;
+      border-radius: var(--radius-md);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      font-size: 0.8rem;
+      color: var(--color-text);
+      cursor: pointer;
+      user-select: none;
+      transition: border-color var(--transition-fast);
+    }
+
+    .bd-toggle-pill:hover {
+      border-color: rgba(139, 92, 246, 0.45);
+    }
+
+    @media (max-width: 820px) {
+      .bd-form-grid-top {
+        grid-template-columns: 1fr;
+      }
+      .bd-field-label {
+        white-space: normal;
+      }
+      .profile-card {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <%- include('../../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Topo Repaginado e Explicativo -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-4);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+              <span class="badge badge-purple" style="display: inline-flex; align-items: center; gap: 5px;">
+                <i data-lucide="globe" style="width: 12px; height: 12px;"></i>
+                Multiplataforma • 80+ Redes
+              </span>
+              <span class="badge badge-blue" style="display: inline-flex; align-items: center; gap: 5px;">
+                <i data-lucide="scan-face" style="width: 12px; height: 12px;"></i>
+                Cruzamento Cadastral de Perfis
+              </span>
+              <span class="badge badge-dark">OSINT Social</span>
+            </div>
+            <h1 style="font-size: 1.55rem; font-weight: 800; color: var(--color-text); margin: 0; letter-spacing: -0.02em;">
+              Redes Sociais &amp; Contas Online
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px; max-width: 820px; line-height: 1.45;">
+              Rastreie a pegada digital do alvo: pesquise por <strong>@Username</strong> em dezenas de redes simultaneamente ou descubra perfis desconhecidos cruzando <strong>Nome, E-mail e Telefone</strong> com pistas reais de recuperação de conta.
+            </p>
+          </div>
+
+          <a href="/dashboard" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+            <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+            Voltar ao Dashboard
+          </a>
+        </div>
+
+        <!-- Card Explicativo: Como Funciona o Módulo -->
+        <section class="card" style="background: linear-gradient(135deg, rgba(13, 17, 26, 0.9) 0%, rgba(20, 16, 36, 0.9) 100%); border: 1px solid rgba(139, 92, 246, 0.25); padding: var(--space-4); margin-bottom: var(--space-5); border-radius: var(--radius-lg);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="help-circle" style="width: 18px; height: 18px; color: var(--color-primary);"></i>
+              <span style="font-weight: 700; font-size: 0.88rem; color: #F8FAFC;">Como funciona esta investigação?</span>
+            </div>
+            <span style="font-size: 0.72rem; color: var(--color-text-dim);">3 Formas de Localização</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; font-size: 0.78rem;">
+            <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: var(--radius-md); padding: 12px;">
+              <div style="font-weight: 700; color: #C4B5FD; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="at-sign" style="width: 14px; height: 14px; color: var(--color-primary);"></i>
+                1. Varredura por @Username
+              </div>
+              <p style="margin: 0; color: #94A3B8; line-height: 1.4;">
+                Se você já tem o apelido ou @ da pessoa, o sistema varre ativamente se ela possui conta criada em <strong>80+ redes sociais</strong> (Instagram, TikTok, Twitter/X, GitHub, Reddit, Spotify, Steam, etc.).
+              </p>
+            </div>
+
+            <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: var(--radius-md); padding: 12px;">
+              <div style="font-weight: 700; color: #38BDF8; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="user-check" style="width: 14px; height: 14px; color: #38BDF8;"></i>
+                2. Descoberta por Nome/E-mail/Telefone
+              </div>
+              <p style="margin: 0; color: #94A3B8; line-height: 1.4;">
+                Quando você não sabe o @, o motor gera variações com preposições em português (da/de/do) e compara com os caracteres ofuscados de recuperação de conta (ex: <code>c*****o@g*****.com</code> e final <code>**-4321</code>).
+              </p>
+            </div>
+
+            <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: var(--radius-md); padding: 12px;">
+              <div style="font-weight: 700; color: #34D399; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="radar" style="width: 14px; height: 14px; color: #34D399;"></i>
+                3. Raspagem Forense de Posts
+              </div>
+              <p style="margin: 0; color: #94A3B8; line-height: 1.4;">
+                Para perfis já conhecidos, permite extrair as últimas publicações, comentários, fotos de alta resolução, hashtags e gerar um dossiê pericial dark completo.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Formulário de Busca com Abas de Modo -->
+        <section class="redes-search-card">
+          <!-- Abas de Seleção de Modo -->
+          <div class="search-mode-tabs" style="display: flex; gap: 8px; margin-bottom: var(--space-4); border-bottom: 1px solid var(--color-border); padding-bottom: 12px; flex-wrap: wrap;">
+            <button type="button" class="search-mode-tab active" id="tabModeUsername" data-mode="username" style="background: rgba(139, 92, 246, 0.18); color: #FFFFFF; border: 1px solid var(--color-primary); padding: 8px 16px; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+              <i data-lucide="at-sign" style="width: 16px; height: 16px; color: var(--color-primary);"></i>
+              Modo 1: Tenho o @Username (80+ Redes)
+            </button>
+            <button type="button" class="search-mode-tab" id="tabModePessoa" data-mode="pessoa" style="background: var(--color-surface-2); color: var(--color-text-muted); border: 1px solid var(--color-border); padding: 8px 16px; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+              <i data-lucide="user-search" style="width: 16px; height: 16px; color: #38BDF8;"></i>
+              Modo 2: Tenho Nome, E-mail ou Telefone
+            </button>
+            <button type="button" class="search-mode-tab" id="tabModeBrightData" data-mode="brightdata" style="background: var(--color-surface-2); color: var(--color-text-muted); border: 1px solid var(--color-border); padding: 8px 16px; border-radius: var(--radius-md); font-size: 0.85rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+              <i data-lucide="radar" style="width: 16px; height: 16px; color: #F59E0B;"></i>
+              Modo 3: Coleta Profunda de Posts
+            </button>
+          </div>
+
+          <form id="formRedes">
+            <!-- Painel do Modo 1: Focado em @Username (80+ Redes) -->
+            <div id="panelModeUsername" style="display: block; margin-bottom: var(--space-4);">
+              <div style="background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: var(--radius-md); padding: 18px;">
+                <label for="inputUsername" style="font-size: 0.85rem; font-weight: 700; color: #F8FAFC; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                  <i data-lucide="at-sign" style="width: 16px; height: 16px; color: var(--color-primary);"></i>
+                  Informe o Nome de Usuário / Handle a Rastrear:
+                </label>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                  <div style="position: relative; flex: 1; min-width: 260px;">
+                    <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 800; color: var(--color-primary); font-size: 1.15rem; font-family: var(--font-mono);">@</span>
+                    <input
+                      type="text"
+                      id="inputUsername"
+                      name="username"
+                      class="redes-input-field"
+                      style="padding-left: 36px; font-size: 1rem; font-weight: 600;"
+                      placeholder="ex: carloseduardo, rafaeltoniato.adv, davitoria_adv"
+                      autocomplete="off"
+                    />
+                  </div>
+                  <button type="submit" class="btn btn-primary" id="btnSubmitRedes" style="padding: 10px 24px; white-space: nowrap;">
+                    <i data-lucide="scan-search" style="width: 16px; height: 16px;"></i>
+                    <span id="btnSubmitText">Rastrear Contas em 80+ Redes</span>
+                  </button>
+                </div>
+                <div style="font-size: 0.76rem; color: var(--color-text-dim); margin-top: 8px;">
+                  💡 <strong>O que esta busca faz:</strong> Varre instantaneamente se este usuário existe em Instagram, TikTok, X (Twitter), GitHub, Reddit, Pinterest, Twitch, Spotify, Steam, Telegram e mais 70 serviços online.
+                </div>
+              </div>
+            </div>
+
+            <!-- Painel do Modo 2: Cruzamento de Dados Pessoais (Nome, E-mail, Telefone) -->
+            <div id="panelModePessoa" style="display: none; margin-bottom: var(--space-4);">
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: 8px;">
+                Preencha os dados conhecidos do alvo para descobrir os perfis em redes sociais:
+              </span>
+
+              <div class="redes-input-grid">
+                <div>
+                  <label for="inputNome" style="font-size: 0.75rem; color: var(--color-text-dim); display: block; margin-bottom: 2px;">Nome Completo</label>
+                  <input
+                    type="text"
+                    id="inputNome"
+                    name="nome"
+                    class="redes-input-field"
+                    placeholder="Ex: Carlos Eduardo Pereira"
+                    autocomplete="off"
+                  />
+                </div>
+
+                <div>
+                  <label for="inputEmail" style="font-size: 0.75rem; color: var(--color-text-dim); display: block; margin-bottom: 2px;">E-mail do Alvo</label>
+                  <input
+                    type="email"
+                    id="inputEmail"
+                    name="email"
+                    class="redes-input-field"
+                    placeholder="alvo@gmail.com"
+                    autocomplete="off"
+                  />
+                </div>
+
+                <div>
+                  <label for="inputTelefone" style="font-size: 0.75rem; color: var(--color-text-dim); display: block; margin-bottom: 2px;">Telefone com DDD</label>
+                  <input
+                    type="text"
+                    id="inputTelefone"
+                    name="telefone"
+                    class="redes-input-field"
+                    placeholder="(11) 98765-4321"
+                    autocomplete="off"
+                  />
+                </div>
+
+                <div>
+                  <label for="selectProfissao" style="font-size: 0.75rem; color: var(--color-text-dim); display: block; margin-bottom: 2px;">Área Profissional / Título (Opcional)</label>
+                  <select id="selectProfissao" name="profissao" class="redes-input-field" style="cursor: pointer;">
+                    <option value="">Automático / Geral (Varre todas as variantes)</option>
+                    <% if (typeof profissoes !== 'undefined' && profissoes && Object.keys(profissoes).length > 0) { %>
+                      <% Object.entries(profissoes).forEach(([chave, item]) => { %>
+                        <option value="<%= chave %>"><%= item.label %></option>
+                      <% }); %>
+                    <% } else { %>
+                      <option value="adv">⚖️ Advocacia (.adv, adv_, adv., dr.)</option>
+                      <option value="psi">🧠 Psicologia (.psi, psi_, psi., psico.)</option>
+                      <option value="med">🩺 Medicina / Saúde (dr., dra., .med)</option>
+                      <option value="nutri">🥗 Nutrição (.nutri, nutri_)</option>
+                      <option value="odonto">🦷 Odontologia (.odonto, dentista)</option>
+                      <option value="arq">📐 Arquitetura (.arq, arq_)</option>
+                      <option value="eng">⚙️ Engenharia (.eng, eng_)</option>
+                      <option value="fisio">🏃 Fisioterapia (.fisio, fisio_)</option>
+                      <option value="corretor">🏢 Imóveis / Corretor</option>
+                      <option value="personal">💪 Personal Trainer / Fitness</option>
+                      <option value="contab">📊 Contabilidade</option>
+                      <option value="vet">🐾 Veterinária</option>
+                    <% } %>
+                  </select>
+                </div>
+              </div>
+
+              <div style="margin-top: var(--space-4); display: flex; justify-content: flex-end;">
+                <button type="submit" class="btn btn-primary" id="btnSubmitPessoa" style="padding: 10px 24px;">
+                  <i data-lucide="user-check" style="width: 16px; height: 16px;"></i>
+                  Cruzar Dados &amp; Localizar Perfis
+                </button>
+              </div>
+            </div>
+
+            <!-- Pílulas de Teste Rápido / Demonstração -->
+            <div class="demo-pills-row">
+              <span style="font-size: 0.75rem; color: var(--color-text-dim); font-weight: 600;">Exemplos Prontos de Teste:</span>
+              <button type="button" class="demo-redes-btn" data-nome="" data-email="rafaeltoniato@gmail.com" data-phone="" data-user="rafaeltoniato.adv" data-prof="adv">
+                <i data-lucide="scale"></i> @rafaeltoniato.adv (Handle + E-mail)
+              </button>
+              <button type="button" class="demo-redes-btn" data-nome="" data-email="" data-phone="" data-user="davitoria_adv" data-prof="adv">
+                <i data-lucide="scale"></i> @davitoria_adv (Nick Instantâneo)
+              </button>
+              <button type="button" class="demo-redes-btn" data-nome="Carlos Eduardo da Silva" data-email="carlos.silva.pereira@gmail.com" data-phone="11987654321" data-user="" data-prof="">
+                <i data-lucide="user-check"></i> Carlos Eduardo da Silva (Preposições da/de/do)
+              </button>
+              <button type="button" class="demo-redes-btn" data-nome="Camila Silva Santos" data-email="" data-phone="" data-user="" data-prof="psi">
+                <i data-lucide="brain"></i> Camila Silva (.psi Psicologia)
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Skeleton Loading -->
+        <div id="redesSkeleton" style="display: none;">
+          <div class="card" style="padding: var(--space-6); text-align: center; background: rgba(13, 17, 26, 0.85); border: 1px solid rgba(139, 92, 246, 0.3);">
+            <div class="spinner" style="margin: 0 auto var(--space-4);"></div>
+            <p style="font-size: 0.95rem; color: #F8FAFC; font-weight: 700;">Executando Varredura Multiplataforma &amp; Cruzamento de Identidades...</p>
+            <p style="font-size: 0.8rem; color: #94A3B8;">Pesquisando em mais de 80 redes sociais e comparando com as pistas de recuperação cadastral.</p>
+          </div>
+        </div>
+
+        <!-- Seção de Resultados -->
+        <div id="redesResultados" style="display: none;">
+          <!-- Header de Resultados e Barra de Ações Rápidas -->
+          <div class="card" style="padding: var(--space-4); margin-bottom: var(--space-4); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3); background: linear-gradient(135deg, rgba(13, 17, 26, 0.95) 0%, rgba(20, 16, 36, 0.95) 100%); border: 1px solid rgba(139, 92, 246, 0.35);">
+            <div style="display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap;">
+              <div style="width: 38px; height: 38px; border-radius: var(--radius-md); background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); display: flex; align-items: center; justify-content: center; color: var(--color-primary);">
+                <i data-lucide="layers" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="font-weight: 800; color: #F8FAFC; font-size: 1.05rem;">Perfis e Vínculos Identificados</span>
+                  <span id="resTotalPerfis" class="badge badge-purple" style="font-size: 0.75rem;">0 Perfis</span>
+                  <span id="resMelhorMatchBadge" class="badge badge-green" style="font-size: 0.75rem; display: none;">Certeza: 0%</span>
+                  <span id="resTotalPermsBadge" class="badge badge-dark" style="font-size: 0.75rem; display: none;">0 Variações</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #94A3B8; margin-top: 2px;">
+                  Motor: <strong style="color: #C4B5FD;" id="resFonte">RimuBusca Multi-Social Intelligence Engine</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botões de Ação Imediata (Exportação Forense & Cópia de Links) -->
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarLinks" title="Copiar lista de todas as contas encontradas com URLs diretas">
+                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                <span>Copiar Links</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnExportarPdf" title="Exportar Dossiê Forense de Redes Sociais em PDF">
+                <i data-lucide="printer" style="width: 14px; height: 14px;"></i>
+                <span>Exportar PDF</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnBaixarHtml" title="Baixar relatório independente com Hash SHA-256 e Cadeia de Custódia">
+                <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                <span>Baixar HTML</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card de Máscaras Oficiais Calculadas do Alvo -->
+          <div id="resMascarasContainer" class="mask-summary-box" style="display: none;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="shield-check" style="color: var(--color-primary); width: 18px; height: 18px;"></i>
+              <span style="font-weight: 700; font-size: 0.85rem; color: var(--color-text);">Pistas Cadastrais de Recuperação (Máscaras Oficiais):</span>
+            </div>
+            <div style="display: flex; gap: var(--space-4); flex-wrap: wrap; font-size: 0.8rem; font-family: var(--font-mono);">
+              <div id="resBoxMaskEmail" style="display: none;">
+                <span style="color: var(--color-text-dim);">E-mail Ofuscado:</span>
+                <strong id="resTextoMaskEmail" style="color: var(--color-primary); background: var(--color-surface-3); padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--color-border);">-</strong>
+              </div>
+              <div id="resBoxMaskTel" style="display: none;">
+                <span style="color: var(--color-text-dim);">Telefone Ofuscado:</span>
+                <strong id="resTextoMaskTel" style="color: var(--color-success); background: var(--color-surface-3); padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--color-border);">-</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card de Variações de Usuário Testadas (@) -->
+          <div id="resPermutacoesBox" class="card" style="margin-bottom: var(--space-4); padding: var(--space-4); display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="cpu" style="width: 18px; height: 18px; color: var(--color-primary);"></i>
+                <span style="font-weight: 700; font-size: 0.9rem; color: var(--color-text);">Variações de Usuário (@) Testadas para o Alvo</span>
+                <span class="badge badge-purple" style="font-size: 0.7rem;">Inversões de Nome • Conectivos (da/de/do) • Títulos</span>
+              </div>
+              <span id="resPermsCountPill" class="badge badge-dark" style="font-size: 0.72rem;">0 Geradas</span>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--color-text-muted); margin-bottom: 8px;">
+              Combinações prováveis de nomes de usuário geradas a partir do nome completo e áreas profissionais para testar a existência do perfil.
+            </p>
+            <div id="resPermsPillsGrid" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 120px; overflow-y: auto; padding: 2px;">
+              <!-- Preenchido via redes.js -->
+            </div>
+          </div>
+
+          <!-- Card de Descoberta Multiplataforma (80+ Plataformas) -->
+          <div id="resPatrickContainer" class="card" style="margin-bottom: var(--space-5); display: none;">
+            <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
+              <div class="card-title">
+                <i data-lucide="globe" style="color: var(--color-primary);"></i>
+                <span>Contas Identificadas na Web (Varredura em 80+ Plataformas)</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="resPatrickBadge" class="badge badge-purple">0 Plataformas Encontradas</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <!-- Barra de Filtros por Categoria -->
+              <div class="social-category-filter-bar" style="display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-4); flex-wrap: wrap; border-bottom: 1px solid var(--color-border); padding-bottom: 10px;">
+                <span style="font-size: 0.72rem; color: var(--color-text-dim); font-weight: 700; text-transform: uppercase;">Filtrar por Categoria:</span>
+                <button type="button" class="social-cat-btn active" data-cat="todas" style="background: rgba(139, 92, 246, 0.2); border: 1px solid var(--color-primary); color: #FFFFFF; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px; cursor: pointer;">
+                  Todas (<span id="catCountTodas">0</span>)
+                </button>
+                <button type="button" class="social-cat-btn" data-cat="social" style="background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 9999px; cursor: pointer;">
+                  Redes Sociais (<span id="catCountSocial">0</span>)
+                </button>
+                <button type="button" class="social-cat-btn" data-cat="tech" style="background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 9999px; cursor: pointer;">
+                  Dev &amp; Tecnologia (<span id="catCountTech">0</span>)
+                </button>
+                <button type="button" class="social-cat-btn" data-cat="media" style="background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 9999px; cursor: pointer;">
+                  Vídeo &amp; Streaming (<span id="catCountMedia">0</span>)
+                </button>
+                <button type="button" class="social-cat-btn" data-cat="forum" style="background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 9999px; cursor: pointer;">
+                  Fóruns &amp; Conteúdo (<span id="catCountForum">0</span>)
+                </button>
+                <button type="button" class="social-cat-btn" data-cat="gaming" style="background: var(--color-surface-2); border: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 0.72rem; font-weight: 600; padding: 3px 10px; border-radius: 9999px; cursor: pointer;">
+                  Jogos &amp; Outros (<span id="catCountGaming">0</span>)
+                </button>
+              </div>
+
+              <div id="resPatrickGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-3);">
+                <!-- Preenchido dinamicamente via redes.js -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Lista de Perfis Correlacionados no Instagram -->
+          <div id="resPerfisContainer">
+            <!-- Injetado dinamicamente via JS -->
+          </div>
+
+          <!-- Card de Google Dorks para Redes Sociais -->
+          <div class="card" style="margin-bottom: var(--space-6); display: none;">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="terminal" style="color: var(--color-primary);"></i>
+                <span>Google Dorks - Instagram & Meta</span>
+              </div>
+              <span class="badge badge-purple">Varredura Pública</span>
+            </div>
+            <div class="card-body">
+              <div class="dorks-grid" id="resDorksContainer">
+                <!-- Injetado via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Ações Finais -->
+          <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-4);">
+            <button type="button" class="btn btn-secondary" id="btnVerJsonCompleto">
+              <i data-lucide="code" style="width: 16px; height: 16px;"></i>
+              Ver JSON Bruto
+            </button>
+            <button type="button" class="btn btn-primary" onclick="window.scrollTo({ top: 0, behavior: 'smooth' }); document.getElementById('inputUsername').focus();">
+              <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+              Nova Busca
+            </button>
+          </div>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- SEÇÃO BRIGHT DATA: COLETA PROFUNDA SOCIAL (INSTAGRAM & X)        -->
+        <!-- ================================================================ -->
+        <section id="bdSocialSection" class="redes-search-card" style="margin-top: var(--space-6); border-color: rgba(139, 92, 246, 0.35);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4);">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+                <span class="badge badge-purple">Bright Data Web Scraper API v3</span>
+                <span class="badge badge-dark">Instagram + X (Twitter)</span>
+                <span id="bdStatusBadge" class="badge badge-dark">Verificando API...</span>
+              </div>
+              <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--color-text); margin: 0; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="radar" style="width: 20px; height: 20px; color: var(--color-primary);"></i>
+                Coleta Social Profunda (Posts, Comentários &amp; Palavras-Chave)
+              </h2>
+              <p style="font-size: 0.82rem; color: var(--color-text-muted); margin: 4px 0 0 0;">
+                Extração estruturada assíncrona com trava padrão de cota (<strong>20 posts</strong> + <strong>15 comentários/post</strong>), busca por palavras específicas e geração de Dossiê Dark.
+              </p>
+            </div>
+          </div>
+
+          <div id="bdConfigAlertBanner" style="display: none; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: var(--space-4); font-size: 0.8rem; color: #FCD34D;">
+            <strong>Configuração Pendente:</strong> Defina <code style="background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 4px;">BRIGHTDATA_API_KEY</code> no <code style="background: rgba(0,0,0,0.3); padding: 1px 5px; border-radius: 4px;">.env</code> para ativar coletas ao vivo. As travas de cota e cache de 24h já estão prontas para uso assim que a chave for inserida.
+          </div>
+
+          <form id="formBrightDataSocial">
+            <!-- Linha 1: Plataforma + Modo + Alvo (todos alinhados pela base com altura uniforme) -->
+            <div class="bd-form-grid-top">
+              <div class="bd-field-group">
+                <label for="bdSelectPlataforma" class="bd-field-label">Plataforma</label>
+                <select id="bdSelectPlataforma" class="redes-input-field bd-field-control">
+                  <option value="instagram">Instagram</option>
+                  <option value="x">X (Twitter)</option>
+                </select>
+              </div>
+
+              <div class="bd-field-group">
+                <label for="bdSelectModo" class="bd-field-label">Modo de Varredura</label>
+                <select id="bdSelectModo" class="redes-input-field bd-field-control">
+                  <option value="perfil">Perfil (@usuário ou URL)</option>
+                  <option value="palavra_chave">Busca por Palavra-Chave / #Hashtag</option>
+                  <option value="post_url">Post / Reel / Tweet Específico (URL)</option>
+                </select>
+              </div>
+
+              <div class="bd-field-group">
+                <label id="bdLabelAlvo" for="bdInputAlvo" class="bd-field-label">@Usuário ou URL do Perfil (Instagram)</label>
+                <input
+                  type="text"
+                  id="bdInputAlvo"
+                  class="redes-input-field bd-field-control"
+                  placeholder="Ex: @neymarjr ou https://www.instagram.com/neymarjr/"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+
+            <!-- Linha 2: Palavras-Chave Específicas em destaque sem quebrar alinhamento -->
+            <div class="bd-form-grid-kw">
+              <div class="bd-field-group">
+                <label for="bdInputPalavras" class="bd-field-label">Palavras-Chave Específicas (Opcional no modo Perfil/Post • Separe por vírgula)</label>
+                <input
+                  type="text"
+                  id="bdInputPalavras"
+                  class="redes-input-field bd-field-control"
+                  placeholder="Ex: pix, promocao, iphone, urgente — destaca e filtra automaticamente em posts e comentários"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+
+            <!-- Linha 3: Travas de Segurança de Cota & Janela Temporal -->
+            <div class="bd-form-controls-bar">
+              <div class="bd-field-group">
+                <label for="bdInputMaxPosts" class="bd-field-label">Máx. Posts (Padrão: 20)</label>
+                <input
+                  type="number"
+                  id="bdInputMaxPosts"
+                  class="redes-input-field bd-field-control"
+                  value="20"
+                  min="1"
+                  max="50"
+                  style="width: 132px;"
+                />
+              </div>
+
+              <div class="bd-field-group">
+                <label for="bdInputMaxComments" class="bd-field-label">Coment./Post (Padrão: 15)</label>
+                <input
+                  type="number"
+                  id="bdInputMaxComments"
+                  class="redes-input-field bd-field-control"
+                  value="15"
+                  min="0"
+                  max="25"
+                  style="width: 138px;"
+                />
+              </div>
+
+              <div class="bd-field-group">
+                <label for="bdStartDate" class="bd-field-label">Data Inicial (Opcional)</label>
+                <input type="date" id="bdStartDate" class="redes-input-field bd-field-control" style="width: 148px;" />
+              </div>
+
+              <div class="bd-field-group">
+                <label for="bdEndDate" class="bd-field-label">Data Final (Opcional)</label>
+                <input type="date" id="bdEndDate" class="redes-input-field bd-field-control" style="width: 148px;" />
+              </div>
+
+              <label class="bd-toggle-pill">
+                <input type="checkbox" id="bdCheckComentarios" checked style="accent-color: var(--color-primary); width: 15px; height: 15px; margin: 0;" />
+                <span>Incluir Comentários</span>
+              </label>
+
+              <button type="submit" id="btnBdIniciar" class="btn btn-primary" style="height: 42px; margin-left: auto;">
+                <i data-lucide="radar" style="width: 16px; height: 16px;"></i>
+                Coletar Posts &amp; Comentários
+              </button>
+            </div>
+          </form>
+
+          <!-- Progresso Assíncrono Bright Data -->
+          <div id="bdProgressBox" style="display: none; margin-top: var(--space-5); padding: var(--space-5); background: var(--color-surface-2); border: 1px solid rgba(139, 92, 246, 0.35); border-radius: var(--radius-md); text-align: center;">
+            <div class="spinner" style="margin: 0 auto var(--space-3);"></div>
+            <div id="bdProgressTitle" style="font-size: 0.95rem; font-weight: 700; color: var(--color-text);">Coletando dados na Bright Data...</div>
+            <div id="bdProgressSub" style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 4px;">Aguardando conclusão do snapshot assíncrono.</div>
+            <div id="bdProgressMeta" style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--color-text-dim); margin-top: 8px;"></div>
+            <button type="button" id="btnBdCancelar" class="btn btn-secondary btn-sm" style="margin-top: var(--space-3);">Parar Acompanhamento</button>
+          </div>
+
+          <!-- Resultados Coletados -->
+          <div id="bdResultadosBox" style="display: none; margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--color-border);">
+            <div id="bdPerfilHeader" class="card" style="padding: var(--space-4); margin-bottom: var(--space-4);"></div>
+
+            <!-- KPIs -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4);">
+              <div class="card" style="padding: 12px; text-align: center;">
+                <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--color-text-dim);">Posts Coletados</div>
+                <div id="bdKpiPosts" style="font-size: 1.35rem; font-weight: 700; color: var(--color-primary);">0</div>
+              </div>
+              <div class="card" style="padding: 12px; text-align: center;">
+                <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--color-text-dim);">Comentários</div>
+                <div id="bdKpiComentarios" style="font-size: 1.35rem; font-weight: 700; color: var(--color-success);">0</div>
+              </div>
+              <div class="card" style="padding: 12px; text-align: center;">
+                <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--color-text-dim);">Curtidas</div>
+                <div id="bdKpiLikes" style="font-size: 1.35rem; font-weight: 700; color: #60A5FA;">0</div>
+              </div>
+              <div class="card" style="padding: 12px; text-align: center;">
+                <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--color-text-dim);">Engajamento Médio</div>
+                <div id="bdKpiEngajamento" style="font-size: 1.35rem; font-weight: 700; color: #FBBF24;">0</div>
+              </div>
+              <div class="card" style="padding: 12px; text-align: center;">
+                <div style="font-size: 0.68rem; text-transform: uppercase; color: var(--color-text-dim);">Hits Palavra-Chave</div>
+                <div id="bdKpiKeywords" style="font-size: 1.35rem; font-weight: 700; color: #F87171;">0</div>
+              </div>
+            </div>
+
+            <!-- Correspondências de Palavras-Chave -->
+            <div id="bdKeywordsHitsBox" class="card" style="display: none; padding: var(--space-4); margin-bottom: var(--space-4); border-color: rgba(245, 158, 11, 0.35);"></div>
+
+            <!-- Grid Inteligência OSINT -->
+            <div id="bdInteligenciaGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-4);"></div>
+
+            <!-- Barra de Filtro Local Instantâneo + Botão Dossiê Dark -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4);">
+              <div style="flex: 1; min-width: 220px;">
+                <input
+                  type="text"
+                  id="bdLocalKeywordFilter"
+                  class="redes-input-field"
+                  placeholder="Filtrar instantaneamente nos posts e comentários coletados (0 créditos extras)..."
+                  style="padding: 8px 12px; font-size: 0.82rem;"
+                />
+              </div>
+              <button type="button" id="btnBdAbrirDossie" class="btn btn-primary">
+                <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
+                Gerar Dossiê OSINT (Dark PDF / HTML)
+              </button>
+            </div>
+
+            <!-- Feed de Posts e Comentários -->
+            <div id="bdPostsContainer"></div>
+          </div>
+        </section>
+      </main>
+
+      <%- include('../../partials/footer') %>
+    </div>
+  </div>
+
+  <%- include('../../partials/bottom-nav') %>
+  <%- include('../../partials/command-palette') %>
+  <%- include('../../partials/toast') %>
+
+  <!-- Modal Raw JSON -->
+  <div id="modalJson" style="display: none; position: fixed; inset: 0; background: rgba(4, 7, 13, 0.85); backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 100%; max-width: 700px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; overflow: hidden;">
+      <div style="padding: var(--space-4); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <span style="font-weight: 700; color: var(--color-text);">Payload JSON YesItsMe</span>
+        <button type="button" onclick="document.getElementById('modalJson').style.display='none'" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+      <pre id="preModalJson" style="padding: var(--space-4); margin: 0; overflow-y: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-text-dim); background: var(--color-surface-2); flex: 1;"></pre>
+      <div style="padding: var(--space-3); border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: var(--space-2); flex-shrink: 0;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarJsonModal">Copiar JSON</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('modalJson').style.display='none'">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Avatar HD & Busca Reversa -->
+  <div id="modalAvatarHd" style="display: none; position: fixed; inset: 0; background: rgba(4, 7, 13, 0.88); backdrop-filter: blur(6px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 100%; max-width: 520px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-xl);">
+      <div style="padding: var(--space-4); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="image" style="color: var(--color-primary); width: 20px; height: 20px;"></i>
+          <span style="font-weight: 700; color: var(--color-text); font-size: 0.95rem;">Foto de Perfil HD & Investigação Visual</span>
+        </div>
+        <button type="button" class="btn-fechar-modal-avatar" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer; padding: 4px;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <div style="padding: var(--space-5); text-align: center; background: radial-gradient(circle at center, rgba(139, 92, 246, 0.08) 0%, var(--color-surface-2) 100%);">
+        <div style="width: 220px; height: 220px; margin: 0 auto; border-radius: var(--radius-full); overflow: hidden; border: 3px solid var(--color-border); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); background: var(--color-surface-3);">
+          <img id="imgAvatarModal" src="" alt="Avatar HD" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        <div id="txtAvatarUser" style="margin-top: var(--space-3); font-weight: 700; font-family: var(--font-mono); color: var(--color-primary); font-size: 1.05rem;">@username</div>
+      </div>
+
+      <div style="padding: var(--space-4); background: var(--color-surface); border-top: 1px solid var(--color-border);">
+        <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: var(--space-2); display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="scan-face" style="width: 13px; height: 13px; color: var(--color-primary);"></i>
+          Busca Reversa de Imagem em 1 Clique:
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2);">
+          <a id="btnLensModal" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="justify-content: center; gap: 6px;">
+            <i data-lucide="search" style="width: 14px; height: 14px; color: #4285F4;"></i>
+            Google Lens
+          </a>
+          <a id="btnYandexModal" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="justify-content: center; gap: 6px;">
+            <i data-lucide="external-link" style="width: 14px; height: 14px; color: #fc3f1d;"></i>
+            Yandex Images
+          </a>
+          <a id="btnBingModal" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="justify-content: center; gap: 6px;">
+            <i data-lucide="external-link" style="width: 14px; height: 14px; color: #008373;"></i>
+            Bing Visual
+          </a>
+          <a id="btnTinEyeModal" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="justify-content: center; gap: 6px;">
+            <i data-lucide="crosshair" style="width: 14px; height: 14px; color: var(--color-primary);"></i>
+            TinEye
+          </a>
+        </div>
+      </div>
+
+      <div style="padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; background: var(--color-surface-2);">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarUrlFoto">
+          <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+          Copiar URL Imagem
+        </button>
+        <button type="button" class="btn btn-primary btn-sm btn-fechar-modal-avatar">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Dossiê Social OSINT (Dark Mode / PDF / HTML + Imagens) -->
+  <div id="modalBdDossie" role="dialog" aria-modal="true" aria-label="Dossiê Social OSINT" style="display: none; position: fixed; inset: 0; background: rgba(4, 7, 13, 0.88); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+    <div id="modalBdDossieDialog" style="background: #080B11; border: 1px solid rgba(139, 92, 246, 0.35); border-radius: var(--radius-lg); width: 100%; max-width: 1040px; max-height: calc(100vh - 40px); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(139, 92, 246, 0.15);">
+      <div style="padding: 14px 20px; border-bottom: 1px solid rgba(139, 92, 246, 0.22); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; background: #0D111A; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); display: flex; align-items: center; justify-content: center; color: #FFFFFF;">
+            <i data-lucide="file-text" style="width: 16px; height: 16px;"></i>
+          </div>
+          <div>
+            <div style="font-weight: 700; color: #F8FAFC; font-size: 0.95rem;">Dossiê Social OSINT (Bright Data)</div>
+            <div style="font-size: 0.72rem; color: #94A3B8;">Prévia Dark Mode pronta para Exportar PDF ou Baixar HTML</div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <button type="button" id="btnBdAddImagem" class="btn btn-secondary btn-sm">
+            <i data-lucide="image-plus" style="width: 14px; height: 14px;"></i>
+            Adicionar Imagem / Print
+          </button>
+          <input type="file" id="bdInputCustomImages" accept="image/*" multiple style="display: none;" />
+          <button type="button" id="btnBdExportPdf" class="btn btn-primary btn-sm">
+            <i data-lucide="printer" style="width: 14px; height: 14px;"></i>
+            Exportar PDF
+          </button>
+          <button type="button" id="btnBdDownloadHtml" class="btn btn-secondary btn-sm">
+            <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+            Baixar HTML
+          </button>
+          <button type="button" class="btn-fechar-bd-dossie" aria-label="Fechar modal" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(148,163,184,0.2); border-radius: 6px; color: #CBD5E1; cursor: pointer; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
+            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Barra de Evidências Visuais Anexadas + Toggle Fotos dos Posts -->
+      <div style="padding: 10px 20px; background: #0B0F18; border-bottom: 1px solid #1E2538; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; font-size: 0.76rem;">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; color: #CBD5E1; cursor: pointer;">
+              <input type="checkbox" id="bdCheckIncluirFotosPosts" checked style="accent-color: #8B5CF6; width: 14px; height: 14px;" />
+              <span>Exibir fotos coletadas dos posts</span>
+            </label>
+            <span id="bdCustomImagesCount" class="badge badge-dark" style="font-size: 0.7rem;">0 prints/imagens anexadas</span>
+          </div>
+          <span style="color: #64748B; font-size: 0.72rem;">Dica: você também pode colar um print direto com <strong>Ctrl+V</strong></span>
+        </div>
+        <div id="bdCustomImagesPreview" style="display: none; flex-wrap: wrap; gap: 10px; max-height: 112px; overflow-y: auto; padding-top: 2px;"></div>
+      </div>
+
+      <div id="modalBdDossieBody" style="padding: 20px; overflow-y: auto; flex: 1; background: #040609;"></div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/osint-dark-report.js"></script>
+  <script src="/js/redes.js"></script>
+  <script src="/js/redes-brightdata.js"></script>
+</body>
+</html>
+

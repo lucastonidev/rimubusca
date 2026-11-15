@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('partials/head') %>
+
+  <style>
+    .settings-hero {
+      background: radial-gradient(circle at 90% 10%, rgba(139, 92, 246, 0.12) 0%, transparent 60%),
+                  var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .settings-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: var(--space-6);
+    }
+
+    .pref-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: var(--space-4) 0;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .pref-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .pref-info {
+      flex: 1;
+    }
+
+    .pref-title {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--color-text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pref-desc {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+
+    /* Cyber Toggle Switch */
+    .cyber-switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .cyber-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .cyber-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--color-surface-3);
+      border: 1px solid var(--color-border);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 9999px;
+    }
+
+    .cyber-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #94A3B8;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 50%;
+    }
+
+    .cyber-switch input:checked + .cyber-slider {
+      background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%);
+      border-color: #8B5CF6;
+      box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+    }
+
+    .cyber-switch input:checked + .cyber-slider:before {
+      transform: translateX(22px);
+      background-color: #FFFFFF;
+    }
+
+    .password-input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .password-input-wrapper input {
+      padding-right: 42px;
+      width: 100%;
+    }
+
+    .toggle-pass-visibility {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 4px;
+      transition: color 0.15s ease;
+    }
+
+    .toggle-pass-visibility:hover {
+      color: var(--color-text);
+    }
+
+    .profile-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.2) 100%);
+      border: 2px solid rgba(139, 92, 246, 0.5);
+      color: #A78BFA;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      font-weight: 800;
+      box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <%
+    const userProfile = (typeof user !== 'undefined' && user?.profile) ? user.profile : (typeof profile !== 'undefined' ? profile : {});
+    const userEmail = (typeof user !== 'undefined' && user?.email) ? user.email : (userProfile?.email || 'analista@rimubusca.internal');
+    const userNome = userProfile?.nome || userEmail.split('@')[0];
+    const userRole = (userProfile?.role || 'user').toUpperCase();
+    const isAdmin = userProfile?.role === 'admin';
+    const userId = (typeof user !== 'undefined' && user?.id) ? user.id : (userProfile?.id || 'UUID-DESCONHECIDO');
+    const initialLetter = userNome.charAt(0).toUpperCase();
+  %>
+
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <%- include('partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('partials/header') %>
+
+      <main class="app-content">
+        <!-- Título da Página -->
+        <div style="margin-bottom: var(--space-6);">
+          <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="settings" style="color: #A78BFA; width: 28px; height: 28px;"></i>
+            <span>Configurações do Perfil & Sistema</span>
+          </h1>
+          <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+            Gerencie suas credenciais de analista, altere sua senha de acesso e configure as preferências das consultas cadastrais.
+          </p>
+        </div>
+
+        <!-- Hero Card: Perfil do Operador -->
+        <div class="settings-hero">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 18px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div class="profile-avatar">
+                <%= initialLetter %>
+              </div>
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--color-text); margin: 0;">
+                    <%= userNome %>
+                  </h2>
+                  <span class="badge <%= isAdmin ? 'badge-purple' : 'badge-cyan' %>" style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">
+                    <i data-lucide="<%= isAdmin ? 'shield-alert' : 'user-check' %>" style="width: 12px; height: 12px;"></i>
+                    <%= userRole === 'ADMIN' ? 'ADMINISTRADOR' : 'ANALISTA OSINT' %>
+                  </span>
+                  <span class="badge badge-success" style="font-size: 0.72rem;">ATIVO</span>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-text-muted);">
+                  <span><%= userEmail %></span>
+                  <button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="<%= userEmail %>" title="Copiar e-mail" style="padding: 2px 6px;">
+                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Metadados de Sessão -->
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <div style="background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 8px 14px; text-align: right;">
+                <span style="font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase; display: block;">Identificador UUID</span>
+                <span style="font-family: var(--font-mono); font-size: 0.75rem; color: #A78BFA;" title="<%= userId %>">
+                  <%= userId.slice(0, 16) %>...
+                </span>
+              </div>
+
+              <div style="background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 8px 14px; text-align: right;">
+                <span style="font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase; display: block;">Protocolo de Segurança</span>
+                <span style="font-size: 0.75rem; color: #10B981; font-weight: 600; display: flex; align-items: center; gap: 4px; justify-content: flex-end;">
+                  <i data-lucide="lock" style="width: 11px; height: 11px;"></i> JWT / AES-256
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grid Principal de Configurações -->
+        <div class="settings-grid">
+          
+          <!-- Card 1: Preferências de Interface & Consultas (Aqui está a opção do JSON solicitada) -->
+          <div class="card" style="border-top: 3px solid #8B5CF6;">
+            <div class="card-header" style="margin-bottom: var(--space-4);">
+              <h2 style="font-size: 1.125rem; font-weight: 700; color: var(--color-text); margin: 0; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="sliders" style="color: #A78BFA; width: 20px; height: 20px;"></i>
+                <span>Preferências de Consulta & Interface</span>
+              </h2>
+              <p style="font-size: 0.8125rem; color: var(--color-text-muted); margin-top: 4px; margin-bottom: 0;">
+                Ajuste o comportamento visual dos resultados e relatórios gerados.
+              </p>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+              
+              <!-- Item 1: Ativar / Ocultar Dados Brutos (JSON) - PADRÃO: DESATIVADO -->
+              <div class="pref-item">
+                <div class="pref-info">
+                  <div class="pref-title">
+                    <i data-lucide="code" style="width: 16px; height: 16px; color: #A78BFA;"></i>
+                    <span>Exibir Dados Brutos (JSON)</span>
+                  </div>
+                  <div class="pref-desc">
+                    Exibe a gaveta técnica com os dados brutos em JSON no final de cada consulta realizada na Central. Por padrão fica desativado para uma visualização mais limpa, mas você pode ativar quando desejar inspecionar o payload técnico.
+                  </div>
+                </div>
+                <label class="cyber-switch" title="Ativar ou ocultar a seção de dados brutos (JSON)">
+                  <input type="checkbox" id="prefShowRawJson">
+                  <span class="cyber-slider"></span>
+                </label>
+              </div>
+
+              <!-- Item 2: Ativar / Ocultar Google Dorks - PADRÃO: DESATIVADO -->
+              <div class="pref-item">
+                <div class="pref-info">
+                  <div class="pref-title">
+                    <i data-lucide="terminal" style="width: 16px; height: 16px; color: #A78BFA;"></i>
+                    <span>Exibir Google Dorks de Reconhecimento</span>
+                  </div>
+                  <div class="pref-desc">
+                    Exibe os cards com queries avançadas do Google Dorks nos módulos investigativos (Processos, Telefones, E-mails, Domínios, etc.). Por padrão fica desativado (oculto) para uma visualização mais limpa e focada nos dados diretos, mas você pode ativar quando desejar explorar pesquisas externas no Google.
+                  </div>
+                </div>
+                <label class="cyber-switch" title="Ativar ou ocultar a seção de Google Dorks">
+                  <input type="checkbox" id="prefShowGoogleDorks">
+                  <span class="cyber-slider"></span>
+                </label>
+              </div>
+
+              <!-- Item 3: Exportação Automática em Dark Mode -->
+              <div class="pref-item">
+                <div class="pref-info">
+                  <div class="pref-title">
+                    <i data-lucide="moon" style="width: 16px; height: 16px; color: #60A5FA;"></i>
+                    <span>Dossiês e Relatórios em Dark Mode</span>
+                  </div>
+                  <div class="pref-desc">
+                    Mantém a paleta de cores escura e estética cibernética oficial ao gerar e exportar documentos em PDF e HTML.
+                  </div>
+                </div>
+                <label class="cyber-switch" title="Exportar sempre em tema escuro">
+                  <input type="checkbox" id="prefDarkModeReports" checked>
+                  <span class="cyber-slider"></span>
+                </label>
+              </div>
+
+              <!-- Ação de Limpeza de Cache Local -->
+              <div style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                  <strong style="font-size: 0.85rem; color: var(--color-text);">Cache Local & Histórico</strong>
+                  <div style="font-size: 0.75rem; color: var(--color-text-muted);">Limpa filtros e dados temporários armazenados no seu navegador.</div>
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" id="btnLimparCacheLocal" style="color: #F87171; border-color: rgba(239, 68, 68, 0.4);">
+                  <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                  <span>Limpar Cache</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Card 2: Atualização de Senha & Segurança -->
+          <div class="card" style="border-top: 3px solid #10B981;">
+            <div class="card-header" style="margin-bottom: var(--space-4);">
+              <h2 style="font-size: 1.125rem; font-weight: 700; color: var(--color-text); margin: 0; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="key-round" style="color: #10B981; width: 20px; height: 20px;"></i>
+                <span>Atualizar Senha de Acesso</span>
+              </h2>
+              <p style="font-size: 0.8125rem; color: var(--color-text-muted); margin-top: 4px; margin-bottom: 0;">
+                Defina uma senha robusta para proteger sua conta e o acesso às bases de inteligência.
+              </p>
+            </div>
+
+            <form id="formAlterarSenha">
+              <div class="form-group" style="margin-bottom: var(--space-4);">
+                <label for="novaSenha" class="form-label" style="font-weight: 600;">Nova Senha</label>
+                <div class="password-input-wrapper">
+                  <input 
+                    type="password" 
+                    id="novaSenha" 
+                    name="novaSenha" 
+                    class="form-input" 
+                    placeholder="Mínimo de 6 caracteres" 
+                    required 
+                    autocomplete="new-password"
+                  >
+                  <button type="button" class="toggle-pass-visibility" data-target="novaSenha" title="Alternar visibilidade">
+                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group" style="margin-bottom: var(--space-4);">
+                <label for="confirmarSenha" class="form-label" style="font-weight: 600;">Confirmar Nova Senha</label>
+                <div class="password-input-wrapper">
+                  <input 
+                    type="password" 
+                    id="confirmarSenha" 
+                    name="confirmarSenha" 
+                    class="form-input" 
+                    placeholder="Repita a nova senha" 
+                    required 
+                    autocomplete="new-password"
+                  >
+                  <button type="button" class="toggle-pass-visibility" data-target="confirmarSenha" title="Alternar visibilidade">
+                    <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                  </button>
+                </div>
+              </div>
+
+              <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: var(--space-4); display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="shield-check" style="width: 16px; height: 16px; color: #10B981; flex-shrink: 0;"></i>
+                <span>A nova senha entrará em vigor imediatamente para todas as sessões ativas deste operador.</span>
+              </div>
+
+              <button type="submit" class="btn btn-primary" id="btnSalvarSenha" style="width: 100%; font-weight: 600; padding: 11px;">
+                <i data-lucide="check" style="width: 16px; height: 16px;"></i>
+                <span>Salvar Nova Senha</span>
+              </button>
+            </form>
+          </div>
+
+        </div>
+
+        <%- include('partials/footer') %>
+      </main>
+    </div>
+  </div>
+
+  <%- include('partials/bottom-nav') %>
+  <%- include('partials/command-palette') %>
+  <%- include('partials/toast') %>
+
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/historico.js"></script>
+  <script src="/js/main.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const settings = window.rimuSettings;
+
+      // 1. PREFERÊNCIA: EXIBIR DADOS BRUTOS (JSON) - PADRÃO DESATIVADO (false)
+      const toggleShowJson = document.getElementById("prefShowRawJson");
+      if (toggleShowJson) {
+        toggleShowJson.checked = settings ? settings.get("showRawJson", false) : false;
+
+        toggleShowJson.addEventListener("change", (e) => {
+          const isEnabled = e.target.checked;
+          if (settings) {
+            settings.set("showRawJson", isEnabled);
+          } else {
+            localStorage.setItem("rimu_pref_show_raw_json", String(isEnabled));
+          }
+
+          if (window.toast) {
+            window.toast.success(
+              isEnabled
+                ? "Exibição dos Dados Brutos (JSON) ativada nas consultas."
+                : "Dados Brutos (JSON) ficarão ocultos nas consultas."
+            );
+          }
+        });
+      }
+
+      // 2. PREFERÊNCIA: EXIBIR GOOGLE DORKS - PADRÃO DESATIVADO (false)
+      const toggleShowDorks = document.getElementById("prefShowGoogleDorks");
+      if (toggleShowDorks) {
+        toggleShowDorks.checked = settings ? settings.get("showGoogleDorks", false) : false;
+
+        toggleShowDorks.addEventListener("change", (e) => {
+          const isEnabled = e.target.checked;
+          if (settings) {
+            settings.set("showGoogleDorks", isEnabled);
+          } else {
+            localStorage.setItem("rimu_pref_show_google_dorks", String(isEnabled));
+          }
+
+          if (window.toast) {
+            window.toast.success(
+              isEnabled
+                ? "Google Dorks ativados nas consultas e módulos investigativos."
+                : "Google Dorks ficarão ocultos nas consultas."
+            );
+          }
+        });
+      }
+
+      // 3. PREFERÊNCIA: RELATÓRIOS EM DARK MODE
+      const toggleDarkMode = document.getElementById("prefDarkModeReports");
+      if (toggleDarkMode) {
+        toggleDarkMode.checked = settings ? settings.get("darkModeReports", true) : true;
+        toggleDarkMode.addEventListener("change", (e) => {
+          const isEnabled = e.target.checked;
+          if (settings) {
+            settings.set("darkModeReports", isEnabled);
+          } else {
+            localStorage.setItem("rimu_pref_dark_reports", String(isEnabled));
+          }
+          window.toast?.success(isEnabled ? "Dossiês configurados para Dark Mode." : "Tema padrão de relatórios atualizado.");
+        });
+      }
+
+      // 4. LIMPAR CACHE LOCAL (Preserva rimubuscas_settings)
+      const btnLimparCache = document.getElementById("btnLimparCacheLocal");
+      if (btnLimparCache) {
+        btnLimparCache.addEventListener("click", () => {
+          const savedSettings = localStorage.getItem("rimubuscas_settings");
+
+          // Mantém as configurações centralizadas e limpa o resto
+          localStorage.clear();
+          if (savedSettings) {
+            localStorage.setItem("rimubuscas_settings", savedSettings);
+          }
+
+          window.toast?.success("Cache local de buscas limpo com sucesso! Preferências preservadas.");
+        });
+      }
+
+      // 4. ALTERNAR VISIBILIDADE DE SENHA
+      document.querySelectorAll(".toggle-pass-visibility").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const targetId = btn.getAttribute("data-target");
+          const input = document.getElementById(targetId);
+          if (!input) return;
+
+          const isPassword = input.type === "password";
+          input.type = isPassword ? "text" : "password";
+          btn.innerHTML = `<i data-lucide="${isPassword ? 'eye-off' : 'eye'}" style="width: 16px; height: 16px;"></i>`;
+          if (window.lucide) window.lucide.createIcons({ root: btn });
+        });
+      });
+
+      // 5. ATUALIZAR SENHA
+      const formAlterarSenha = document.getElementById("formAlterarSenha");
+      const btnSalvarSenha = document.getElementById("btnSalvarSenha");
+
+      if (formAlterarSenha && btnSalvarSenha) {
+        formAlterarSenha.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const novaSenha = document.getElementById("novaSenha").value;
+          const confirmarSenha = document.getElementById("confirmarSenha").value;
+
+          if (novaSenha !== confirmarSenha) {
+            window.toast?.error("As senhas digitadas não coincidem.");
+            return;
+          }
+
+          if (novaSenha.length < 6) {
+            window.toast?.error("A senha deve conter no mínimo 6 caracteres.");
+            return;
+          }
+
+          btnSalvarSenha.disabled = true;
+          const originalHTML = btnSalvarSenha.innerHTML;
+          btnSalvarSenha.innerHTML = `
+            <i data-lucide="loader-2" style="width: 16px; height: 16px; animation: spin 1s linear infinite;"></i>
+            <span>Atualizando senha...</span>
+          `;
+          if (window.lucide) window.lucide.createIcons({ root: btnSalvarSenha });
+
+          try {
+            const res = await window.api.post("/api/configuracoes/senha", {
+              novaSenha,
+              confirmarSenha,
+            });
+
+            window.toast?.success(res.message || "Senha atualizada com sucesso!");
+            formAlterarSenha.reset();
+          } catch (err) {
+            console.error(err);
+            window.toast?.error(err.message || "Falha ao atualizar senha.");
+          } finally {
+            btnSalvarSenha.disabled = false;
+            btnSalvarSenha.innerHTML = originalHTML;
+            if (window.lucide) window.lucide.createIcons({ root: btnSalvarSenha });
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

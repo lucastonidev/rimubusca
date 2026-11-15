@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+  <style>
+    .fin-results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: var(--space-5);
+      margin-bottom: var(--space-5);
+    }
+
+    @media (max-width: 640px) {
+      .fin-results-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .fin-textarea {
+      width: 100%;
+      padding: 14px 16px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      resize: vertical;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .fin-textarea:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-glow);
+    }
+
+    .fin-row-kv {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--color-border);
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+
+    .fin-row-kv:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .fin-label {
+      font-size: 0.78rem;
+      color: var(--color-text-muted);
+      flex-shrink: 0;
+    }
+
+    .fin-val {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--color-text);
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .fin-val-mono {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .fin-demo-chip {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 5px 11px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .fin-demo-chip:hover {
+      border-color: var(--color-primary);
+      color: var(--color-text);
+      background: rgba(139, 92, 246, 0.08);
+    }
+
+    .fin-tlv-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .fin-tlv-table th {
+      text-align: left;
+      padding: 8px 10px;
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .fin-tlv-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+      vertical-align: top;
+    }
+
+    .fin-alert-box {
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface-2);
+    }
+
+    .modal-relatorio-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 6, 9, 0.88);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-relatorio-dialog {
+      width: 100%;
+      max-width: 1040px;
+      max-height: 92vh;
+      background: #080B11;
+      border: 1px solid #1E2538;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+    }
+
+    .modal-relatorio-header {
+      padding: 16px 20px;
+      background: #0D111A;
+      border-bottom: 1px solid #1E2538;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .modal-relatorio-body {
+      padding: 24px;
+      overflow-y: auto;
+      background: #080B11;
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <%- include('../../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Cabeçalho -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-5);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+              <span class="badge badge-purple">Forense Financeira BR</span>
+              <span class="badge" style="background: rgba(16, 185, 129, 0.14); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3);">
+                100% Determinístico &bull; Zero Custo de API
+              </span>
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: 800; color: var(--color-text); margin: 0;">
+              Decodificador PIX BR Code &amp; Auditoria de Boleto FEBRABAN
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px; max-width: 780px;">
+              Dissecação forense de payloads EMVCo/BACEN (PIX Copia e Cola estático ou dinâmico com verificação CRC16-CCITT) e linhas digitáveis / códigos de barras FEBRABAN (bancários 47d, convênios 48d e cálculo com reset de fator 2025), com alertas antifraude e pivô instantâneo OSINT.
+            </p>
+          </div>
+        </div>
+
+        <!-- Caixa de Entrada -->
+        <div class="card" style="margin-bottom: var(--space-5); border-top: 3px solid var(--color-primary);">
+          <form id="formFinanceiro">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+              <label for="inputFinanceiro" style="font-size: 0.875rem; font-weight: 600; color: var(--color-text);">
+                Cole o código PIX Copia e Cola ou Linha Digitável / Código de Barras do Boleto:
+              </label>
+              <span id="finTipoDetectadoBadge" class="badge badge-dark" style="font-size: 0.72rem;">Aguardando entrada</span>
+            </div>
+
+            <textarea
+              id="inputFinanceiro"
+              class="fin-textarea"
+              rows="3"
+              placeholder="Ex: 00020126360014br.gov.bcb.pix0114000000000001915204000053039865802BR5914BANCO DO BRASIL6008BRASILIA62070503***6304ABCD  ou  34191.09008 63571.277308 71444.640008 1 13500000025000"
+              autocomplete="off"
+              spellcheck="false"
+            ></textarea>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4);">
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+                <span style="font-size: 0.75rem; color: var(--color-text-dim);">Amostras rápidas:</span>
+                <button type="button" class="fin-demo-chip" data-demo="pix-estatico">
+                  <i data-lucide="qr-code" style="width: 13px; height: 13px; color: #34D399;"></i>
+                  PIX Estático (CNPJ)
+                </button>
+                <button type="button" class="fin-demo-chip" data-demo="pix-dinamico">
+                  <i data-lucide="link-2" style="width: 13px; height: 13px; color: #38BDF8;"></i>
+                  PIX Dinâmico (URL)
+                </button>
+                <button type="button" class="fin-demo-chip" data-demo="pix-adulterado">
+                  <i data-lucide="shield-alert" style="width: 13px; height: 13px; color: #F87171;"></i>
+                  PIX Adulterado (CRC Erro)
+                </button>
+                <button type="button" class="fin-demo-chip" data-demo="boleto-banco">
+                  <i data-lucide="barcode" style="width: 13px; height: 13px; color: #A78BFA;"></i>
+                  Boleto Bancário (47d)
+                </button>
+                <button type="button" class="fin-demo-chip" data-demo="boleto-convenio">
+                  <i data-lucide="landmark" style="width: 13px; height: 13px; color: #FBBF24;"></i>
+                  Guia Tributo/Convênio (48d)
+                </button>
+              </div>
+
+              <div style="display: flex; gap: 8px;">
+                <button type="button" id="btnLimparFin" class="btn btn-secondary btn-sm">
+                  Limpar
+                </button>
+                <button type="submit" id="btnAnalisarFin" class="btn btn-primary">
+                  <i data-lucide="scan-line" style="width: 16px; height: 16px;"></i>
+                  Decodificar &amp; Auditar
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Erro -->
+        <div id="finErroBox" style="display: none; margin-bottom: var(--space-5);">
+          <div class="card" style="border-color: rgba(239, 68, 68, 0.4); background: var(--color-error-bg);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i data-lucide="alert-triangle" style="color: var(--color-error); width: 20px; height: 20px;"></i>
+              <span id="finErroMsg" style="color: #FCA5A5; font-size: 0.875rem;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área de Resultados -->
+        <div id="finResultados" style="display: none;">
+          <!-- Barra Resumo & Exportação -->
+          <div class="card" style="margin-bottom: var(--space-5); border-left: 4px solid #10B981;" id="finTopBanner">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+                  <span id="finResModalidadeBadge" class="badge badge-purple">PIX BR CODE</span>
+                  <span id="finResIntegridadeBadge" class="badge badge-dark">-</span>
+                  <span id="finResRiscoBadge" class="badge badge-dark">-</span>
+                </div>
+                <h2 id="finResTitulo" style="font-size: 1.25rem; font-weight: 800; color: var(--color-text); margin: 0;">-</h2>
+                <div id="finResSubtitulo" style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 4px;">-</div>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <div style="text-align: right; margin-right: 8px;">
+                  <div style="font-size: 0.72rem; color: var(--color-text-dim); text-transform: uppercase;">Valor Identificado</div>
+                  <div id="finResValorHero" style="font-size: 1.35rem; font-weight: 800; color: #34D399; font-family: var(--font-mono);">-</div>
+                </div>
+                <button type="button" id="btnGerarRelatorioFin" class="btn btn-primary btn-sm" style="background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); border-color: #8B5CF6;">
+                  <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+                  Gerar Relatório
+                </button>
+                <button type="button" id="btnCopiarResumoFin" class="btn btn-outline btn-sm">
+                  <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  Copiar Resumo
+                </button>
+              </div>
+            </div>
+
+            <!-- Botões de Pivô OSINT -->
+            <div id="finPivotActions" style="display: none; margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-border); flex-wrap: wrap; gap: 8px; align-items: center;">
+              <span style="font-size: 0.75rem; color: var(--color-text-dim); margin-right: 4px;">Pivô OSINT Imediato:</span>
+              <div id="finPivotButtonsWrap" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            </div>
+          </div>
+
+          <!-- Alertas Antifraude -->
+          <div id="finAlertasContainer" style="margin-bottom: var(--space-5);"></div>
+
+          <!-- Cards Detalhados -->
+          <div class="fin-results-grid" id="finCardsGrid"></div>
+
+          <!-- Tabela Técnica TLV / Segmentos -->
+          <div class="card" style="margin-bottom: var(--space-5);">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="binary" style="color: var(--color-primary);"></i>
+                <span id="finTabelaTitulo">Estrutura Técnica &amp; Campos Extraídos</span>
+              </div>
+              <span id="finTabelaBadge" class="badge badge-dark">-</span>
+            </div>
+            <div class="card-body" style="overflow-x: auto;" id="finTabelaContainer"></div>
+          </div>
+        </div>
+      </main>
+
+      <%- include('../../partials/footer') %>
+    </div>
+  </div>
+
+  <!-- Modal Relatório Dark -->
+  <div id="modalRelatorioFin" class="modal-relatorio-backdrop" role="dialog" aria-modal="true">
+    <div class="modal-relatorio-dialog">
+      <div class="modal-relatorio-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); display: flex; align-items: center; justify-content: center; color: #FFFFFF;">
+            <i data-lucide="file-text" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div>
+            <h2 style="font-size: 1.05rem; font-weight: 700; color: #FFFFFF; margin: 0;">
+              Dossiê Forense Financeiro — RimuBusca OSINT
+            </h2>
+            <p style="font-size: 0.75rem; color: #94A3B8; margin: 2px 0 0;">
+              Laudo determinístico Dark Mode pronto para exportação em PDF e HTML.
+            </p>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnPdfFin" class="btn btn-primary btn-sm">Exportar PDF</button>
+          <button type="button" id="btnHtmlFin" class="btn btn-outline btn-sm" style="border-color: rgba(16, 185, 129, 0.4); color: #34D399;">Baixar HTML</button>
+          <button type="button" id="btnFecharModalFin" class="btn btn-ghost btn-sm" style="color: #94A3B8;">
+            <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+          </button>
+        </div>
+      </div>
+      <div id="modalRelatorioFinBody" class="modal-relatorio-body"></div>
+    </div>
+  </div>
+
+  <%- include('../../partials/bottom-nav') %>
+  <%- include('../../partials/command-palette') %>
+  <%- include('../../partials/toast') %>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/osint-dark-report.js"></script>
+  <script type="module" src="/js/financeiro.js"></script>
+</body>
+</html>

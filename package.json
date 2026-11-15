@@ -1,0 +1,41 @@
+{
+  "name": "rimubusca",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RimuBusca - Plataforma Interna e Privada de Investigação OSINT",
+  "type": "module",
+  "main": "api/index.js",
+  "scripts": {
+    "start:dev": "npx nodemon --config nodemon.json src/dev.js",
+    "start:start": "node src/dev.js",
+    "create-admin": "node scripts/criar-admin.js",
+    "tool:patrickuser": "patrickuser"
+  },
+  "keywords": [
+    "osint",
+    "investigacao",
+    "supabase",
+    "express",
+    "ejs",
+    "security"
+  ],
+  "author": "RimuBusca Core Team",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.6",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "diablinda": "^1.0.1",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "patrickuser": "^1.1.2",
+    "rimuhunt": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

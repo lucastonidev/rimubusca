@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../partials/head') %>
+  <style>
+    .user-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .user-table th {
+      background: var(--color-surface-2);
+      padding: var(--space-3) var(--space-4);
+      text-align: left;
+      font-weight: 600;
+      color: var(--color-text-dim);
+      border-bottom: 1px solid var(--color-border);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    .user-table td {
+      padding: var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+      vertical-align: middle;
+    }
+
+    .user-table tr:hover td {
+      background: rgba(139, 92, 246, 0.03);
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: var(--space-2);
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <%- include('../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../partials/header') %>
+
+      <main class="app-content">
+        <!-- Topo da Gestão de Usuários & Controles Administrativos -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-4);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="badge badge-purple">Administração</span>
+              <span class="badge badge-red">Controle de Acesso & Orçamentos</span>
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); margin: 0;">
+              Gestão de Operadores & Saldo da Carteira
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+              Provisione contas, gerencie o saldo individual de cada operador, limite diário de requisições e a carteira compartilhada.
+            </p>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary" id="btnLimparCache" title="Limpar cache do Supabase com expires_at expirado">
+              <i data-lucide="trash" style="width: 16px; height: 16px;"></i>
+              Limpar Cache
+            </button>
+
+            <button type="button" class="btn btn-secondary" id="btnAbrirModalCarteira" title="Configurar saldo global da API Pay-per-Use">
+              <i data-lucide="coins" style="width: 16px; height: 16px; color: #F59E0B;"></i>
+              Carteira Global
+            </button>
+
+            <button type="button" class="btn btn-primary" id="btnAbrirModalNovoUsuario">
+              <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
+              Novo Operador
+            </button>
+          </div>
+        </div>
+
+        <!-- Banner Informativo da Carteira Global -->
+        <% if (typeof carteira !== 'undefined') { %>
+          <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i data-lucide="wallet" style="width: 20px; height: 20px; color: #10B981;"></i>
+              <span style="font-size: 0.875rem; color: var(--color-text);">
+                <strong>Saldo Global Ativo:</strong> <%= carteira.saldoAtualFormatado || 'R$ 30,00' %> |
+                <strong>Teto Mensal:</strong> <%= carteira.orcamentoMensalFormatado || 'R$ 30,00' %>
+              </span>
+            </div>
+            <span style="font-size: 0.75rem; color: var(--color-text-dim);">Sincronizado via Supabase (Tabela hub_carteira)</span>
+          </div>
+        <% } %>
+
+        <!-- Tabela de Usuários -->
+        <div class="card" style="padding: 0; overflow-x: auto;">
+          <table class="user-table">
+            <thead>
+              <tr>
+                <th>Operador</th>
+                <th>E-mail</th>
+                <th>Papel</th>
+                <th>Status</th>
+                <th>Saldo Carteira</th>
+                <th>Limite Diário</th>
+                <th>Criado Em</th>
+                <th style="text-align: right;">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (usuarios && usuarios.length > 0) { %>
+                <% usuarios.forEach(u => { %>
+                  <tr data-user-id="<%= u.id %>">
+                    <td>
+                      <div style="display: flex; align-items: center; gap: var(--space-3);">
+                        <div style="width: 34px; height: 34px; border-radius: var(--radius-full); background: var(--color-surface-3); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--color-primary); border: 1px solid var(--color-border);">
+                          <%= u.nome ? u.nome.charAt(0).toUpperCase() : 'O' %>
+                        </div>
+                        <div>
+                          <div style="font-weight: 600; color: var(--color-text);"><%= u.nome %></div>
+                          <% if (u.id === user.id) { %>
+                            <span style="font-size: 0.7rem; color: var(--color-primary);">(Você)</span>
+                          <% } %>
+                        </div>
+                      </div>
+                    </td>
+                    <td style="font-family: var(--font-mono); color: var(--color-text-dim);"><%= u.email %></td>
+                    <td>
+                      <span class="badge <%= u.role === 'admin' ? 'badge-red' : 'badge-purple' %>">
+                        <%= u.role.toUpperCase() %>
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge <%= u.ativo ? 'badge-dark' : 'badge-red' %>" style="<%= u.ativo ? 'color: var(--color-success); border-color: rgba(34, 197, 94, 0.3);' : '' %>">
+                        <%= u.ativo ? 'ATIVO' : 'BLOQUEADO' %>
+                      </span>
+                    </td>
+                    <td>
+                      <span style="font-weight: 700; color: #10B981; font-family: var(--font-mono);">
+                        <%= Number(u.saldo_carteira ?? 30).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) %>
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge badge-purple" style="font-family: var(--font-mono); font-size: 0.75rem;">
+                        <%= u.limite_diario ?? 100 %> req/dia
+                      </span>
+                    </td>
+                    <td style="font-size: 0.8rem; color: var(--color-text-dim);">
+                      <%= new Date(u.criado_em).toLocaleDateString('pt-BR') %>
+                    </td>
+                    <td>
+                      <div class="actions-cell">
+                        <!-- Ajustar Saldo / Limite Diário -->
+                        <button
+                          type="button"
+                          class="btn btn-secondary btn-sm btn-editar-saldo"
+                          data-id="<%= u.id %>"
+                          data-nome="<%= u.nome %>"
+                          data-email="<%= u.email %>"
+                          data-saldo="<%= u.saldo_carteira ?? 30.00 %>"
+                          data-limite="<%= u.limite_diario ?? 100 %>"
+                          title="Ajustar Saldo e Limite Diário"
+                        >
+                          <i data-lucide="wallet" style="width: 14px; height: 14px; color: #10B981;"></i>
+                        </button>
+
+                        <% if (u.id !== user.id) { %>
+                          <!-- Alternar Ativo/Inativo -->
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-sm btn-toggle-status"
+                            data-id="<%= u.id %>"
+                            data-ativo="<%= u.ativo %>"
+                            title="<%= u.ativo ? 'Desativar operador' : 'Ativar operador' %>"
+                          >
+                            <i data-lucide="<%= u.ativo ? 'user-x' : 'user-check' %>" style="width: 14px; height: 14px;"></i>
+                          </button>
+
+                          <!-- Alternar Role -->
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-sm btn-toggle-role"
+                            data-id="<%= u.id %>"
+                            data-role="<%= u.role %>"
+                            title="Alternar entre Admin e User"
+                          >
+                            <i data-lucide="shield" style="width: 14px; height: 14px;"></i>
+                          </button>
+
+                          <!-- Excluir -->
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-sm btn-excluir-user"
+                            data-id="<%= u.id %>"
+                            data-email="<%= u.email %>"
+                            style="color: var(--color-secondary);"
+                            title="Excluir operador"
+                          >
+                            <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                          </button>
+                        <% } %>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } else { %>
+                <tr>
+                  <td colspan="8" style="text-align: center; padding: var(--space-6); color: var(--color-text-dim);">
+                    Nenhum operador cadastrado além do administrador padrão.
+                  </td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </main>
+
+      <%- include('../partials/footer') %>
+    </div>
+  </div>
+
+  <%- include('../partials/bottom-nav') %>
+  <%- include('../partials/command-palette') %>
+  <%- include('../partials/toast') %>
+
+  <!-- Modal 1: Novo Operador -->
+  <div id="modalNovoUsuario" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4);">
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 100%; max-width: 480px; overflow: hidden; box-shadow: var(--shadow-md);">
+      <div style="padding: var(--space-4); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 700; color: var(--color-text);">Cadastrar Novo Operador</span>
+        <button type="button" class="btn-fechar-modal" data-modal="modalNovoUsuario" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <form id="formNovoUsuario" style="padding: var(--space-4);">
+        <div style="margin-bottom: var(--space-3);">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: 4px;">Nome Completo</label>
+          <input type="text" id="novoNome" class="input" placeholder="Ex: Analista Gabriel Souza" required />
+        </div>
+
+        <div style="margin-bottom: var(--space-3);">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: 4px;">E-mail Corporativo</label>
+          <input type="email" id="novoEmail" class="input" placeholder="operador@rimubusca.org" required />
+        </div>
+
+        <div style="margin-bottom: var(--space-3);">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: 4px;">Senha Temporária (Mínimo 8 dígitos)</label>
+          <input type="password" id="novoPassword" class="input" placeholder="••••••••••••" required />
+        </div>
+
+        <div style="margin-bottom: var(--space-4);">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: 4px;">Papel / Permissões</label>
+          <select id="novoRole" class="input" style="background: var(--color-surface-2);">
+            <option value="user">Operador (Acesso aos Módulos OSINT)</option>
+            <option value="admin">Administrador (Acesso Total + Painel Admin)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-2);">
+          <button type="button" class="btn btn-secondary btn-fechar-modal" data-modal="modalNovoUsuario">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSalvarUsuario">Criar Conta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Ajustar Saldo da Carteira & Limite Diário do Operador -->
+  <div id="modalEditarSaldo" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4);">
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 100%; max-width: 480px; overflow: hidden; box-shadow: var(--shadow-md);">
+      <div style="padding: var(--space-4); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <span style="font-weight: 700; color: var(--color-text);">Ajustar Saldo e Limites</span>
+          <div style="font-size: 0.75rem; color: var(--color-text-dim);" id="labelOperadorSaldo">Operador</div>
+        </div>
+        <button type="button" class="btn-fechar-modal" data-modal="modalEditarSaldo" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <form id="formEditarSaldo" style="padding: var(--space-4);">
+        <input type="hidden" id="editUserId" />
+
+        <div style="margin-bottom: var(--space-3);">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: 4px;">
+            Saldo da Carteira (R$)
+          </label>
+          <div style="position: relative;">
+            <input type="number" id="editSaldoCarteira" class="input" step="any" min="0" required style="font-family: var(--font-mono); font-weight: 600; color: #10B981;" />
+          </div>
+          <span style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 2px; display: block;">
+            Saldo disponível para uso individual nas consultas do operador.
+          </span>
+        </div>
+
+        <div style="margin-bottom: var(--space-4);">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: 4px;">
+            Limite Diário de Consultas (Puxar Dados)
+          </label>
+          <input type="number" id="editLimiteDiario" class="input" min="1" step="1" required style="font-family: var(--font-mono);" />
+          <span style="font-size: 0.7rem; color: var(--color-text-muted); margin-top: 2px; display: block;">
+            Quantidade máxima de requisições cadastrais permitidas por dia. Padrão: 100.
+          </span>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-2);">
+          <button type="button" class="btn btn-secondary btn-fechar-modal" data-modal="modalEditarSaldo">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSalvarSaldo">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3: Configurar Carteira Global Pay-per-Use -->
+  <div id="modalCarteiraGlobal" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4);">
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 100%; max-width: 480px; overflow: hidden; box-shadow: var(--shadow-md);">
+      <div style="padding: var(--space-4); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 700; color: var(--color-text);">Configuração da Carteira Global</span>
+        <button type="button" class="btn-fechar-modal" data-modal="modalCarteiraGlobal" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+
+      <form id="formCarteiraGlobal" style="padding: var(--space-4);">
+        <div style="margin-bottom: var(--space-3);">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: 4px;">
+            Saldo Global Atual (R$)
+          </label>
+          <input type="number" id="globalSaldoAtual" class="input" step="any" min="0" required value="<%= typeof carteira !== 'undefined' ? Number(carteira.saldoAtual || 0).toFixed(2) : '30.00' %>" style="font-family: var(--font-mono); font-weight: 600; color: #10B981;" />
+        </div>
+
+        <div style="margin-bottom: var(--space-4);">
+          <label style="font-size: 0.8rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: 4px;">
+            Teto / Orçamento Mensal (R$)
+          </label>
+          <input type="number" id="globalOrcamentoMensal" class="input" step="any" min="0" required value="<%= typeof carteira !== 'undefined' ? Number(carteira.orcamentoMensal || 0).toFixed(2) : '30.00' %>" style="font-family: var(--font-mono);" />
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: var(--space-2);">
+          <button type="button" class="btn btn-secondary btn-fechar-modal" data-modal="modalCarteiraGlobal">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSalvarCarteiraGlobal">Atualizar Carteira</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Modais
+      const modalNovoUsuario = document.getElementById('modalNovoUsuario');
+      const modalEditarSaldo = document.getElementById('modalEditarSaldo');
+      const modalCarteiraGlobal = document.getElementById('modalCarteiraGlobal');
+
+      // Botões para abrir modais
+      document.getElementById('btnAbrirModalNovoUsuario')?.addEventListener('click', () => {
+        modalNovoUsuario.style.display = 'flex';
+      });
+
+      document.getElementById('btnAbrirModalCarteira')?.addEventListener('click', () => {
+        modalCarteiraGlobal.style.display = 'flex';
+      });
+
+      // Fechamento genérico de modais
+      document.querySelectorAll('.btn-fechar-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const modalId = btn.dataset.modal;
+          if (modalId) {
+            const m = document.getElementById(modalId);
+            if (m) m.style.display = 'none';
+          }
+        });
+      });
+
+      // 1. Limpeza de Cache Expirado
+      const btnLimparCache = document.getElementById('btnLimparCache');
+      btnLimparCache?.addEventListener('click', async () => {
+        if (!confirm('Deseja limpar todos os registros de cache expirados do banco e da memória?')) return;
+
+        btnLimparCache.disabled = true;
+        try {
+          const res = await window.api.post('/api/admin/cache/limpar', {});
+          if (res.success) {
+            window.toast?.success(res.message || 'Cache limpo com sucesso!');
+          } else {
+            window.toast?.error(res.error || 'Falha ao limpar cache.');
+          }
+        } catch (err) {
+          window.toast?.error(err.message || 'Erro de comunicação.');
+        } finally {
+          btnLimparCache.disabled = false;
+        }
+      });
+
+      // 2. Abrir Modal de Saldo / Limite para um Operador
+      document.querySelectorAll('.btn-editar-saldo').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const userId = btn.dataset.id;
+          const nome = btn.dataset.nome || 'Operador';
+          const email = btn.dataset.email || '';
+          const saldo = btn.dataset.saldo || '30.00';
+          const limite = btn.dataset.limite || '100';
+
+          document.getElementById('editUserId').value = userId;
+          document.getElementById('labelOperadorSaldo').textContent = `${nome} (${email})`;
+          document.getElementById('editSaldoCarteira').value = parseFloat(saldo).toFixed(2);
+          document.getElementById('editLimiteDiario').value = parseInt(limite, 10);
+
+          modalEditarSaldo.style.display = 'flex';
+        });
+      });
+
+      // Helper para conversão de números decimais tolerante a vírgula/ponto
+      function parseDecimalInput(val, fallback = 0) {
+        if (val === undefined || val === null || val === '') return fallback;
+        const s = String(val).trim().replace(',', '.');
+        const num = parseFloat(s);
+        return isNaN(num) ? fallback : num;
+      }
+
+      // 3. Submeter Ajuste de Saldo / Limite
+      const formEditarSaldo = document.getElementById('formEditarSaldo');
+      const btnSalvarSaldo = document.getElementById('btnSalvarSaldo');
+      formEditarSaldo?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        btnSalvarSaldo.disabled = true;
+
+        const userId = document.getElementById('editUserId').value;
+        const saldo_carteira = parseDecimalInput(document.getElementById('editSaldoCarteira').value, 0);
+        const limite_diario = Math.max(1, parseInt(document.getElementById('editLimiteDiario').value, 10) || 100);
+
+        try {
+          const res = await window.api.put(`/api/admin/usuarios/${userId}/saldo`, {
+            saldo_carteira,
+            limite_diario,
+          });
+
+          if (res.success) {
+            window.toast?.success('Saldo e limites atualizados com sucesso!');
+            modalEditarSaldo.style.display = 'none';
+            setTimeout(() => window.location.reload(), 600);
+          } else {
+            window.toast?.error(res.error || 'Falha ao atualizar dados.');
+          }
+        } catch (err) {
+          window.toast?.error(err.message || 'Erro de comunicação.');
+        } finally {
+          btnSalvarSaldo.disabled = false;
+        }
+      });
+
+      // 4. Submeter Ajuste de Carteira Global
+      const formCarteiraGlobal = document.getElementById('formCarteiraGlobal');
+      const btnSalvarCarteiraGlobal = document.getElementById('btnSalvarCarteiraGlobal');
+      formCarteiraGlobal?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        btnSalvarCarteiraGlobal.disabled = true;
+
+        const saldo_atual = parseDecimalInput(document.getElementById('globalSaldoAtual').value, 0);
+        const orcamento_mensal = parseDecimalInput(document.getElementById('globalOrcamentoMensal').value, 30);
+
+        try {
+          const res = await window.api.put('/api/admin/carteira', {
+            saldo_atual,
+            orcamento_mensal,
+          });
+
+          if (res.success) {
+            window.toast?.success('Carteira global atualizada com sucesso!');
+            modalCarteiraGlobal.style.display = 'none';
+            setTimeout(() => window.location.reload(), 600);
+          } else {
+            window.toast?.error(res.error || 'Falha ao atualizar carteira global.');
+          }
+        } catch (err) {
+          window.toast?.error(err.message || 'Erro de comunicação.');
+        } finally {
+          btnSalvarCarteiraGlobal.disabled = false;
+        }
+      });
+
+      // 5. Submeter Novo Usuário
+      const formNovoUsuario = document.getElementById('formNovoUsuario');
+      const btnSalvarUsuario = document.getElementById('btnSalvarUsuario');
+      formNovoUsuario?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        btnSalvarUsuario.disabled = true;
+
+        const nome = document.getElementById('novoNome').value.trim();
+        const email = document.getElementById('novoEmail').value.trim();
+        const password = document.getElementById('novoPassword').value;
+        const role = document.getElementById('novoRole').value;
+
+        try {
+          const res = await window.api.post('/api/admin/usuarios/criar', { nome, email, password, role });
+          if (res.success) {
+            window.toast?.success('Operador provisionado com sucesso!');
+            setTimeout(() => window.location.reload(), 800);
+          } else {
+            window.toast?.error(res.error || 'Falha ao criar operador.');
+          }
+        } catch (err) {
+          window.toast?.error(err.message || 'Erro de comunicação.');
+        } finally {
+          btnSalvarUsuario.disabled = false;
+        }
+      });
+
+      // 6. Alternar Status Ativo / Inativo
+      document.querySelectorAll('.btn-toggle-status').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const statusAtual = btn.dataset.ativo === 'true';
+          const novoStatus = !statusAtual;
+
+          if (!confirm(`Deseja realmente ${novoStatus ? 'ativar' : 'bloquear'} este operador?`)) return;
+
+          try {
+            const res = await window.api.put(`/api/admin/usuarios/${id}/status`, { ativo: novoStatus });
+            if (res.success) {
+              window.toast?.success(res.message);
+              setTimeout(() => window.location.reload(), 600);
+            } else {
+              window.toast?.error(res.error || 'Erro ao alterar status.');
+            }
+          } catch (err) {
+            window.toast?.error(err.message);
+          }
+        });
+      });
+
+      // 7. Alternar Role
+      document.querySelectorAll('.btn-toggle-role').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const roleAtual = btn.dataset.role;
+          const novaRole = roleAtual === 'admin' ? 'user' : 'admin';
+
+          if (!confirm(`Deseja alterar o privilégio deste usuário para ${novaRole.toUpperCase()}?`)) return;
+
+          try {
+            const res = await window.api.put(`/api/admin/usuarios/${id}/role`, { role: novaRole });
+            if (res.success) {
+              window.toast?.success(res.message);
+              setTimeout(() => window.location.reload(), 600);
+            } else {
+              window.toast?.error(res.error || 'Erro ao alterar papel.');
+            }
+          } catch (err) {
+            window.toast?.error(err.message);
+          }
+        });
+      });
+
+      // 8. Excluir Usuário
+      document.querySelectorAll('.btn-excluir-user').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          const email = btn.dataset.email;
+
+          if (!confirm(`ATENÇÃO: Deseja excluir permanentemente o operador ${email}? Esta ação não pode ser desfeita.`)) return;
+
+          try {
+            const res = await window.api.delete(`/api/admin/usuarios/${id}`);
+            if (res.success) {
+              window.toast?.success('Usuário removido com sucesso!');
+              setTimeout(() => window.location.reload(), 600);
+            } else {
+              window.toast?.error(res.error || 'Erro ao remover usuário.');
+            }
+          } catch (err) {
+            window.toast?.error(err.message);
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

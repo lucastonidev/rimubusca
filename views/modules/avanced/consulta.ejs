@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+
+  <style>
+    .consulta-box {
+      background: radial-gradient(circle at 90% 10%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+                  var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Barra de Seleção de Tipos / Abas */
+    .tipo-tabs-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-bottom: var(--space-5);
+      padding-bottom: var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .tipo-tab-btn {
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 7px 14px;
+      border-radius: var(--radius-md);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .tipo-tab-btn:hover {
+      background-color: var(--color-surface-3);
+      color: var(--color-text);
+      border-color: rgba(139, 92, 246, 0.3);
+    }
+
+    .tipo-tab-btn.active {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(239, 68, 68, 0.15) 100%);
+      border-color: #8B5CF6;
+      color: #FFFFFF;
+      font-weight: 600;
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+    }
+
+    .tipo-tab-btn.active i {
+      color: #A78BFA;
+    }
+
+    .consulta-input-row {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-2);
+    }
+
+    .consulta-input-field {
+      flex: 1;
+      padding: 12px 18px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 1.0625rem;
+      font-family: var(--font-mono);
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .consulta-input-field:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-glow);
+      background-color: var(--color-surface);
+    }
+
+    .consulta-demo-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .demo-consulta-btn {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .demo-consulta-btn:hover {
+      background: var(--color-surface-3);
+      color: #C4B5FD;
+      border-color: rgba(139, 92, 246, 0.4);
+    }
+
+    @media (max-width: 640px) {
+      .consulta-input-row {
+        flex-direction: column;
+      }
+    }
+
+    /* ============================================================== */
+    /* MODAL DO RELATÓRIO / DOSSIÊ DARK OSINT                        */
+    /* ============================================================== */
+    .modal-relatorio-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 7, 13, 0.88);
+      backdrop-filter: blur(8px);
+      z-index: var(--z-modal, 9999);
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .modal-relatorio-dialog {
+      background: #080B11;
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 980px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(139, 92, 246, 0.15);
+      overflow: hidden;
+    }
+
+    .modal-relatorio-header {
+      padding: var(--space-4) var(--space-6);
+      background: #0D111A;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .modal-relatorio-body {
+      padding: var(--space-6);
+      overflow-y: auto;
+      flex: 1;
+      background: #080B11;
+      color: #E2E8F0;
+    }
+
+    /* ============================================================== */
+    /* ESTILOS DE IMPRESSÃO DARK MODE OSINT (@media print)            */
+    /* Mantém tema escuro autêntico e isola 100% o relatório          */
+    /* ============================================================== */
+    @media print {
+      @page {
+        margin: 8mm;
+        size: A4 portrait;
+        background: #080B11 !important;
+      }
+
+      *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+
+      html, body {
+        background-color: #080B11 !important;
+        background: #080B11 !important;
+        color: #F1F5F9 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif) !important;
+      }
+
+      /* OCULTA TOTALMENTE O SITE INTEIRO (LAYOUT, SIDEBAR, BUSCA E RESULTADOS DE FUNDO) */
+      .app-layout,
+      .sidebar,
+      .sidebar-backdrop,
+      .app-header,
+      .app-main,
+      .app-content,
+      .consulta-box,
+      #consultaResults,
+      #consultaResultsContent,
+      #consultaLoading,
+      #consultaError,
+      .tipo-tabs-bar,
+      .consulta-demo-row,
+      .app-footer,
+      .bottom-nav,
+      .command-palette-backdrop,
+      .toast-container,
+      #btnCopyConsultaJson,
+      #btnNovaConsulta,
+      #btnGerarRelatorioTop,
+      .btn-filtro-pill,
+      #inputFiltroPessoasTelefone,
+      .modal-relatorio-actions,
+      .modal-close-btn,
+      #btnFecharModalRelatorio,
+      .no-print,
+      pre, code {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+
+      /* EXIBE EXCLUSIVAMENTE O MODAL DO RELATÓRIO */
+      #modalRelatorioOsint {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        background: #080B11 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+
+      .modal-relatorio-dialog {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: none !important;
+        overflow: visible !important;
+        background: #080B11 !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      .modal-relatorio-header {
+        display: none !important;
+      }
+
+      .modal-relatorio-body {
+        display: block !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        background: #080B11 !important;
+      }
+
+      .dark-report-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+
+      .dark-report-card {
+        background: #0D111A !important;
+        border: 1px solid #1E2538 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        margin-bottom: 12px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <% const tipoAtivo = (typeof locals.tipoAtivo !== 'undefined' ? locals.tipoAtivo : (typeof locals.type !== 'undefined' ? locals.type : 'cpf')).toLowerCase(); %>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+    <%- include('../../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Título do Módulo -->
+        <div style="margin-bottom: var(--space-6);">
+          <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="user-search" style="color: #A78BFA; width: 28px; height: 28px;"></i>
+            <span>Central Unificada de Puxar Dados</span>
+          </h1>
+          <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+            Consulte cadastros de pessoas físicas e jurídicas através de CPF, Nome, RG, Título, NIS, PIS, Parentes e mais.
+          </p>
+        </div>
+
+        <!-- Caixa Principal de Consulta -->
+        <div class="consulta-box">
+          <!-- Abas para Selecionar o Tipo de Busca -->
+          <div class="tipo-tabs-bar">
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'cpf' ? 'active' : '' %>" data-tipo="cpf">
+              <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i>
+              <span>CPF</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'nome' ? 'active' : '' %>" data-tipo="nome">
+              <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+              <span>Nome</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'telefone' ? 'active' : '' %>" data-tipo="telefone">
+              <i data-lucide="phone" style="width: 14px; height: 14px;"></i>
+              <span>Telefone</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'placa' ? 'active' : '' %>" data-tipo="placa">
+              <i data-lucide="car" style="width: 14px; height: 14px;"></i>
+              <span>Placa</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'foto' ? 'active' : '' %>" data-tipo="foto">
+              <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
+              <span>Foto / Facial</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'cep' ? 'active' : '' %>" data-tipo="cep">
+              <i data-lucide="map-pin" style="width: 14px; height: 14px;"></i>
+              <span>CEP</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'email' ? 'active' : '' %>" data-tipo="email">
+              <i data-lucide="mail" style="width: 14px; height: 14px;"></i>
+              <span>E-mail</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'vizinhos' ? 'active' : '' %>" data-tipo="vizinhos">
+              <i data-lucide="home" style="width: 14px; height: 14px;"></i>
+              <span>Vizinhos</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'titulo' ? 'active' : '' %>" data-tipo="titulo">
+              <i data-lucide="vote" style="width: 14px; height: 14px;"></i>
+              <span>Título Eleitor</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'operadora' ? 'active' : '' %>" data-tipo="operadora">
+              <i data-lucide="radio" style="width: 14px; height: 14px;"></i>
+              <span>Operadora</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'rg' ? 'active' : '' %>" data-tipo="rg">
+              <i data-lucide="id-card" style="width: 14px; height: 14px;"></i>
+              <span>RG</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'cnpj' ? 'active' : '' %>" data-tipo="cnpj">
+              <i data-lucide="building-2" style="width: 14px; height: 14px;"></i>
+              <span>CNPJ</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'parentes' ? 'active' : '' %>" data-tipo="parentes">
+              <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+              <span>Parentes</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'nis' ? 'active' : '' %>" data-tipo="nis">
+              <i data-lucide="badge-percent" style="width: 14px; height: 14px;"></i>
+              <span>NIS</span>
+            </button>
+
+            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'pis' ? 'active' : '' %>" data-tipo="pis">
+              <i data-lucide="briefcase" style="width: 14px; height: 14px;"></i>
+              <span>PIS / PASEP</span>
+            </button>
+          </div>
+
+          <!-- Formulário Dinâmico -->
+          <form id="consultaForm">
+            <label for="consultaInput" id="consultaInputLabel" style="display: block; font-size: 0.875rem; font-weight: 500; color: var(--color-text);">
+              Informe o Dado para Consulta:
+            </label>
+
+            <div class="consulta-input-row">
+              <input 
+                type="text" 
+                id="consultaInput" 
+                class="consulta-input-field" 
+                placeholder="000.000.000-00" 
+                required 
+                autocomplete="off" 
+                autofocus
+              >
+
+              <button type="submit" class="btn btn-primary" id="btnSubmitConsulta" style="padding: 12px 28px;">
+                <i data-lucide="search" style="width: 16px; height: 16px;"></i>
+                <span>Puxar Dados</span>
+              </button>
+            </div>
+
+            <!-- Botões de Demonstração Rápidos -->
+            <div class="consulta-demo-row">
+              <span style="font-size: 0.75rem; color: var(--color-text-dim); font-family: var(--font-mono);">
+                Dados de Teste:
+              </span>
+
+              <!-- CPF Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="cpf" data-val="12345678900">
+                <span>🧪 Exemplo CPF (123.456.789-00)</span>
+              </button>
+
+              <!-- Nome Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="nome" data-val="Carlos Eduardo da Silva">
+                <span>🧪 Exemplo Nome (Carlos Eduardo da Silva)</span>
+              </button>
+
+              <!-- RG Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="rg" data-val="38452190X">
+                <span>🧪 Exemplo RG (38.452.190-X)</span>
+              </button>
+
+              <!-- Telefone Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="telefone" data-val="11911022367">
+                <span>🧪 Exemplo Tel ((11) 91102-2367)</span>
+              </button>
+
+              <!-- Placa Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="placa" data-val="BRA2E19">
+                <span>🧪 Exemplo Placa (BRA2E19)</span>
+              </button>
+
+              <!-- Operadora Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="operadora" data-val="11911022367">
+                <span>🧪 Exemplo Operadora (11 91102-2367)</span>
+              </button>
+
+              <!-- Titulo Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="titulo" data-val="383692110132">
+                <span>🧪 Exemplo Título (383692110132)</span>
+              </button>
+
+              <!-- Vizinhos Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="vizinhos" data-val="41877230804">
+                <span>🧪 Exemplo Vizinhos (CPF)</span>
+              </button>
+
+              <!-- Parentes Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="parentes" data-val="Carlos Eduardo da Silva">
+                <span>🧪 Exemplo Árvore Familiar</span>
+              </button>
+
+              <!-- CEP Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="cep" data-val="01310100">
+                <span>🧪 Exemplo CEP (01310-100)</span>
+              </button>
+
+              <!-- Email Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="email" data-val="brunaalvesleite@hotmail.com">
+                <span>🧪 Exemplo E-mail Pessoal</span>
+              </button>
+
+              <!-- Foto Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="foto" data-val="41877230804">
+                <span>🧪 Exemplo Biometria Facial</span>
+              </button>
+
+              <!-- CNPJ Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="cnpj" data-val="12345678000190">
+                <span>🧪 Exemplo CNPJ (12.345.678/0001-90)</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Estado de Carregamento (Loading) -->
+        <div id="consultaLoading" style="display: none; margin-bottom: var(--space-6);">
+          <div class="card" style="padding: var(--space-10); text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <div style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid #8B5CF6; border-top-color: #EF4444; animation: spin 0.8s linear infinite; margin-bottom: var(--space-4);"></div>
+            <h3 style="font-size: 1.125rem; font-weight: 600; color: var(--color-text); margin-bottom: 4px;">
+              Puxando Dados Cadastrais...
+            </h3>
+            <p style="font-size: 0.875rem; color: #A78BFA; font-family: var(--font-mono);">
+              Consultando bases e adaptadores de integração...
+            </p>
+          </div>
+        </div>
+
+        <!-- Estado de Erro -->
+        <div id="consultaError" style="display: none; margin-bottom: var(--space-6);">
+          <div class="card" style="border-color: rgba(239, 68, 68, 0.4); background-color: var(--color-error-bg); padding: var(--space-4);">
+            <div style="display: flex; align-items: center; gap: var(--space-3);">
+              <i data-lucide="alert-circle" style="color: var(--color-error); width: 20px; height: 20px;"></i>
+              <div>
+                <strong style="color: var(--color-error);">Erro na Consulta:</strong>
+                <span id="consultaErrorMessage" style="color: #FCA5A5; font-size: 0.875rem; margin-left: 6px;"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Resultados da Consulta -->
+        <div id="consultaResults" style="display: none;">
+          <!-- Barra Superior de Controle -->
+          <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-5);">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <span id="resTipoBadge" class="badge badge-purple">MÓDULO: CPF</span>
+              <span id="resFonteText" class="badge badge-dark" style="font-size: 0.75rem;">Fonte</span>
+              <span id="resCreditsBadge" class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.75rem; display: none;"></span>
+            </div>
+
+            <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+              <button type="button" class="btn btn-outline btn-sm" id="btnAbrirGrafoConsulta" style="border-color: rgba(6, 182, 212, 0.4); color: #22D3EE; background: rgba(6, 182, 212, 0.08); font-weight: 600;">
+                <i data-lucide="share-2" style="width: 14px; height: 14px;"></i>
+                <span>Grafo de Vínculos</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm" id="btnGerarRelatorioTop" style="background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); border-color: #8B5CF6; font-weight: 600; box-shadow: 0 0 12px rgba(139, 92, 246, 0.3);">
+                <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+                <span>Gerar Relatório</span>
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btnCopyConsultaJson">
+                <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                <span>Copiar JSON</span>
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btnNovaConsulta">
+                <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                <span>Nova Consulta</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Conteúdo Dinâmico dos Dados -->
+          <div id="consultaResultsContent"></div>
+
+          <!-- Painel Integrado de Compliance Público (CGU / CEIS / TSE / PNCP / Diários Oficiais) -->
+          <div id="consultaComplianceContainer" style="margin-top: var(--space-5); display: none;"></div>
+
+          <!-- JSON Bruto Estruturado (Padrão: Oculto/Desativado) -->
+          <div class="card" id="cardDadosBrutosJson" style="margin-top: var(--space-5); display: none;">
+            <div class="card-header">
+              <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="code" style="color: #A78BFA; width: 18px; height: 18px;"></i>
+                <span>Dados Brutos (JSON)</span>
+              </h3>
+            </div>
+            <pre style="background: var(--color-bg); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 0.8125rem; color: #C4B5FD; overflow-x: auto; max-height: 400px;"><code id="resRawJson"></code></pre>
+          </div>
+        </div>
+
+        <%- include('../../partials/footer') %>
+      </main>
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- MODAL DE RELATÓRIO / DOSSIÊ DARK OSINT                        -->
+  <!-- ============================================================== -->
+  <div id="modalRelatorioOsint" class="modal-relatorio-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalRelatorioTitle">
+    <div class="modal-relatorio-dialog">
+      <div class="modal-relatorio-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); display: flex; align-items: center; justify-content: center; color: #FFFFFF;">
+            <i data-lucide="file-text" style="width: 18px; height: 18px;"></i>
+          </div>
+          <div>
+            <h2 id="modalRelatorioTitle" style="font-size: 1.125rem; font-weight: 700; color: #FFFFFF; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span>Dossiê de Inteligência OSINT</span>
+              <span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #C4B5FD; font-size: 0.7rem; border: 1px solid rgba(139, 92, 246, 0.3);">
+                CONFIDENCIAL
+              </span>
+            </h2>
+            <p style="font-size: 0.75rem; color: #94A3B8; margin-top: 2px;">
+              Dossiê oficial estruturado com padrão Dark Mode para exportação em PDF e HTML.
+            </p>
+          </div>
+        </div>
+
+        <div class="modal-relatorio-actions" style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="btn btn-outline btn-sm" id="btnGrafoModalRelatorioConsulta" style="border-color: rgba(6, 182, 212, 0.4); color: #22D3EE; background: rgba(6, 182, 212, 0.1); font-weight: 600;">
+            <i data-lucide="share-2" style="width: 14px; height: 14px;"></i>
+            <span>Ver Grafo de Vínculos</span>
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="btnGerarPdfRelatorio" style="background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%); border-color: #8B5CF6; font-weight: 600;">
+            <i data-lucide="file-down" style="width: 14px; height: 14px;"></i>
+            <span>Exportar PDF</span>
+          </button>
+          <button type="button" class="btn btn-outline btn-sm" id="btnDownloadHtmlRelatorio" style="border-color: rgba(16, 185, 129, 0.4); color: #10B981; font-weight: 600;">
+            <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+            <span>Baixar HTML</span>
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm modal-close-btn" id="btnFecharModalRelatorio" title="Fechar (Esc)" style="color: #94A3B8; padding: 6px;">
+            <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-relatorio-body" id="modalRelatorioContent">
+        <!-- Conteúdo do Relatório Injetado Dinamicamente -->
+      </div>
+    </div>
+  </div>
+
+  <%- include('../../partials/bottom-nav') %>
+  <%- include('../../partials/command-palette') %>
+  <%- include('../../partials/toast') %>
+
+  <!-- Biblioteca HTML2PDF para Conversão Direta sem Impressora -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/historico.js"></script>
+  <script src="/js/main.js"></script>
+  <script type="module" src="/js/interpreters/zeroy-interpreters.js"></script>
+  <script src="/js/osint-dark-report.js"></script>
+  <script src="/js/consulta.js"></script>
+</body>
+</html>
+

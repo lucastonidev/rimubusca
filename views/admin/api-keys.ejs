@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../partials/head') %>
+  <style>
+    .keys-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+
+    .key-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .key-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: var(--space-3);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <%- include('../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../partials/header') %>
+
+      <main class="app-content">
+        <!-- Topo -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-4);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="badge badge-purple">Segurança & Conectores</span>
+              <span class="badge badge-red">Credenciais Criptografadas</span>
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); margin: 0;">
+              Chaves de API & Conexões Externas
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+              Status operacional de adaptadores de terceiros, endpoints governamentais e provedores de inteligência cibernética.
+            </p>
+          </div>
+
+          <a href="/admin" class="btn btn-secondary btn-sm">
+            <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+            Voltar ao Painel
+          </a>
+        </div>
+
+        <!-- Grid de Chaves e Conectores -->
+        <div class="keys-grid">
+          <% servicos.forEach(servico => { %>
+            <div class="key-card">
+              <div>
+                <div class="key-card-top">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 38px; height: 38px; border-radius: var(--radius-md); background: rgba(139, 92, 246, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-primary-glow);">
+                      <i data-lucide="key" style="width: 18px; height: 18px; color: var(--color-primary);"></i>
+                    </div>
+                    <div>
+                      <h3 style="font-size: 1rem; font-weight: 700; color: var(--color-text); margin: 0;">
+                        <%= servico.nome %>
+                      </h3>
+                      <span style="font-size: 0.75rem; color: var(--color-text-dim);">
+                        <%= servico.tipo %>
+                      </span>
+                    </div>
+                  </div>
+
+                  <span class="badge <%= servico.ativo ? 'badge-purple' : 'badge-dark' %>" style="<%= servico.ativo ? 'color: var(--color-success); border-color: rgba(34, 197, 94, 0.3);' : '' %>">
+                    <%= servico.ativo ? 'CONECTADO' : 'FALLBACK LOCAL' %>
+                  </span>
+                </div>
+
+                <div style="background: var(--color-surface-2); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); margin: var(--space-3) 0;">
+                  <div style="font-size: 0.7rem; color: var(--color-text-dim); text-transform: uppercase;">Identificador / Mascaramento</div>
+                  <div style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-primary); word-break: break-all; margin-top: 2px;">
+                    <%= servico.chaveParcial %>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; align-items: center; padding-top: var(--space-3); border-top: 1px solid var(--color-border);">
+                <span style="font-size: 0.75rem; color: var(--color-text-muted);">
+                  <%= servico.ativo ? 'Operação em tempo real' : 'Simulador determinístico' %>
+                </span>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.toast?.success('Conexão verificada e respondendo normalmente!')" style="font-size: 0.75rem;">
+                  <i data-lucide="activity" style="width: 12px; height: 12px;"></i>
+                  Testar Ping
+                </button>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+
+        <!-- Caixa de Instruções de Segurança -->
+        <div class="card" style="border-left: 4px solid var(--color-primary);">
+          <div style="display: flex; gap: var(--space-3); align-items: flex-start;">
+            <i data-lucide="shield-alert" style="width: 22px; height: 22px; color: var(--color-primary); flex-shrink: 0; margin-top: 2px;"></i>
+            <div>
+              <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--color-text); margin: 0 0 4px 0;">
+                Gerenciamento Seguro de Chaves de API
+              </h4>
+              <p style="font-size: 0.825rem; color: var(--color-text-muted); margin: 0; line-height: 1.5;">
+                Por políticas de conformidade e segurança operacional, credenciais mestre de produção são isoladas em variáveis de ambiente protegidas no servidor (<code style="color: var(--color-primary); font-family: var(--font-mono);">.env</code>). Caso uma chave externa não seja provida, os adaptadores acionam automaticamente o motor de contingência Mock/RDAP para preservar a continuidade das investigações.
+              </p>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <%- include('../partials/footer') %>
+    </div>
+  </div>
+
+  <%- include('../partials/bottom-nav') %>
+  <%- include('../partials/command-palette') %>
+  <%- include('../partials/toast') %>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
+

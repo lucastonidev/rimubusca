@@ -1,0 +1,32 @@
+<header class="app-topbar">
+  <div class="topbar-left">
+    <!-- Botão de Menu para Dispositivos Móveis e Alternar Sidebar -->
+    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir Menu Lateral" title="Expandir ou recolher menu">
+      <i data-lucide="menu" style="width: 22px; height: 22px;"></i>
+    </button>
+
+    <!-- Identidade Visual RimuBusca com Logo -->
+    <a href="/dashboard" class="topbar-brand" title="RimuBusca - Início">
+      <img src="/images/logo.jpeg" alt="Logo RimuBusca" class="topbar-brand-logo">
+      <span class="topbar-brand-name">Rimu<span>Busca</span></span>
+    </a>
+
+    <span class="topbar-brand-divider" aria-hidden="true"></span>
+
+    <!-- Breadcrumb de Navegação Estrutural -->
+    <nav class="topbar-breadcrumbs" aria-label="Navegação Estrutural">
+      <a href="/dashboard">Início</a>
+      <i data-lucide="chevron-right" style="width: 14px; height: 14px; color: var(--color-text-dim);"></i>
+      <span class="current"><%= typeof pageTitle !== 'undefined' ? pageTitle : (typeof title !== 'undefined' ? title.split('-')[0].trim() : 'Dashboard') %></span>
+    </nav>
+  </div>
+
+  <div class="topbar-right">
+    <!-- Gatilho de Busca Global Rápida (Ctrl + K) -->
+    <button class="search-trigger-btn" aria-label="Abrir busca global rápida">
+      <i data-lucide="search" style="width: 15px; height: 15px;"></i>
+      <span>Buscar módulo ou atalho...</span>
+      <kbd class="kbd-shortcut">Ctrl K</kbd>
+    </button>
+  </div>
+</header>

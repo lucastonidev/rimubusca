@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+
+  <style>
+    .processo-search-card {
+      background: radial-gradient(circle at 95% 5%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+                  var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .tipo-tabs-row {
+      display: flex;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+      flex-wrap: wrap;
+    }
+
+    .tipo-tab-btn {
+      padding: 8px 16px;
+      font-size: 0.825rem;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .tipo-tab-btn:hover {
+      color: var(--color-text);
+      border-color: var(--color-primary-glow);
+    }
+
+    .tipo-tab-btn.active {
+      background: rgba(139, 92, 246, 0.15);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .processo-input-group {
+      display: flex;
+      gap: var(--space-2);
+    }
+
+    .processo-main-input {
+      flex: 1;
+      padding: 12px 16px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 1rem;
+      font-family: var(--font-mono);
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .processo-main-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-glow);
+      background-color: var(--color-surface);
+    }
+
+    .demo-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px dashed var(--color-border);
+    }
+
+    .demo-chip-btn {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-full);
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all var(--transition-fast);
+    }
+
+    .demo-chip-btn:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      background: var(--color-surface-3);
+    }
+
+    .processo-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: var(--space-5);
+      margin-bottom: var(--space-5);
+    }
+
+    /* Linha do Tempo de Movimentações */
+    .timeline-container {
+      position: relative;
+      padding-left: 24px;
+      margin-top: var(--space-4);
+    }
+
+    .timeline-container::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: var(--color-border);
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: var(--space-4);
+    }
+
+    .timeline-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .timeline-dot {
+      position: absolute;
+      left: -24px;
+      top: 4px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--color-surface);
+      border: 2px solid var(--color-primary);
+    }
+
+    .timeline-content {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+    }
+
+    .timeline-date {
+      font-size: 0.75rem;
+      color: var(--color-primary);
+      font-family: var(--font-mono);
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+
+    .timeline-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text);
+      margin-bottom: 4px;
+    }
+
+    .timeline-desc {
+      font-size: 0.8rem;
+      color: var(--color-text-dim);
+      line-height: 1.4;
+    }
+
+    /* Polos e Partes */
+    .partes-block {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      margin-bottom: var(--space-3);
+    }
+
+    .partes-header {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: var(--space-2);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .parte-item {
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .parte-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .parte-nome {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+
+    .parte-sub {
+      font-size: 0.75rem;
+      color: var(--color-text-dim);
+      margin-top: 2px;
+    }
+
+    .dorks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--space-3);
+    }
+
+    .dork-item {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .dork-item:hover {
+      border-color: var(--color-primary-glow);
+    }
+
+    .dork-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--color-text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dork-query {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--color-primary);
+      background: var(--color-surface-3);
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .dork-actions {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: auto;
+    }
+
+    /* Estatísticas & Perfil do Advogado / Parte */
+    .kpi-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--space-4);
+      margin-bottom: var(--space-5);
+    }
+
+    .kpi-stat-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .kpi-stat-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-muted);
+      font-weight: 600;
+    }
+
+    .kpi-stat-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--color-text);
+      font-family: var(--font-mono);
+    }
+
+    .kpi-stat-sub {
+      font-size: 0.75rem;
+      color: var(--color-text-dim);
+    }
+
+    .resumo-box {
+      background: rgba(139, 92, 246, 0.05);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      font-size: 0.875rem;
+      line-height: 1.6;
+      color: var(--color-text);
+      margin-bottom: var(--space-4);
+    }
+
+    .assunto-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.8rem;
+      color: var(--color-text-muted);
+    }
+
+    .processo-recent-card {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin-bottom: var(--space-3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+      transition: all var(--transition-fast);
+    }
+
+    .processo-recent-card:hover {
+      border-color: var(--color-primary-glow);
+      background: var(--color-surface-3);
+    }
+
+    /* Modais Dedicados - Fix de Posicionamento e Visualização */
+    .processo-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 10, 18, 0.88);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      z-index: 9999;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px;
+      overflow-y: auto;
+    }
+
+    .processo-modal-dialog {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 820px;
+      max-height: calc(100vh - 48px);
+      margin: auto 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 24px rgba(139, 92, 246, 0.15);
+      position: relative;
+    }
+
+    .processo-modal-header {
+      padding: var(--space-4) var(--space-5);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--color-surface-2);
+      flex-shrink: 0;
+    }
+
+    .processo-modal-close-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 6px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .processo-modal-close-btn:hover {
+      color: var(--color-text);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--color-border);
+    }
+
+    .processo-modal-body {
+      padding: var(--space-5);
+      overflow-y: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .processo-modal-footer {
+      padding: var(--space-3) var(--space-5);
+      border-top: 1px solid var(--color-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--color-surface-2);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <%- include('../../partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Topo do Módulo -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-4);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+              <span class="badge badge-purple">BuscaProcessos API (Live/Free)</span>
+              <span class="badge badge-purple">DataJud CNJ Oficial</span>
+              <span class="badge badge-red">Monitoramento de Litígios</span>
+              <span class="badge badge-dark">91 Tribunais</span>
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); margin: 0;">
+              Processos Judiciais & Monitoramento
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+              Consulta unificada via BuscaProcessos.app.br API, base nacional do DataJud (CNJ) e diários oficiais.
+            </p>
+          </div>
+
+          <a href="/dashboard" class="btn btn-secondary btn-sm">
+            <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+            Voltar
+          </a>
+        </div>
+
+        <!-- Card de Busca -->
+        <section class="processo-search-card">
+          <!-- Seletor de Tipo de Busca -->
+          <div class="tipo-tabs-row">
+            <button type="button" class="tipo-tab-btn active" data-tipo="cnj">
+              <i data-lucide="scale" style="width: 14px; height: 14px;"></i>
+              Número do Processo (CNJ)
+            </button>
+            <button type="button" class="tipo-tab-btn" data-tipo="nome">
+              <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+              Nome da Parte / Advogado
+            </button>
+            <button type="button" class="tipo-tab-btn" data-tipo="documento">
+              <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+              CPF / CNPJ
+            </button>
+            <button type="button" class="tipo-tab-btn" data-tipo="oab">
+              <i data-lucide="briefcase" style="width: 14px; height: 14px;"></i>
+              Inscrição OAB
+            </button>
+          </div>
+
+          <form id="formProcessos">
+            <label id="lblInputBusca" for="inputTermoProcesso" style="font-size: 0.875rem; font-weight: 600; color: var(--color-text); display: block; margin-bottom: var(--space-2);">
+              Número Único do Processo no Padrão CNJ
+            </label>
+
+            <div class="processo-input-group">
+              <input
+                type="text"
+                id="inputTermoProcesso"
+                name="termo"
+                class="processo-main-input"
+                placeholder="0001234-08.2023.8.26.0100"
+                required
+                autocomplete="off"
+              />
+
+              <button type="submit" class="btn btn-primary" id="btnSubmitProcesso">
+                <i data-lucide="search" style="width: 16px; height: 16px;"></i>
+                Rastrear Processo
+              </button>
+            </div>
+
+            <!-- Chips de Exemplo -->
+            <div class="demo-chips-row">
+              <span style="font-size: 0.75rem; color: var(--color-text-dim);">Exemplos para Teste:</span>
+              <button type="button" class="demo-chip-btn" data-termo="0001234-08.2023.8.26.0100" data-tipo="cnj">
+                <i data-lucide="hash"></i> TJSP (São Paulo)
+              </button>
+              <button type="button" class="demo-chip-btn" data-termo="0000832-35.2018.4.01.3202" data-tipo="cnj">
+                <i data-lucide="hash"></i> TRF1 (Justiça Federal)
+              </button>
+              <button type="button" class="demo-chip-btn" data-termo="0010500-12.2022.5.02.0001" data-tipo="cnj">
+                <i data-lucide="hash"></i> TRT2 (Justiça do Trabalho)
+              </button>
+              <button type="button" class="demo-chip-btn" data-termo="Rafael Toniato Rodrigues" data-tipo="nome">
+                <i data-lucide="scale"></i> Rafael Toniato (Advogado)
+              </button>
+              <button type="button" class="demo-chip-btn" data-termo="Carlos Eduardo Silva" data-tipo="nome">
+                <i data-lucide="user"></i> Busca por Nome
+              </button>
+              <button type="button" class="demo-chip-btn" data-termo="123456/SP" data-tipo="oab">
+                <i data-lucide="briefcase"></i> OAB 123456/SP
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Skeleton Loading -->
+        <div id="processoSkeleton" style="display: none;">
+          <div class="card" style="padding: var(--space-5); margin-bottom: var(--space-5);">
+            <div class="skeleton" style="height: 28px; width: 40%; margin-bottom: 12px;"></div>
+            <div class="skeleton" style="height: 16px; width: 60%; margin-bottom: 24px;"></div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4);">
+              <div class="skeleton" style="height: 140px; border-radius: var(--radius-md);"></div>
+              <div class="skeleton" style="height: 140px; border-radius: var(--radius-md);"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Seção de Resultados -->
+        <div id="containerResultadosProcesso" style="display: none;">
+          <!-- Top Card do Processo CNJ (Visível em Consulta de Número) -->
+          <div id="topCardProcessoCnj" class="card" style="padding: var(--space-5); margin-bottom: var(--space-5); background: var(--color-surface);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4);">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+                  <span id="badgeSituacaoProcesso" class="badge badge-purple">Em Andamento</span>
+                  <span id="badgeTribunalSigla" class="badge badge-red">TJSP</span>
+                  <span id="badgeRamoJustica" class="badge badge-dark">Justiça Estadual</span>
+                  <span id="badgeDvValido" class="badge badge-purple" style="color: var(--color-success); border-color: rgba(34, 197, 94, 0.3);">
+                    CNJ Módulo 97 Autêntico
+                  </span>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <h2 id="resNumeroCnj" style="font-size: 1.4rem; font-weight: 700; color: var(--color-text); margin: 0; font-family: var(--font-mono);">
+                    -
+                  </h2>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarCnj" title="Copiar Número CNJ">
+                    <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </div>
+
+                <div style="margin-top: 6px; font-size: 0.85rem; color: var(--color-text-dim);">
+                  <span id="resClasseAssunto">-</span>
+                </div>
+
+                <!-- Aviso de Status do DataJud (se timeout/offline) -->
+                <div id="resDataJudAviso" style="display: none; margin-top: 10px; padding: 8px 12px; background: rgba(139, 92, 246, 0.08); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--color-text-dim);">
+                  <i data-lucide="info" style="width: 14px; height: 14px; display: inline-block; vertical-align: -2px; color: var(--color-primary); margin-right: 4px;"></i>
+                  <span id="resDataJudAvisoTexto"></span>
+                </div>
+              </div>
+
+              <!-- Links Diretos Oficiais -->
+              <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;" id="resLinksOficiaisContainer">
+                <a id="linkPortalTribunal" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="color: var(--color-primary); border-color: var(--color-primary-glow);">
+                  <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                  Portal do Tribunal
+                </a>
+                <a id="linkJusbrasil" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+                  <i data-lucide="globe" style="width: 14px; height: 14px;"></i>
+                  Jusbrasil
+                </a>
+                <a id="linkEscavador" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+                  <i data-lucide="file-search" style="width: 14px; height: 14px;"></i>
+                  Escavador
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Card do Perfil de Parte / Advogado (Visível em Busca por Nome) -->
+          <div id="topCardPerfilParte" class="card" style="display: none; padding: var(--space-5); margin-bottom: var(--space-5); background: var(--color-surface);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-4);">
+              <div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+                  <span id="badgeTipoPessoa" class="badge badge-purple">Pessoa Física / Advogado</span>
+                  <span id="badgeTotalProcessosParte" class="badge badge-red">0 Processos</span>
+                  <span class="badge badge-dark">Inteligência Processual</span>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <h2 id="resNomeParte" style="font-size: 1.4rem; font-weight: 700; color: var(--color-text); margin: 0;">
+                    -
+                  </h2>
+                  <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarNomeParte" title="Copiar Nome">
+                    <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  </button>
+                </div>
+
+                <div style="margin-top: 6px; font-size: 0.85rem; color: var(--color-text-dim);">
+                  <span id="resSubtituloParte">Perfil consolidado em diários oficiais e acervo nacional</span>
+                </div>
+              </div>
+
+              <!-- Links Oficiais do Perfil -->
+              <div style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+                <a id="linkPerfilEscavador" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="color: var(--color-primary); border-color: var(--color-primary-glow);">
+                  <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                  Ver no Escavador
+                </a>
+                <a id="linkPerfilJusbrasil" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+                  <i data-lucide="globe" style="width: 14px; height: 14px;"></i>
+                  Jusbrasil
+                </a>
+                <a id="linkPerfilDjen" href="https://comunica.pje.jus.br/" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+                  <i data-lucide="newspaper" style="width: 14px; height: 14px;"></i>
+                  DJEN
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEÇÃO 1: Detalhes do Processo CNJ (Visível quando tipo === 'cnj') -->
+          <div id="secaoProcessoCnj">
+            <!-- Box de Resumo Executivo por Inteligência Artificial (BuscaProcessos) -->
+            <div id="resumoIaBox" style="display: none; margin-bottom: var(--space-5);" class="card">
+              <div class="card-header" style="background: linear-gradient(90deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.08) 100%); border-bottom: 1px solid rgba(139, 92, 246, 0.3);">
+                <div class="card-title" style="color: var(--color-primary); font-size: 0.95rem;">
+                  <i data-lucide="sparkles" style="width: 18px; height: 18px; color: #a78bfa;"></i>
+                  <span>Resumo Executivo Jurídico (IA BuscaProcessos)</span>
+                </div>
+                <span class="badge badge-purple" style="font-size: 0.7rem;">Análise Automatizada</span>
+              </div>
+              <div class="card-body">
+                <p id="resumoIaTexto" style="margin: 0; font-size: 0.875rem; line-height: 1.6; color: var(--color-text); white-space: pre-line;"></p>
+              </div>
+            </div>
+
+            <!-- Grid com 2 Colunas: Metadados & Partes -->
+            <div class="processo-meta-grid">
+              <!-- Coluna 1: Ficha Técnica Processual -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">
+                    <i data-lucide="book-open" style="color: var(--color-primary);"></i>
+                    <span>Ficha Técnica Processual</span>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                      <span style="font-size: 0.8rem; color: var(--color-text-muted);">Órgão Julgador / Vara</span>
+                      <span id="resOrgaoJulgador" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); text-align: right;">-</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                      <span style="font-size: 0.8rem; color: var(--color-text-muted);">Comarca / UF</span>
+                      <span id="resComarca" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text);">-</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                      <span style="font-size: 0.8rem; color: var(--color-text-muted);">Data de Distribuição</span>
+                      <span id="resDataDistribuicao" style="font-size: 0.85rem; font-weight: 600; color: var(--color-primary); font-family: var(--font-mono);">-</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                      <span style="font-size: 0.8rem; color: var(--color-text-muted);">Valor da Causa</span>
+                      <span id="resValorCausa" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text);">-</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                      <span style="font-size: 0.8rem; color: var(--color-text-muted);">Instância / Grau</span>
+                      <span id="resGrau" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text);">-</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between;">
+                      <span style="font-size: 0.8rem; color: var(--color-text-muted);">Sistema do Processo</span>
+                      <span id="resSistema" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text-dim);">-</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Coluna 2: Partes do Litígio (Polo Ativo & Passivo) -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">
+                    <i data-lucide="users-2" style="color: var(--color-secondary);"></i>
+                    <span>Partes Envolvidas & Advogados</span>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <!-- Polo Ativo -->
+                  <div class="partes-block">
+                    <div class="partes-header" style="color: var(--color-primary);">
+                      <span>Polo Ativo (Autor / Exequente)</span>
+                      <i data-lucide="arrow-up-right" style="width: 14px; height: 14px;"></i>
+                    </div>
+                    <div id="resPoloAtivoContainer">
+                      <!-- Injetado via JS -->
+                    </div>
+                  </div>
+
+                  <!-- Polo Passivo -->
+                  <div class="partes-block">
+                    <div class="partes-header" style="color: var(--color-secondary);">
+                      <span>Polo Passivo (Réu / Executado)</span>
+                      <i data-lucide="arrow-down-right" style="width: 14px; height: 14px;"></i>
+                    </div>
+                    <div id="resPoloPassivoContainer">
+                      <!-- Injetado via JS -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Linha do Tempo de Movimentações Processuais -->
+            <div class="card" style="margin-bottom: var(--space-5);">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="clock" style="color: var(--color-primary);"></i>
+                  <span>Andamentos & Movimentações Processuais</span>
+                </div>
+                <span id="badgeTotalMovs" class="badge badge-purple">0 Registros</span>
+              </div>
+              <div class="card-body">
+                <div id="resMovimentacoesTimeline" class="timeline-container">
+                  <!-- Injetado via JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SEÇÃO 2: Perfil do Advogado / Parte (Visível quando tipo === 'parte') -->
+          <div id="secaoPerfilParte" style="display: none;">
+            <!-- KPIs do Perfil -->
+            <div class="kpi-stat-grid">
+              <div class="kpi-stat-card">
+                <span class="kpi-stat-label">Total de Processos</span>
+                <span class="kpi-stat-value" id="kpiTotalProcessos" style="color: var(--color-primary);">-</span>
+                <span class="kpi-stat-sub">Distribuídos em tribunais</span>
+              </div>
+              <div class="kpi-stat-card">
+                <span class="kpi-stat-label">Atuação Predominante</span>
+                <span class="kpi-stat-value" id="kpiAtuacaoPredominante" style="font-size: 1.1rem; color: var(--color-success);">-</span>
+                <span class="kpi-stat-sub" id="kpiAtuacaoSub">Polos de atuação</span>
+              </div>
+              <div class="kpi-stat-card">
+                <span class="kpi-stat-label">Pessoa Mais Representada</span>
+                <span class="kpi-stat-value" id="kpiPessoaRepresentada" style="font-size: 1.05rem;">-</span>
+                <span class="kpi-stat-sub">Cliente / Parte mais frequente</span>
+              </div>
+              <div class="kpi-stat-card">
+                <span class="kpi-stat-label">Estados de Atuação</span>
+                <span class="kpi-stat-value" id="kpiEstadosAtuacao" style="font-size: 1.05rem; color: var(--color-secondary);">-</span>
+                <span class="kpi-stat-sub">Concentração geográfica</span>
+              </div>
+            </div>
+
+            <!-- Resumo Analítico e Biográfico -->
+            <div class="card" style="margin-bottom: var(--space-5);">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="file-text" style="color: var(--color-primary);"></i>
+                  <span>Resumo Analítico Processual</span>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="resumo-box" id="resResumoParteTexto">
+                  Carregando resumo do perfil...
+                </div>
+
+                <!-- Principais Assuntos -->
+                <div id="containerAssuntosParteWrapper" style="margin-top: var(--space-3);">
+                  <div style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: var(--space-2);">
+                    Principais Assuntos dos Processos
+                  </div>
+                  <div id="resAssuntosParteContainer" style="display: flex; gap: var(--space-2); flex-wrap: wrap;">
+                    <!-- Injetado via JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lista de Processos Recentes -->
+            <div class="card" style="margin-bottom: var(--space-5);">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="scale" style="color: var(--color-secondary);"></i>
+                  <span>Ações & Processos Judiciais Identificados</span>
+                </div>
+                <span id="badgeQtdProcessosRecentes" class="badge badge-purple">0 Processos</span>
+              </div>
+              <div class="card-body">
+                <div id="resProcessosRecentesContainer">
+                  <!-- Injetado via JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card de Google Dorks Jurídicos (Padrão: Oculto) -->
+          <div class="card" id="cardDorksProcessos" style="margin-bottom: var(--space-6); display: none;">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="terminal" style="color: var(--color-primary);"></i>
+                <span>Dorks de Investigação em Diários Oficiais & DJE</span>
+              </div>
+              <span class="badge badge-purple">Pesquisas Jurídicas</span>
+            </div>
+            <div class="card-body">
+              <div class="dorks-grid" id="resDorksProcessosContainer">
+                <!-- Injetado via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Ações Finais -->
+          <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-4);">
+            <button type="button" class="btn btn-secondary" id="btnVerJsonProcesso">
+              <i data-lucide="code" style="width: 16px; height: 16px;"></i>
+              Ver JSON Bruto
+            </button>
+            <button type="button" class="btn btn-primary" onclick="window.scrollTo({ top: 0, behavior: 'smooth' }); document.getElementById('inputTermoProcesso').focus();">
+              <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+              Nova Consulta Processual
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <%- include('../../partials/footer') %>
+    </div>
+  </div>
+
+  <%- include('../../partials/bottom-nav') %>
+  <%- include('../../partials/command-palette') %>
+  <%- include('../../partials/toast') %>
+
+  <!-- Modal Raw JSON -->
+  <div id="modalJsonProcesso" class="processo-modal-backdrop" role="dialog" aria-modal="true" aria-label="Payload JSON Processo">
+    <div class="processo-modal-dialog" style="max-width: 750px;">
+      <div class="processo-modal-header">
+        <span style="font-weight: 700; color: var(--color-text);">Payload JSON - DataJud & Processo CNJ</span>
+        <button type="button" id="btnFecharModalJsonX" class="processo-modal-close-btn" title="Fechar (Esc)">
+          <i data-lucide="x" style="width: 18px; height: 18px; pointer-events: none;"></i>
+        </button>
+      </div>
+      <pre id="preModalJsonProcesso" style="padding: var(--space-4); margin: 0; overflow-y: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-text-dim); background: var(--color-surface-2); flex: 1; min-height: 200px;"></pre>
+      <div class="processo-modal-footer" style="justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarJsonProcessoModal">Copiar JSON</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnFecharModalJsonFooter">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Detalhes do Processo Judicial -->
+  <div id="modalDetalhesProcesso" class="processo-modal-backdrop" role="dialog" aria-modal="true" aria-label="Autos do Processo Judicial">
+    <div class="processo-modal-dialog">
+      <!-- Header do Modal -->
+      <div class="processo-modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="scale" style="color: var(--color-primary); width: 20px; height: 20px;"></i>
+          <span style="font-weight: 700; color: var(--color-text); font-size: 1.05rem;">Autos do Processo Judicial</span>
+        </div>
+        <button type="button" id="btnFecharModalProcessoX" class="processo-modal-close-btn" title="Fechar (Esc)">
+          <i data-lucide="x" style="width: 20px; height: 20px; pointer-events: none;"></i>
+        </button>
+      </div>
+
+      <!-- Conteúdo do Modal (Scrollável) -->
+      <div class="processo-modal-body">
+        <!-- Topo com Número CNJ & Badges -->
+        <div style="background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4);">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--space-2); margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span id="modalProcessoBadgeStatus" class="badge badge-purple">Processo Ativo</span>
+              <span id="modalProcessoBadgeTribunal" class="badge badge-red">DJES</span>
+              <span id="modalProcessoBadgeDesmascarado" class="badge badge-purple" style="display: none; color: var(--color-success); border-color: rgba(34, 197, 94, 0.3);">
+                CNJ Oficial Desmascarado
+              </span>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarCnjModalDetalhes">
+              <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+              Copiar CNJ
+            </button>
+          </div>
+          <h2 id="modalProcessoNumeroCnj" style="font-size: 1.35rem; font-weight: 700; color: var(--color-text); margin: 0; font-family: var(--font-mono);">
+            -
+          </h2>
+          <div id="modalProcessoClasse" style="font-size: 0.85rem; color: var(--color-text-dim); margin-top: 6px; line-height: 1.4;">
+            -
+          </div>
+        </div>
+
+        <!-- Resumo Executivo IA (se disponível) -->
+        <div id="modalProcessoResumoIaBox" class="card" style="display: none; padding: var(--space-4); background: rgba(139, 92, 246, 0.08); border-color: rgba(139, 92, 246, 0.3);">
+          <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #a78bfa; margin-bottom: var(--space-2); display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+            Resumo do Processo (Inteligência Artificial)
+          </div>
+          <div id="modalProcessoResumoIaTexto" style="font-size: 0.85rem; line-height: 1.6; color: var(--color-text); white-space: pre-line;"></div>
+        </div>
+
+        <!-- Grid de Metadados Processuais -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3);">
+          <div class="card" style="padding: var(--space-3); background: var(--color-surface-2);">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--color-text-muted); font-weight: 600;">Órgão Julgador / Vara</div>
+            <div id="modalProcessoVara" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); margin-top: 4px;">-</div>
+          </div>
+          <div class="card" style="padding: var(--space-3); background: var(--color-surface-2);">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--color-text-muted); font-weight: 600;">Fórum / Comarca</div>
+            <div id="modalProcessoComarca" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); margin-top: 4px;">-</div>
+          </div>
+          <div class="card" style="padding: var(--space-3); background: var(--color-surface-2);">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--color-text-muted); font-weight: 600;">Magistrado / Juiz</div>
+            <div id="modalProcessoJuiz" style="font-size: 0.85rem; font-weight: 600; color: var(--color-primary); margin-top: 4px;">-</div>
+          </div>
+          <div class="card" style="padding: var(--space-3); background: var(--color-surface-2);">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: var(--color-text-muted); font-weight: 600;">Data da Publicação</div>
+            <div id="modalProcessoData" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); margin-top: 4px; font-family: var(--font-mono);">-</div>
+          </div>
+        </div>
+
+        <!-- Partes e Advogados -->
+        <div class="card" style="padding: var(--space-4); background: var(--color-surface-2);">
+          <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--color-text); margin-bottom: var(--space-3); display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="users" style="width: 14px; height: 14px; color: var(--color-secondary);"></i>
+            Partes do Processo
+          </div>
+          <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+              <span style="font-size: 0.8rem; color: var(--color-text-muted);">Polo Ativo (Autor)</span>
+              <span id="modalProcessoPoloAtivo" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); text-align: right;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+              <span style="font-size: 0.8rem; color: var(--color-text-muted);">Polo Passivo (Réu)</span>
+              <span id="modalProcessoPoloPassivo" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); text-align: right;">-</span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-size: 0.8rem; color: var(--color-text-muted);">Advogado(a) / Patrono</span>
+              <span id="modalProcessoAdvogado" style="font-size: 0.85rem; font-weight: 600; color: var(--color-primary); text-align: right;">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Texto Integral da Decisão Judicial / Publicação -->
+        <div class="card" style="padding: var(--space-4); background: var(--color-surface-2);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3);">
+            <div style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--color-text); display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="file-text" style="width: 14px; height: 14px; color: var(--color-primary);"></i>
+              Texto Integral da Decisão Judicial / Publicação
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarTextoDecisaoModal" style="font-size: 0.72rem;">
+              <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+              Copiar Decisão
+            </button>
+          </div>
+          <div id="modalProcessoTextoDecisao" style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.6; color: var(--color-text); background: var(--color-surface-3); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--color-border); max-height: 220px; overflow-y: auto; white-space: pre-wrap;">
+            Carregando publicação...
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer com Ações -->
+      <div class="processo-modal-footer">
+        <div style="display: flex; gap: var(--space-2);">
+          <button type="button" class="btn btn-primary btn-sm" id="btnConsultarCnjModalNoDataJud">
+            <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+            Consultar no DataJud
+          </button>
+          <a id="linkModalProcessoEscavador" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+            <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+            Ver no Tribunal
+          </a>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnFecharModalProcessoFooter">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/processos.js"></script>
+</body>
+</html>
+

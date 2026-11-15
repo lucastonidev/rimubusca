@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+
+  <!-- CDNs das Bibliotecas de Extração de Metadados Client-Side -->
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/music-metadata-browser@2.5.10/dist/index.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/spark-md5@3.0.2/spark-md5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+
+  <style>
+    /* Estilos Customizados do Módulo de Metadados */
+    .privacy-badge-banner {
+      background: linear-gradient(90deg, rgba(16, 185, 129, 0.1) 0%, rgba(34, 211, 238, 0.08) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin-bottom: var(--space-6);
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+    }
+
+    .privacy-badge-banner strong {
+      color: var(--color-success);
+    }
+
+    /* Dropzone de Arquivos */
+    .file-dropzone {
+      border: 2px dashed rgba(34, 211, 238, 0.35);
+      border-radius: var(--radius-lg);
+      background-color: var(--color-surface);
+      padding: var(--space-12) var(--space-6);
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition-base);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .file-dropzone:hover,
+    .file-dropzone.drag-active {
+      border-color: var(--color-primary);
+      background-color: var(--color-surface-2);
+      box-shadow: 0 0 25px rgba(34, 211, 238, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .dropzone-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius-full);
+      background: linear-gradient(135deg, rgba(34, 211, 238, 0.15) 0%, rgba(167, 139, 250, 0.15) 100%);
+      border: 1px solid var(--color-border-glow);
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--space-4);
+    }
+
+    .dropzone-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--color-text);
+      margin-bottom: var(--space-2);
+    }
+
+    .dropzone-subtitle {
+      font-size: 0.875rem;
+      color: var(--color-text-muted);
+      max-width: 480px;
+      margin: 0 auto var(--space-5);
+    }
+
+    .dropzone-tags {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+    }
+
+    /* Estado de Loading / Radar */
+    .loading-radar-box {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-12) var(--space-6);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .radar-circle {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: 2px solid var(--color-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--space-4);
+      position: relative;
+      animation: pulse 1.5s infinite;
+    }
+
+    .radar-circle::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border: 1px dashed var(--color-primary);
+      border-radius: 50%;
+      animation: spin 6s linear infinite;
+    }
+
+    /* Seção de Resultados */
+    .meta-overview-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+
+    .meta-card-section {
+      background-color: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+
+    .gps-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-5);
+      align-items: center;
+    }
+
+    .meta-tab-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      border-bottom: 1px solid var(--color-border);
+      margin-bottom: var(--space-4);
+      padding-bottom: var(--space-2);
+    }
+
+    .meta-tab-btn {
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .meta-tab-btn:hover {
+      color: var(--color-text);
+      background-color: var(--color-surface-2);
+    }
+
+    .meta-tab-btn.active {
+      color: var(--color-primary);
+      background-color: var(--color-primary-glow);
+      font-weight: 600;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 900px) {
+      .meta-overview-grid {
+        grid-template-columns: 1fr;
+      }
+      .gps-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Backdrop Mobile -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- Barra Lateral -->
+    <%- include('../../partials/sidebar') %>
+
+    <!-- Área Principal -->
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Cabeçalho da Página -->
+        <div style="margin-bottom: var(--space-6);">
+          <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); display: flex; align-items: center; gap: 10px;">
+            <i data-lucide="file-search" style="color: var(--color-success); width: 28px; height: 28px;"></i>
+            <span>Extração & Análise Forense de Metadados</span>
+          </h1>
+          <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+            Inspecione arquivos para descobrir dados EXIF de câmeras, coordenadas GPS, autores de documentos, propriedades de áudio e hashes de integridade.
+          </p>
+        </div>
+
+        <!-- Banner de Garantia de Privacidade e Processamento Local -->
+        <div class="privacy-badge-banner" role="status">
+          <i data-lucide="shield-check" style="width: 24px; height: 24px; color: var(--color-success); flex-shrink: 0;"></i>
+          <div style="font-size: 0.8125rem; color: var(--color-text); line-height: 1.5;">
+            <strong>🔒 PROCESSAMENTO 100% LOCAL (CLIENT-SIDE):</strong> Seus arquivos são processados na memória RAM do seu navegador via Web APIs (Web Crypto, EXIFR, PDF.js). Nenhum byte ou arquivo é transmitido pela rede para servidores.
+          </div>
+        </div>
+
+        <!-- 1. SEÇÃO DROPZONE (Inicial) -->
+        <section id="metaDropzoneSection">
+          <div class="file-dropzone" id="metaDropzone">
+            <input 
+              type="file" 
+              id="metaFileInput" 
+              style="display: none;" 
+              accept=".jpg,.jpeg,.png,.webp,.tiff,.heic,.pdf,.mp3,.wav,.ogg,.flac,.m4a,.docx"
+            >
+
+            <div class="dropzone-icon">
+              <i data-lucide="upload-cloud" style="width: 32px; height: 32px;"></i>
+            </div>
+
+            <h2 class="dropzone-title">Arraste e solte o arquivo aqui</h2>
+            <p class="dropzone-subtitle">
+              Ou clique para selecionar do seu dispositivo. Você também pode colar uma imagem diretamente com <kbd class="kbd-shortcut">Ctrl V</kbd>.
+            </p>
+
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); margin-top: var(--space-2);">
+              <button type="button" class="btn btn-primary" id="metaSelectBtn">
+                <i data-lucide="folder-open" style="width: 16px; height: 16px;"></i>
+                <span>Selecionar Arquivo</span>
+              </button>
+              <button type="button" class="btn btn-outline" id="metaDemoBtn">
+                <i data-lucide="flask-conical" style="width: 16px; height: 16px; color: var(--color-warning);"></i>
+                <span>Carregar Amostra Forense (GPS/EXIF)</span>
+              </button>
+            </div>
+
+            <div class="dropzone-tags">
+              <span class="badge badge-cyan">JPG / PNG / WEBP / TIFF / HEIC</span>
+              <span class="badge badge-violet">Documentos PDF</span>
+              <span class="badge badge-success">Áudio MP3 / WAV / FLAC</span>
+              <span class="badge badge-warning">Word DOCX</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. SEÇÃO DE CARREGAMENTO / PROGRESSO -->
+        <section id="metaLoadingSection" style="display: none;">
+          <div class="loading-radar-box">
+            <div class="radar-circle">
+              <i data-lucide="cpu" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
+            </div>
+            <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 6px;">Examinando Metadados do Arquivo...</h3>
+            <p style="font-size: 0.875rem; color: var(--color-primary); font-family: var(--font-mono);" id="metaProgressStep">
+              Iniciando leitura na memória...
+            </p>
+          </div>
+        </section>
+
+        <!-- 3. SEÇÃO DE ERRO -->
+        <section id="metaErrorSection" style="display: none; margin-bottom: var(--space-6);">
+          <div class="card" style="border-color: rgba(239, 68, 68, 0.4); background-color: var(--color-error-bg); padding: var(--space-5);">
+            <div style="display: flex; align-items: flex-start; gap: var(--space-3);">
+              <i data-lucide="alert-triangle" style="width: 22px; height: 22px; color: var(--color-error); flex-shrink: 0; margin-top: 2px;"></i>
+              <div>
+                <h3 style="color: var(--color-error); font-size: 1rem; margin-bottom: 4px;">Erro na Leitura do Arquivo</h3>
+                <p id="metaErrorMessage" style="color: #FCA5A5; font-size: 0.875rem;"></p>
+                <button type="button" class="btn btn-sm btn-outline" onclick="window.metadataEngine.showState('dropzone')" style="margin-top: var(--space-3);">
+                  Tentar Outro Arquivo
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. SEÇÃO DE RESULTADOS DETALHADOS -->
+        <section id="metaResultsSection" style="display: none;">
+          <!-- Barra de Ações Rápidas -->
+          <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-5);">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+              <span class="badge badge-success">
+                <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                <span>Análise Concluída</span>
+              </span>
+              <span id="metaTotalCount" class="badge badge-cyan">0 tags</span>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: var(--space-2);">
+              <button type="button" class="btn btn-outline btn-sm" id="btnSaveHistory">
+                <i data-lucide="bookmark-plus" style="width: 14px; height: 14px;"></i>
+                <span>Salvar no Histórico</span>
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btnDownloadJson">
+                <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                <span>Baixar JSON</span>
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" id="btnResetMeta">
+                <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+                <span>Analisar Outro</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Grade de Visão Geral: Thumbnail + Informações & Hashes -->
+          <div class="meta-overview-grid">
+            <!-- Miniatura do Arquivo -->
+            <div class="card" style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--space-5);">
+              <div id="metaFilePreview" style="margin-bottom: var(--space-3); width: 100%; display: flex; justify-content: center;"></div>
+              <div id="resFileName" style="font-weight: 600; font-size: 0.9375rem; word-break: break-all; margin-bottom: 4px;"></div>
+              <div style="display: flex; gap: 8px;">
+                <span id="resFileSize" class="badge badge-cyan"></span>
+                <span id="resFileType" class="badge badge-violet" style="font-size: 0.6875rem;"></span>
+              </div>
+            </div>
+
+            <!-- Hashes Criptográficos de Integridade -->
+            <div class="card">
+              <h3 style="font-size: 0.9375rem; font-weight: 600; margin-bottom: var(--space-3); display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="hash" style="color: var(--color-primary); width: 16px; height: 16px;"></i>
+                <span>Integridade e Hashes Forenses</span>
+              </h3>
+
+              <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                <!-- SHA-256 -->
+                <div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                    <span style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-text-dim);">SHA-256</span>
+                    <button 
+                      class="btn btn-ghost btn-sm" 
+                      style="padding: 2px 6px; font-size: 0.75rem;" 
+                      onclick="window.copyToClipboard(document.getElementById('resSha256').textContent, this)"
+                    >
+                      <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                      <span>Copiar</span>
+                    </button>
+                  </div>
+                  <div id="resSha256" style="background: var(--color-surface-2); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-primary); word-break: break-all;"></div>
+                </div>
+
+                <!-- MD5 -->
+                <div>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+                    <span style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--color-text-dim);">MD5</span>
+                    <button 
+                      class="btn btn-ghost btn-sm" 
+                      style="padding: 2px 6px; font-size: 0.75rem;" 
+                      onclick="window.copyToClipboard(document.getElementById('resMd5').textContent, this)"
+                    >
+                      <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                      <span>Copiar</span>
+                    </button>
+                  </div>
+                  <div id="resMd5" style="background: var(--color-surface-2); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-secondary); word-break: break-all;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CARD DE GEOLOCALIZAÇÃO GPS (Revelado apenas se houver coordenadas) -->
+          <div class="meta-card-section" id="metaGpsCard" style="display: none; border-color: rgba(245, 158, 11, 0.35);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-4);">
+              <h3 style="font-size: 1.0625rem; font-weight: 600; color: var(--color-warning); display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="map-pin" style="width: 20px; height: 20px;"></i>
+                <span>Coordenadas de Geolocalização EXIF Detectadas</span>
+              </h3>
+              <span class="badge badge-warning">GPS Forense</span>
+            </div>
+
+            <div class="gps-grid">
+              <!-- Dados Numéricos e Links -->
+              <div>
+                <table class="osint-table" style="margin-bottom: var(--space-4);">
+                  <tbody>
+                    <tr>
+                      <td style="color: var(--color-text-muted); width: 40%;">Coordenadas Decimais:</td>
+                      <td style="font-family: var(--font-mono); font-weight: 600; color: var(--color-primary);" id="gpsDecimal"></td>
+                    </tr>
+                    <tr>
+                      <td style="color: var(--color-text-muted);">Formato DMS (Graus):</td>
+                      <td style="font-family: var(--font-mono);" id="gpsDms"></td>
+                    </tr>
+                    <tr>
+                      <td style="color: var(--color-text-muted);">Altitude Estimada:</td>
+                      <td style="font-family: var(--font-mono);" id="gpsAltitude"></td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div style="display: flex; gap: var(--space-2);">
+                  <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline" id="linkGoogleMaps">
+                    <i data-lucide="external-link" style="width: 14px; height: 14px;"></i>
+                    <span>Abrir no Google Maps</span>
+                  </a>
+                  <a href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline" id="linkOsm">
+                    <i data-lucide="map" style="width: 14px; height: 14px;"></i>
+                    <span>OpenStreetMap</span>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Mapa Embutido OpenStreetMap -->
+              <div style="border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--color-border); height: 220px; background-color: var(--color-surface-2);">
+                <iframe id="osmEmbedIframe" width="100%" height="220" frameborder="0" scrolling="no" marginheight="0" marginwidth="0"></iframe>
+              </div>
+            </div>
+          </div>
+
+          <!-- PAINEL DE ABAS: TABELA DETALHADA E JSON -->
+          <div class="meta-card-section">
+            <div class="meta-tab-header">
+              <button class="meta-tab-btn active" data-tab="tabTable">
+                <i data-lucide="table" style="width: 16px; height: 16px;"></i>
+                <span>Tabela de Metadados</span>
+              </button>
+              <button class="meta-tab-btn" data-tab="tabJson">
+                <i data-lucide="code" style="width: 16px; height: 16px;"></i>
+                <span>JSON Completo</span>
+              </button>
+
+              <!-- Filtro de Busca na Tabela -->
+              <div style="margin-left: auto; width: 240px;">
+                <input 
+                  type="text" 
+                  id="metaTableSearch" 
+                  class="form-input" 
+                  placeholder="Filtrar tag..." 
+                  style="padding: 6px 12px; font-size: 0.8125rem;"
+                >
+              </div>
+            </div>
+
+            <!-- Painel 1: Tabela Estruturada -->
+            <div class="meta-tab-panel" id="tabTable">
+              <div class="table-responsive">
+                <table class="osint-table">
+                  <thead>
+                    <tr>
+                      <th>Propriedade / Tag</th>
+                      <th>Valor Identificado</th>
+                      <th style="text-align: right;">Copiar</th>
+                    </tr>
+                  </thead>
+                  <tbody id="metadataTableBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Painel 2: JSON Bruto -->
+            <div class="meta-tab-panel" id="tabJson" style="display: none;">
+              <div style="position: relative;">
+                <button 
+                  class="btn btn-ghost btn-sm" 
+                  onclick="window.copyToClipboard(document.getElementById('rawJsonCode').textContent, this)"
+                  style="position: absolute; top: 10px; right: 10px; z-index: 5;"
+                >
+                  <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                  <span>Copiar JSON</span>
+                </button>
+                <pre style="background: var(--color-bg); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--color-border); font-family: var(--font-mono); font-size: 0.8125rem; color: var(--color-primary); overflow-x: auto; max-height: 500px;"><code id="rawJsonCode"></code></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Rodapé do Layout -->
+        <%- include('../../partials/footer') %>
+      </main>
+    </div>
+  </div>
+
+  <!-- Barra de Navegação Inferior (Mobile) -->
+  <%- include('../../partials/bottom-nav') %>
+
+  <!-- Modal de Busca Global (Ctrl + K) -->
+  <%- include('../../partials/command-palette') %>
+
+  <!-- Container de Toasts -->
+  <%- include('../../partials/toast') %>
+
+  <!-- Scripts Base e Motor de Metadados -->
+  <script src="/js/ui.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/historico.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/metadados.js"></script>
+</body>
+</html>
+

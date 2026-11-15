@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('partials/head') %>
+  <link rel="stylesheet" href="/css/pages/history.css">
+</head>
+<body>
+  <div class="app-layout">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <%- include('partials/sidebar') %>
+
+    <div class="app-main">
+      <%- include('partials/header') %>
+
+      <main class="app-content">
+        <!-- Topo da Página de Histórico -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-5); flex-wrap: wrap; gap: var(--space-4);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="badge badge-purple">Privado & Criptografado</span>
+              <span class="badge badge-dark">Sessão Individual</span>
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); margin: 0;">
+              Histórico de Consultas & Buscas
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+              Registro de todas as suas investigações efetuadas na plataforma com payloads e reexecução rápida.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: var(--space-2);">
+            <% const listaBuscas = (typeof historicoBuscas !== 'undefined' && Array.isArray(historicoBuscas)) ? historicoBuscas : []; %>
+            <% if (listaBuscas && listaBuscas.length > 0) { %>
+              <button type="button" class="btn btn-secondary btn-sm" id="btnLimparTodoHistorico" style="color: var(--color-secondary);">
+                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                Limpar Histórico Completo
+              </button>
+            <% } %>
+            <a href="/dashboard" class="btn btn-secondary btn-sm">
+              <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+              Voltar ao Painel
+            </a>
+          </div>
+        </div>
+
+        <!-- Tabela e Filtros de Histórico -->
+        <div class="history-page-card">
+          <div class="history-filter-bar">
+            <div style="flex: 1; min-width: 220px;">
+              <input
+                type="text"
+                id="filtroInput"
+                class="input"
+                placeholder="Filtrar por termo, documento ou módulo..."
+                style="padding: 8px 12px; font-size: 0.85rem;"
+              />
+            </div>
+            <div>
+              <select id="filtroModulo" class="input" style="padding: 8px 12px; font-size: 0.85rem; background: var(--color-surface);">
+                <option value="">Todos os Módulos</option>
+                <option value="telefone">Telefone</option>
+                <option value="email">E-mail</option>
+                <option value="dominio">Domínio</option>
+                <option value="consulta">Busca Cadastral (CPF, Nome, etc.)</option>
+                <option value="metadados">Metadados</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="history-table" id="tabelaHistorico">
+              <thead>
+                <tr>
+                  <th>Data & Hora</th>
+                  <th>Módulo</th>
+                  <th>Alvo / Consulta</th>
+                  <th style="text-align: right;">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (listaBuscas && listaBuscas.length > 0) { %>
+                  <% listaBuscas.forEach(item => { %>
+                    <tr class="history-row" data-id="<%= item.id %>" data-modulo="<%= item.modulo %>" data-input="<%= item.input.toLowerCase() %>">
+                      <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-text-dim); white-space: nowrap;">
+                        <%= new Date(item.criado_em).toLocaleString('pt-BR') %>
+                      </td>
+                      <td>
+                        <span class="badge <%= item.modulo.includes('consulta') ? 'badge-red' : item.modulo === 'telefone' ? 'badge-purple' : 'badge-dark' %>" style="font-size: 0.72rem; text-transform: uppercase;">
+                          <%= item.modulo.replace('consulta_', '') %>
+                        </span>
+                      </td>
+                      <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                          <span style="font-family: var(--font-mono); font-weight: 600; color: var(--color-text);">
+                            <%= item.input %>
+                          </span>
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-sm"
+                            onclick="window.copyToClipboard('<%= item.input %>', 'Termo copiado!')"
+                            style="padding: 2px 6px; font-size: 0.7rem;"
+                            title="Copiar termo"
+                          >
+                            <i data-lucide="copy" style="width: 11px; height: 11px;"></i>
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <div style="display: flex; justify-content: flex-end; gap: var(--space-2);">
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-sm btn-ver-json"
+                            data-json="<%= encodeURIComponent(JSON.stringify(item.resultado_json || {})) %>"
+                            data-titulo="<%= item.modulo %>: <%= item.input %>"
+                            style="padding: 4px 8px; font-size: 0.75rem;"
+                          >
+                            <i data-lucide="code" style="width: 12px; height: 12px;"></i>
+                            Ver JSON
+                          </button>
+
+                          <button
+                            type="button"
+                            class="btn btn-secondary btn-sm btn-excluir-item"
+                            data-id="<%= item.id %>"
+                            style="padding: 4px 8px; font-size: 0.75rem; color: var(--color-secondary);"
+                            title="Excluir este registro"
+                          >
+                            <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr id="emptyRow">
+                    <td colspan="4" style="text-align: center; padding: var(--space-6); color: var(--color-text-dim);">
+                      <i data-lucide="history" style="width: 36px; height: 36px; margin-bottom: 8px; color: var(--color-primary); opacity: 0.6;"></i>
+                      <div style="font-weight: 600;">Seu histórico de buscas está vazio.</div>
+                      <div style="font-size: 0.75rem; margin-top: 4px;">As próximas consultas que você realizar aparecerão registradas aqui.</div>
+                    </td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+
+      <%- include('partials/footer') %>
+    </div>
+  </div>
+
+  <%- include('partials/bottom-nav') %>
+  <%- include('partials/command-palette') %>
+  <%- include('partials/toast') %>
+
+  <!-- Modal Detalhes do JSON -->
+  <div id="modalDetalhesHistorico" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4);">
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 100%; max-width: 680px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden;">
+      <div style="padding: var(--space-4); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 700; color: var(--color-text);" id="modalHistoricoTitulo">Resultado Salvo</span>
+        <button type="button" onclick="document.getElementById('modalDetalhesHistorico').style.display='none'" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+      <pre id="preDetalhesHistorico" style="padding: var(--space-4); margin: 0; overflow-y: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-text-dim); background: var(--color-surface-2); flex: 1;"></pre>
+      <div style="padding: var(--space-3); border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: var(--space-2);">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarModalJson">Copiar JSON</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('modalDetalhesHistorico').style.display='none'">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const modal = document.getElementById('modalDetalhesHistorico');
+      const titulo = document.getElementById('modalHistoricoTitulo');
+      const pre = document.getElementById('preDetalhesHistorico');
+      const btnCopiar = document.getElementById('btnCopiarModalJson');
+      let currentJsonStr = '';
+
+      // Ver JSON
+      document.querySelectorAll('.btn-ver-json').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const raw = decodeURIComponent(btn.dataset.json || '{}');
+          try {
+            const parsed = JSON.parse(raw);
+            currentJsonStr = JSON.stringify(parsed, null, 2);
+          } catch {
+            currentJsonStr = raw;
+          }
+          pre.textContent = currentJsonStr;
+          titulo.textContent = btn.dataset.titulo || 'Detalhes do Registro';
+          modal.style.display = 'flex';
+        });
+      });
+
+      btnCopiar?.addEventListener('click', () => {
+        if (currentJsonStr) {
+          window.copyToClipboard(currentJsonStr, 'JSON copiado para a área de transferência!');
+        }
+      });
+
+      // Excluir Item Individual
+      document.querySelectorAll('.btn-excluir-item').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          if (!confirm('Deseja realmente excluir esta consulta do histórico?')) return;
+
+          try {
+            const res = await window.api.delete(`/api/historico/${id}`);
+            if (res.success) {
+              window.toast?.success('Item removido com sucesso!');
+              btn.closest('tr')?.remove();
+            } else {
+              window.toast?.error(res.error || 'Falha ao remover item.');
+            }
+          } catch (err) {
+            window.toast?.error(err.message);
+          }
+        });
+      });
+
+      // Limpar Todo o Histórico
+      document.getElementById('btnLimparTodoHistorico')?.addEventListener('click', async () => {
+        if (!confirm('ATENÇÃO: Deseja apagar permanentemente TODO o histórico de buscas da sua conta?')) return;
+
+        try {
+          const res = await window.api.delete('/api/historico');
+          if (res.success) {
+            window.toast?.success('Histórico completo limpo com sucesso!');
+            setTimeout(() => window.location.reload(), 600);
+          } else {
+            window.toast?.error(res.error || 'Falha ao limpar histórico.');
+          }
+        } catch (err) {
+          window.toast?.error(err.message);
+        }
+      });
+
+      // Filtro em Tempo Real
+      const filtroInput = document.getElementById('filtroInput');
+      const filtroModulo = document.getElementById('filtroModulo');
+      const rows = document.querySelectorAll('.history-row');
+
+      const aplicarFiltros = () => {
+        const termo = filtroInput.value.toLowerCase().trim();
+        const mod = filtroModulo.value.toLowerCase();
+
+        rows.forEach(r => {
+          const inputVal = r.dataset.input || '';
+          const modVal = r.dataset.modulo || '';
+          const matchesTermo = !termo || inputVal.includes(termo) || modVal.includes(termo);
+          const matchesMod = !mod || modVal.includes(mod);
+
+          r.style.display = (matchesTermo && matchesMod) ? '' : 'none';
+        });
+      };
+
+      filtroInput?.addEventListener('input', aplicarFiltros);
+      filtroModulo?.addEventListener('change', aplicarFiltros);
+    });
+  </script>
+</body>
+</html>
+

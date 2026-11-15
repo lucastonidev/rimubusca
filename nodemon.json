@@ -1,0 +1,27 @@
+{
+  "watch": [
+    "src"
+  ],
+  "ext": "js,ejs",
+  "ignore": [
+    "data",
+    "data/**",
+    "data/*",
+    "data/cache",
+    "data/cache/**",
+    "data/cache/*",
+    "data/modules.json",
+    "data/hub_wallet.json",
+    "public",
+    "public/**",
+    "scripts",
+    "scripts/**",
+    "supabase",
+    "supabase/**",
+    "node_modules",
+    "node_modules/**",
+    "*.log",
+    "*.json"
+  ],
+  "delay": "1000"
+}

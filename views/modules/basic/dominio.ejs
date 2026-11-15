@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <%- include('../../partials/head') %>
+
+  <style>
+    .dom-search-card {
+      background: radial-gradient(circle at 95% 5%, rgba(139, 92, 246, 0.08) 0%, transparent 60%),
+                  var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .dom-input-group {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+    }
+
+    .dom-main-input {
+      flex: 1;
+      padding: 10px 16px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 1rem;
+      font-family: var(--font-mono);
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .dom-main-input:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-glow);
+      background-color: var(--color-surface);
+    }
+
+    .demo-pills-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .demo-dom-btn {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all var(--transition-fast);
+    }
+
+    .demo-dom-btn:hover {
+      background: var(--color-surface-3);
+      color: var(--color-primary);
+      border-color: var(--color-primary-glow);
+    }
+
+    .dom-results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+
+    .dns-record-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      margin-right: 6px;
+      font-family: var(--font-mono);
+    }
+
+    .dns-badge-a { background: rgba(139, 92, 246, 0.15); color: var(--color-primary); border: 1px solid rgba(139, 92, 246, 0.3); }
+    .dns-badge-mx { background: rgba(239, 68, 68, 0.15); color: var(--color-secondary); border: 1px solid rgba(239, 68, 68, 0.3); }
+    .dns-badge-txt { background: rgba(59, 130, 246, 0.15); color: #60A5FA; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .dns-badge-ns { background: rgba(16, 185, 129, 0.15); color: var(--color-success); border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    .dns-item-row {
+      display: flex;
+      align-items: baseline;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--color-border);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .dorks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--space-3);
+    }
+
+    .dork-item {
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .dork-item:hover {
+      border-color: var(--color-primary-glow);
+    }
+
+    .dork-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--color-text);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dork-query {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--color-primary);
+      background: var(--color-surface-3);
+      padding: 6px 8px;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .dork-actions {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Backdrop Mobile -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- Barra Lateral -->
+    <%- include('../../partials/sidebar') %>
+
+    <!-- Área Principal -->
+    <div class="app-main">
+      <%- include('../../partials/header') %>
+
+      <main class="app-content">
+        <!-- Breadcrumb / Header do Módulo -->
+        <div class="module-header-row" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-5);">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span class="badge badge-purple">Infraestrutura OSINT</span>
+              <span class="badge badge-dark">DNS & WHOIS</span>
+            </div>
+            <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--color-text); margin: 0;">
+              Investigação de Domínio & DNS
+            </h1>
+            <p style="font-size: 0.875rem; color: var(--color-text-muted); margin-top: 4px;">
+              Resolução em tempo real de registros DNS (A, AAAA, MX, TXT, NS), SSL/TLS, cabeçalhos HTTP e WHOIS/RDAP.
+            </p>
+          </div>
+
+          <a href="/dashboard" class="btn btn-secondary btn-sm">
+            <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+            Voltar
+          </a>
+        </div>
+
+        <!-- Card de Busca de Domínio -->
+        <section class="dom-search-card">
+          <form id="formInvestigarDominio">
+            <label for="inputDominio" style="font-size: 0.875rem; font-weight: 600; color: var(--color-text); display: block;">
+              Domínio ou Host Alvo
+            </label>
+            
+            <div class="dom-input-group">
+              <input
+                type="text"
+                id="inputDominio"
+                name="dominio"
+                class="dom-main-input"
+                placeholder="exemplo.com.br ou google.com"
+                required
+                autocomplete="off"
+              />
+              <button type="submit" class="btn btn-primary" id="btnSubmitDominio">
+                <i data-lucide="search" style="width: 16px; height: 16px;"></i>
+                Mapear Domínio
+              </button>
+            </div>
+
+            <div class="demo-pills-row">
+              <span style="font-size: 0.75rem; color: var(--color-text-dim);">Exemplos para Teste:</span>
+              <button type="button" class="demo-dom-btn" data-dominio="registro.br">
+                <i data-lucide="globe"></i> registro.br
+              </button>
+              <button type="button" class="demo-dom-btn" data-dominio="github.com">
+                <i data-lucide="github"></i> github.com
+              </button>
+              <button type="button" class="demo-dom-btn" data-dominio="gov.br">
+                <i data-lucide="landmark"></i> gov.br
+              </button>
+              <button type="button" class="demo-dom-btn" data-dominio="cloudflare.com">
+                <i data-lucide="cloud"></i> cloudflare.com
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Skeleton de Carregamento -->
+        <div id="domSkeleton" style="display: none;">
+          <div class="card" style="padding: var(--space-6); text-align: center;">
+            <div class="spinner" style="margin: 0 auto var(--space-4);"></div>
+            <p style="font-size: 0.9rem; color: var(--color-text); font-weight: 600;">Resolvendo Zonas DNS e Analisando Infraestrutura...</p>
+            <p style="font-size: 0.8rem; color: var(--color-text-dim);">Consultando A/AAAA, MX, TXT, certificados TLS e servidores WHOIS.</p>
+          </div>
+        </div>
+
+        <!-- Seção de Resultados (Oculta Inicialmente) -->
+        <div id="domResultados" style="display: none;">
+          <!-- Top Bar do Resultado -->
+          <div class="card" style="padding: var(--space-5); margin-bottom: var(--space-5); background: var(--color-surface);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-4);">
+              <div style="display: flex; align-items: center; gap: var(--space-4);">
+                <div style="width: 52px; height: 52px; border-radius: var(--radius-md); background: rgba(139, 92, 246, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-primary-glow);">
+                  <i data-lucide="globe-2" style="width: 26px; height: 26px; color: var(--color-primary);"></i>
+                </div>
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <h2 id="resDominioTitulo" style="font-size: 1.25rem; font-weight: 700; color: var(--color-text); margin: 0; font-family: var(--font-mono);">
+                      -
+                    </h2>
+                    <span id="resStatusBadge" class="badge badge-purple">ONLINE</span>
+                  </div>
+                  <div style="display: flex; gap: var(--space-3); margin-top: 4px; font-size: 0.8rem; color: var(--color-text-dim);">
+                    <span>Servidor: <strong id="resServerHeader" style="color: var(--color-text);">-</strong></span>
+                    <span>Código HTTP: <strong id="resHttpCode" style="color: var(--color-text);">-</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Pontuação de Configuração de Segurança -->
+              <div style="display: flex; align-items: center; gap: var(--space-3);">
+                <div style="text-align: right;">
+                  <div style="font-size: 0.75rem; color: var(--color-text-dim);">Score de Segurança</div>
+                  <div id="resScoreNum" style="font-size: 1.15rem; font-weight: 700; color: var(--color-primary);">-</div>
+                </div>
+                <div id="resScoreBadge" class="badge badge-purple" style="font-size: 0.85rem; padding: 6px 12px;">BOM</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grid Principal de Diagnóstico -->
+          <div class="dom-results-grid">
+            <!-- Card 1: Registros DNS -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="list-tree" style="color: var(--color-primary);"></i>
+                  <span>Registros de DNS</span>
+                </div>
+                <span id="resTotalDnsBadge" class="badge badge-purple">0 Registros</span>
+              </div>
+              <div class="card-body" style="max-height: 380px; overflow-y: auto;">
+                <div id="resDnsListContainer">
+                  <!-- Injetado via JS -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Certificado SSL / TLS -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="lock" style="color: var(--color-success);"></i>
+                  <span>Certificado SSL / TLS</span>
+                </div>
+                <span id="resSslStatusBadge" class="badge badge-purple">Válido</span>
+              </div>
+              <div class="card-body">
+                <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                  <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Autoridade Emissora (CA)</span>
+                    <span id="resSslEmissor" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); max-width: 60%; text-align: right;">-</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Titular (CN)</span>
+                    <span id="resSslTitular" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); font-family: var(--font-mono);">-</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Expiração</span>
+                    <span id="resSslValidade" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text);">-</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Dias Restantes</span>
+                    <span id="resSslDiasRestantes" style="font-size: 0.85rem; font-weight: 700; color: var(--color-success);">-</span>
+                  </div>
+
+                  <div style="margin-top: var(--space-2);">
+                    <span style="font-size: 0.75rem; color: var(--color-text-dim); display: block; margin-bottom: 4px;">Nomes Alternativos (SAN):</span>
+                    <div id="resSslSans" style="font-family: var(--font-mono); font-size: 0.75rem; background: var(--color-surface-2); padding: 8px; border-radius: var(--radius-sm); max-height: 80px; overflow-y: auto; color: var(--color-text-dim);">
+                      -
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 3: Cabeçalhos de Segurança HTTP -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="shield-check" style="color: var(--color-primary);"></i>
+                  <span>Cabeçalhos de Segurança HTTP</span>
+                </div>
+              </div>
+              <div class="card-body">
+                <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <div>
+                      <span style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); display: block;">HSTS</span>
+                      <span style="font-size: 0.7rem; color: var(--color-text-dim);">Strict-Transport-Security</span>
+                    </div>
+                    <span id="resHstsBadge" class="badge badge-dark">-</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <div>
+                      <span style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); display: block;">CSP</span>
+                      <span style="font-size: 0.7rem; color: var(--color-text-dim);">Content-Security-Policy</span>
+                    </div>
+                    <span id="resCspBadge" class="badge badge-dark">-</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <div>
+                      <span style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); display: block;">X-Frame-Options</span>
+                      <span style="font-size: 0.7rem; color: var(--color-text-dim);">Proteção Anti-Clickjacking</span>
+                    </div>
+                    <span id="resFrameOptionsBadge" class="badge badge-dark">-</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                      <span style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); display: block;">X-Content-Type</span>
+                      <span style="font-size: 0.7rem; color: var(--color-text-dim);">MIME Sniffing Block</span>
+                    </div>
+                    <span id="resContentTypeBadge" class="badge badge-dark">-</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 4: WHOIS & Registro RDAP -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="book-user" style="color: var(--color-secondary);"></i>
+                  <span>Registro & WHOIS (RDAP)</span>
+                </div>
+                <span id="resWhoisFonte" class="badge badge-dark">-</span>
+              </div>
+              <div class="card-body">
+                <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                  <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Titular / Registrante</span>
+                    <span id="resWhoisTitular" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); max-width: 60%; text-align: right;">-</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Documento Titular (RDAP)</span>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span id="resWhoisDocTipo" class="badge badge-dark" style="display: none; font-size: 0.65rem;">CNPJ</span>
+                      <span id="resWhoisDocumento" style="font-size: 0.85rem; font-weight: 700; color: #38BDF8; font-family: var(--font-mono);">-</span>
+                    </div>
+                  </div>
+
+                  <div id="resWhoisRowResp" style="display: none; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Responsável / E-mail</span>
+                    <span id="resWhoisResponsavel" style="font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); max-width: 62%; text-align: right; word-break: break-all;">-</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Idade do Domínio</span>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+                      <span id="resWhoisIdade" style="font-size: 0.82rem; font-weight: 600; color: var(--color-text);">-</span>
+                      <span id="resWhoisIdadeBadge" class="badge badge-dark" style="display: none; font-size: 0.65rem;">-</span>
+                    </div>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Data de Criação</span>
+                    <span id="resWhoisCriadoEm" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); font-family: var(--font-mono);">-</span>
+                  </div>
+
+                  <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--color-border); padding-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted);">Data de Expiração</span>
+                    <span id="resWhoisExpiraEm" style="font-size: 0.85rem; font-weight: 600; color: var(--color-text); font-family: var(--font-mono);">-</span>
+                  </div>
+
+                  <!-- Resumo Automático da Empresa Titular (.br CNPJ) -->
+                  <div id="resWhoisEmpresaBox" style="display: none; background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: var(--radius-sm); padding: 10px 12px;">
+                    <div style="font-size: 0.72rem; font-weight: 700; color: #38BDF8; text-transform: uppercase; margin-bottom: 4px;">
+                      Vínculo Empresarial Detectado (Receita Federal)
+                    </div>
+                    <div id="resWhoisEmpresaInfo" style="font-size: 0.78rem; color: var(--color-text); line-height: 1.45;"></div>
+                  </div>
+
+                  <!-- Pivôs de Investigação Direta -->
+                  <div id="resWhoisPivotActions" style="display: none; flex-wrap: wrap; gap: 6px;"></div>
+
+                  <div>
+                    <span style="font-size: 0.75rem; color: var(--color-text-dim); display: block; margin-bottom: 4px;">Servidores Autoritativos (Nameservers):</span>
+                    <div id="resWhoisNameservers" style="font-family: var(--font-mono); font-size: 0.75rem; background: var(--color-surface-2); padding: 8px; border-radius: var(--radius-sm); color: var(--color-text-dim);">
+                      -
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card de Google Dorks OSINT de Domínio (Padrão: Oculto) -->
+          <div class="card" style="margin-bottom: var(--space-6); display: none;">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="terminal" style="color: var(--color-primary);"></i>
+                <span>Google Dorks de Reconhecimento de Infraestrutura</span>
+              </div>
+              <span class="badge badge-purple">6 Vetores</span>
+            </div>
+            <div class="card-body">
+              <div class="dorks-grid" id="resDorksContainer">
+                <!-- Preenchido via JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Botões de Ação Final -->
+          <div style="display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-4);">
+            <button type="button" class="btn btn-secondary" id="btnVerJsonCompleto">
+              <i data-lucide="code" style="width: 16px; height: 16px;"></i>
+              Ver JSON Bruto
+            </button>
+            <button type="button" class="btn btn-primary" onclick="window.scrollTo({ top: 0, behavior: 'smooth' }); document.getElementById('inputDominio').focus();">
+              <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+              Novo Domínio
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <%- include('../../partials/footer') %>
+    </div>
+  </div>
+
+  <%- include('../../partials/bottom-nav') %>
+  <%- include('../../partials/command-palette') %>
+  <%- include('../../partials/toast') %>
+
+  <!-- Modal Raw JSON -->
+  <div id="modalJson" class="modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: var(--z-modal); align-items: center; justify-content: center; padding: var(--space-4);">
+    <div style="background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); width: 100%; max-width: 700px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;">
+      <div style="padding: var(--space-4); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-weight: 700; color: var(--color-text);">Payload JSON de Domínio & Infraestrutura</span>
+        <button type="button" onclick="document.getElementById('modalJson').style.display='none'" style="background: none; border: none; color: var(--color-text-muted); cursor: pointer;">
+          <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+        </button>
+      </div>
+      <pre id="preModalJson" style="padding: var(--space-4); margin: 0; overflow-y: auto; font-family: var(--font-mono); font-size: 0.8rem; color: var(--color-text-dim); background: var(--color-surface-2); flex: 1;"></pre>
+      <div style="padding: var(--space-3); border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: var(--space-2);">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnCopiarJsonModal">Copiar JSON</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('modalJson').style.display='none'">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/api.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/main.js"></script>
+  <script src="/js/dominio.js"></script>
+</body>
+</html>
+
