@@ -429,6 +429,46 @@ export class ZeroyService {
       };
     }
 
+    // 2.1 Tratamento resiliente para Módulo CEP & Endereçamento
+    // A Zeroy API não dispõe de endpoint ativo para CEP (/api/v1/cep retorna 404).
+    // Delegamos transparentemente para o motor oficial multi-provider de CEP/Endereço:
+    if (cleanId === "cep" || meta.id === "cep" || meta.param === "cep") {
+      try {
+        console.log(`[ZEROY CEP DELEGADO] Consultando CEP '${termoPrincipal}' via motor multi-provider oficial...`);
+        const { consultarEnderecoCep } = await import("./cep.service.js");
+        const cepResultado = await consultarEnderecoCep(termoPrincipal);
+
+        if (cepResultado) {
+          const resultadoNormalizado = {
+            status: "sucesso",
+            modulo: meta.nome || "Módulo CEP",
+            consulta: termoPrincipal,
+            dados: cepResultado,
+            timestamp: new Date().toISOString(),
+          };
+
+          cacheService.set(meta.id, termoPrincipal, resultadoNormalizado).catch(() => {});
+
+          return {
+            id: meta.id,
+            tipo: meta.id,
+            path: meta.path,
+            parametro: meta.param,
+            parametrosUsados: paramsObjeto,
+            termo: termoPrincipal,
+            fonte: cepResultado.fonte || "DNE / Correios / IBGE Oficial",
+            urlConsultada: `https://zeroyapi.online${meta.path}?${queryString}`,
+            cached: false,
+            timestamp: new Date().toISOString(),
+            dados: resultadoNormalizado,
+          };
+        }
+      } catch (cepErr) {
+        console.warn(`[ZEROY CEP DELEGADO ERRO]: ${cepErr.message}`);
+        throw cepErr;
+      }
+    }
+
     const apiKey = process.env.ZEROY_API_KEY || this.apiKey;
     const baseUrl = (process.env.ZEROY_API_URL || this.baseUrl).replace(/\/+$/, "");
 
@@ -492,7 +532,17 @@ export class ZeroyService {
       if (response.data && typeof response.data === "object") {
         errorMsg = response.data.error || response.data.message || response.data.msg || response.data.detalhes;
       } else if (typeof response.data === "string" && response.data.length > 0) {
-        errorMsg = response.data;
+        // Se a resposta for HTML (ex: 404 do Next.js da Zeroy, Cloudflare, etc.), NÃO vaza HTML bruto
+        if (
+          response.data.trim().startsWith("<") ||
+          response.data.includes("<html") ||
+          response.data.includes("<!DOCTYPE") ||
+          response.data.includes("<body")
+        ) {
+          errorMsg = null;
+        } else {
+          errorMsg = response.data;
+        }
       }
 
       if (!errorMsg) {
@@ -501,7 +551,7 @@ export class ZeroyService {
         } else if (response.status === 402 || response.status === 403) {
           errorMsg = "Saldo insuficiente ou sem permissão na sua conta Zeroy API (402/403).";
         } else if (response.status === 404) {
-          errorMsg = `Nenhum registro localizado na Zeroy API para ${meta.label}: "${termoPrincipal}".`;
+          errorMsg = `Nenhum registro localizado na Zeroy API para ${meta.label || meta.nome || meta.id}: "${termoPrincipal}".`;
         } else if (response.status === 429) {
           errorMsg = "Limite de requisições excedido na Zeroy API (Rate Limit 429). Aguarde alguns instantes.";
         } else {

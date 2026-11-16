@@ -118,6 +118,7 @@ export const RimuInterpreters = {
   ZeroyHealth: HealthInterpreter,
   ZeroyCivilRegistry: CivilRegistryInterpreter,
   ZeroyGeneric: ZeroyGenericInterpreter,
+  ZeroyCep: HexysCepInterpreter,
 
   // Legacy Aliases
   CpfDossier: HexysCpfDossierInterpreter,

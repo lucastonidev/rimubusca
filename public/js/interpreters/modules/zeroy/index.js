@@ -16,6 +16,7 @@ import { BiometricsInterpreter } from "./biometrics.js";
 import { HealthInterpreter } from "./health.js";
 import { CivilRegistryInterpreter } from "./civil-registry.js";
 import { GenericInterpreter } from "./generic.js";
+import { CepInterpreter } from "../hexys/cep.js";
 
 export {
   CpfDossierInterpreter,
@@ -28,6 +29,7 @@ export {
   HealthInterpreter,
   CivilRegistryInterpreter,
   GenericInterpreter,
+  CepInterpreter,
 };
 
 /**
@@ -42,6 +44,16 @@ export function dispatchZeroy(responseData) {
   const moduleType = String(
     responseData.tipo || responseData.id || responseData.moduloId || ""
   ).toLowerCase();
+
+  // 0. CEP & Endereçamento Postal
+  if (
+    moduleType === "cep" ||
+    moduleType.includes("cep") ||
+    (!payload.cpf && !payload.name && (payload.cep || payload.dados?.cep || payload.logradouro || payload.dados?.logradouro))
+  ) {
+    const cepPayload = payload.dados || payload;
+    return CepInterpreter.render(responseData, cepPayload);
+  }
 
   // 1. Phone & Line Carrier Registry
   if (
@@ -163,6 +175,7 @@ export const ZeroyInterpreter = {
   Health: HealthInterpreter,
   CivilRegistry: CivilRegistryInterpreter,
   Generic: GenericInterpreter,
+  Cep: CepInterpreter,
 
   // Portuguese backward-compatible aliases
   CpfDossie: CpfDossierInterpreter,
@@ -174,6 +187,7 @@ export const ZeroyInterpreter = {
   FotoBiometria: BiometricsInterpreter,
   VacinaSaude: HealthInterpreter,
   CertidaoCartorio: CivilRegistryInterpreter,
+  CepEndereco: CepInterpreter,
   Generico: GenericInterpreter,
 };
 
