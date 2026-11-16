@@ -72,6 +72,11 @@ export function interpretHexys(type, rawData) {
     case "empresa":
       return interpretHexysCompany(rawData);
 
+    case "cep":
+    case "endereco":
+    case "logradouro":
+      return rawData;
+
     default:
       if (rawData && typeof rawData === "object" && (rawData.cnpj || rawData.razaoSocial || rawData.razao_social || rawData.sociosQSA)) {
         return interpretHexysCompany(rawData);

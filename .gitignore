@@ -25,7 +25,7 @@ osint.md
 bugs.md
 
 # caches do sistemas
-data
+/data/
 
 # Sistema / Editores
 .DS_Store

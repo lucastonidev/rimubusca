@@ -2,6 +2,7 @@ import { hexysApi } from "./hexys.service.js";
 import { interpretHexys } from "./interpreter/index.js";
 import { cacheService } from "../core/cache.service.js";
 import { consultarCnpjOficial, normalizarBrasilApiCnpj } from "./cnpj.service.js";
+import { consultarEnderecoCep } from "./cep.service.js";
 
 /**
  * ==============================================================================
@@ -39,8 +40,8 @@ export async function puxarDados({ tipo = "cpf", termo = "", uf = "" }) {
     console.warn(`[HEXYS CACHE READ ERROR]: ${cacheErr.message}`);
   }
 
-  // 2. Se API Hexys estiver configurada ou se for consulta CNPJ (fonte pública resiliente):
-  if (!isMock && (hexysApi.isConfigured() || tipoNormalizado === "cnpj")) {
+  // 2. Se API Hexys estiver configurada ou se for consulta CNPJ/CEP (fontes públicas resilientes multi-provider):
+  if (!isMock && (hexysApi.isConfigured() || tipoNormalizado === "cnpj" || tipoNormalizado === "cep" || tipoNormalizado === "endereco" || tipoNormalizado === "logradouro")) {
     try {
       console.log(`[HEXYS PUXAR DADOS] Consultando tipo: ${tipoNormalizado} | Termo: ${cleanTerm}`);
 
@@ -66,7 +67,9 @@ export async function puxarDados({ tipo = "cpf", termo = "", uf = "" }) {
           break;
 
         case "cep":
-          hexysResult = await hexysApi.cep(cleanTerm);
+        case "endereco":
+        case "logradouro":
+          hexysResult = await consultarEnderecoCep(cleanTerm, uf);
           break;
 
         case "foto":
@@ -110,20 +113,27 @@ export async function puxarDados({ tipo = "cpf", termo = "", uf = "" }) {
         const payloadData = interpretHexys(tipoNormalizado, rawPayload);
 
         // Grava no cache persistente do Supabase com TTL inteligente:
-        // 7 dias para documentos cadastrais (cpf, rg, titulo, foto, parentes, cnpj)
-        // 24 horas para dados de telecomunicações/localização (telefone, operadora, cep, email)
+        // 7 dias para documentos cadastrais (cpf, rg, titulo, foto, parentes, cnpj, cep)
+        // 24 horas para dados dinâmicos de telecomunicações/localização (telefone, operadora, email)
         try {
-          const isDocEstatico = ["cpf", "rg", "titulo", "foto", "parentes", "cnpj"].includes(tipoNormalizado);
+          const isDocEstatico = ["cpf", "rg", "titulo", "foto", "parentes", "cnpj", "cep", "endereco"].includes(tipoNormalizado);
           const ttlMs = isDocEstatico ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
           await cacheService.set(cacheKeyModulo, cleanTerm, payloadData, { ttlMs, metadata: { tipo: tipoNormalizado } });
         } catch (cacheSaveErr) {
           console.warn(`[HEXYS CACHE SAVE ERROR]: ${cacheSaveErr.message}`);
         }
 
+        const defaultFonte =
+          tipoNormalizado === "cnpj"
+            ? "Receita Federal do Brasil / CNPJ"
+            : tipoNormalizado === "cep" || tipoNormalizado === "endereco"
+              ? "DNE / Correios / IBGE Oficial"
+              : "Hexys Dev Intelligence (Live)";
+
         return {
           tipo: tipoNormalizado,
           termo: cleanTerm,
-          fonte: tipoNormalizado === "cnpj" ? "Receita Federal do Brasil / CNPJ" : "Hexys Dev Intelligence (Live)",
+          fonte: hexysResult.fonte || defaultFonte,
           timestamp: new Date().toISOString(),
           remainingCredits: hexysResult.remainingCredits ?? null,
           dados: payloadData,

@@ -51,7 +51,9 @@ export class BaseHubService {
     this.initialCatalogModules = options.catalogModules || [];
     this.walletId = options.walletId || "global_wallet";
     this.defaultMonthlyBudget = Number(options.defaultBudget || 20.0);
-    this.providerService = options.providerService || null;
+    if (options.providerService !== undefined) {
+      this.providerService = options.providerService;
+    }
     this.cachePrefix = options.cachePrefix || "hub";
     this.tableNameWallet = options.tableNameWallet || "hub_carteira";
     this.tableNameTransacoes = options.tableNameTransacoes || "hub_transacoes";

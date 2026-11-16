@@ -40,6 +40,7 @@ import {
   RelativesInterpreter as HexysRelativesInterpreter,
   EmailInterpreter as HexysEmailInterpreter,
   CompanyInterpreter as HexysCompanyInterpreter,
+  CepInterpreter as HexysCepInterpreter,
   extractPersonsList,
 } from "./modules/hexys/index.js";
 
@@ -103,6 +104,7 @@ export const RimuInterpreters = {
   HexysRelatives: HexysRelativesInterpreter,
   HexysEmail: HexysEmailInterpreter,
   HexysCompany: HexysCompanyInterpreter,
+  HexysCep: HexysCepInterpreter,
   extractPersonsList,
 
   // Zeroy Visual Modules

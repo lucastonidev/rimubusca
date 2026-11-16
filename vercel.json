@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": "{views/**,public/**}",
+      "includeFiles": "{views/**,public/**,src/data/**,src/lib/**}",
       "maxDuration": 60,
       "memory": 1024
     }

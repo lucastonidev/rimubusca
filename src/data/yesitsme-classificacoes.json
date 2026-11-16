@@ -1,0 +1,199 @@
+{
+  "adv": {
+    "label": "⚖️ Advocacia (.adv, adv_, adv., dr.)",
+    "descricao": "Advogados, juristas, defensores e escritórios de advocacia",
+    "termos": [
+      "adv",
+      "advogado",
+      "advogada",
+      "advocacia",
+      "direito",
+      "juridico",
+      "oab",
+      "jurista",
+      "defensor",
+      "defensora",
+      "dr",
+      "dra",
+      "doutor",
+      "doutora"
+    ],
+    "prefixos": ["dr.", "dr_", "dra.", "dra_", "adv.", "adv_", "advocacia."],
+    "sufixos": [
+      ".adv",
+      "_adv",
+      "adv",
+      ".direito",
+      "_direito",
+      ".oab",
+      "_oab",
+      ".advocacia"
+    ]
+  },
+  "psi": {
+    "label": "🧠 Psicologia (.psi, psi_, psi., psico.)",
+    "descricao": "Psicólogos, psicanalistas e terapeutas",
+    "termos": [
+      "psi",
+      "psicologo",
+      "psicologa",
+      "psicologia",
+      "psico",
+      "crp",
+      "terapeuta",
+      "terapia",
+      "psicanalista",
+      "psicanalise"
+    ],
+    "prefixos": ["psi.", "psi_", "psico.", "psico_"],
+    "sufixos": [".psi", "_psi", "psi", ".psico", "_psico", ".crp", "_crp"]
+  },
+  "med": {
+    "label": "🩺 Medicina / Saúde (dr., dra., .med)",
+    "descricao": "Médicos, clínicas e especialistas da saúde",
+    "termos": [
+      "med",
+      "medico",
+      "medica",
+      "medicina",
+      "dr",
+      "dra",
+      "doutor",
+      "doutora",
+      "crm",
+      "clinica",
+      "saude"
+    ],
+    "prefixos": ["dr.", "dr_", "dra.", "dra_", "med."],
+    "sufixos": [".med", "_med", "med", ".crm", "_crm", ".saude"]
+  },
+  "odonto": {
+    "label": "🦷 Odontologia (.odonto, dentista)",
+    "descricao": "Dentistas, ortodontistas e cirurgiões-dentistas",
+    "termos": [
+      "odonto",
+      "dentista",
+      "odontologia",
+      "cro",
+      "ortodontista",
+      "ortodontia"
+    ],
+    "prefixos": ["dr.", "dra.", "odonto_", "dentista_"],
+    "sufixos": [
+      ".odonto",
+      "_odonto",
+      "odonto",
+      ".dentista",
+      "_dentista",
+      ".cro"
+    ]
+  },
+  "nutri": {
+    "label": "🥗 Nutrição (.nutri, nutri_)",
+    "descricao": "Nutricionistas e consultores de nutrição",
+    "termos": ["nutri", "nutricionista", "nutricao", "crn", "dieta"],
+    "prefixos": ["nutri.", "nutri_"],
+    "sufixos": [".nutri", "_nutri", "nutri", ".crn", "_crn"]
+  },
+  "arq": {
+    "label": "📐 Arquitetura (.arq, arq_)",
+    "descricao": "Arquitetos, urbanistas e design de interiores",
+    "termos": [
+      "arq",
+      "arquiteto",
+      "arquiteta",
+      "arquitetura",
+      "cau",
+      "urbanista",
+      "interiores"
+    ],
+    "prefixos": ["arq.", "arq_"],
+    "sufixos": [".arq", "_arq", "arq", ".cau", "_cau", ".arquitetura"]
+  },
+  "eng": {
+    "label": "⚙️ Engenharia (.eng, eng_)",
+    "descricao": "Engenheiros civis, elétricos, mecânicos e de software",
+    "termos": ["eng", "engenheiro", "engenheira", "engenharia", "crea"],
+    "prefixos": ["eng.", "eng_"],
+    "sufixos": [".eng", "_eng", "eng", ".crea", "_crea", ".engenharia"]
+  },
+  "fisio": {
+    "label": "🏃 Fisioterapia (.fisio, fisio_)",
+    "descricao": "Fisioterapeutas e reabilitação",
+    "termos": [
+      "fisio",
+      "fisioterapeuta",
+      "fisioterapia",
+      "crefito",
+      "reabilitacao"
+    ],
+    "prefixos": ["dr.", "dra.", "fisio.", "fisio_"],
+    "sufixos": [".fisio", "_fisio", "fisio", ".crefito", "_crefito"]
+  },
+  "corretor": {
+    "label": "🏢 Imóveis / Corretor (.imoveis, corretor_)",
+    "descricao": "Corretores imobiliários e imobiliárias",
+    "termos": [
+      "corretor",
+      "corretora",
+      "imoveis",
+      "creci",
+      "imobiliaria",
+      "corretagem"
+    ],
+    "prefixos": ["corretor.", "corretor_", "imoveis."],
+    "sufixos": [
+      ".imoveis",
+      "_imoveis",
+      ".corretor",
+      "_corretor",
+      ".creci",
+      "_creci"
+    ]
+  },
+  "personal": {
+    "label": "💪 Personal Trainer / Fitness (.trainer, coach_)",
+    "descricao": "Profissionais de educação física e coaches",
+    "termos": [
+      "personal",
+      "trainer",
+      "coach",
+      "educacaofisica",
+      "cref",
+      "treinador",
+      "treinadora",
+      "fitness"
+    ],
+    "prefixos": ["personal.", "personal_", "coach.", "coach_"],
+    "sufixos": [
+      ".personal",
+      "_personal",
+      ".trainer",
+      "_trainer",
+      ".coach",
+      "_coach",
+      ".cref"
+    ]
+  },
+  "contab": {
+    "label": "📊 Contabilidade (.contabil, contador_)",
+    "descricao": "Contadores e escritórios contábeis",
+    "termos": [
+      "contabilidade",
+      "contador",
+      "contadora",
+      "crc",
+      "fiscal",
+      "tributario"
+    ],
+    "prefixos": ["contador.", "contador_", "contabil."],
+    "sufixos": [".contabil", "_contabil", ".contador", "_contador", ".crc"]
+  },
+  "vet": {
+    "label": "🐾 Veterinária (.vet, dra_vet)",
+    "descricao": "Médicos veterinários e clínicas pet",
+    "termos": ["vet", "veterinario", "veterinaria", "medvet", "crmv"],
+    "prefixos": ["dr.", "dra.", "vet.", "vet_"],
+    "sufixos": [".vet", "_vet", ".medvet", "_medvet", ".crmv"]
+  }
+}

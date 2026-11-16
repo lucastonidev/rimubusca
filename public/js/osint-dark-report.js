@@ -1079,7 +1079,12 @@
     const cidade = pick(base, ["cidade", "municipio", "localidade", "city"], "Não informada");
     const uf = pick(base, ["uf", "estado", "state"], "N/I");
     const ddd = pick(base, ["ddd"], "N/I");
-    const ibge = pick(base, ["codigoIbge", "ibge"], "N/I");
+    let ibge = pick(base, ["codigoIbge", "ibge"], "N/I");
+    if (typeof ibge === "object" && ibge !== null) {
+      ibge = ibge.codigo || ibge.id || ibge.codigo_ibge || "N/I";
+    } else if (String(ibge) === "[object Object]") {
+      ibge = "N/I";
+    }
     const estimativa = pick(base, ["totalResidentesEstimados", "residentes_estimados", "total"]);
 
     const geoCard = renderDarkCard(

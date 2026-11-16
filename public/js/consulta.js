@@ -392,6 +392,15 @@ class ConsultaController {
       ) {
         html += this.renderCnpjResult(dados, res);
       }
+      // 4.7 CEP & ENDEREÇOS GEOGRÁFICOS
+      else if (
+        tipoLower === "cep" ||
+        tipoLower === "endereco" ||
+        tipoLower === "logradouro" ||
+        (!dados.name && !dados.cpf && (dados.cep || dados.logradouro) && (dados.cidade || dados.bairro || dados.uf))
+      ) {
+        html += this.renderCepResult(dados, res);
+      }
       // 4.7 E-MAIL & PERFIL DIGITAL
       else if (
         tipoLower === "email" ||
@@ -955,6 +964,38 @@ class ConsultaController {
         </div>
       </div>
     `;
+  }
+
+  // RENDER: CEP & ENDEREÇOS GEOGRÁFICOS
+  renderCepResult(dados, res) {
+    if (window.RimuInterpreters && typeof window.RimuInterpreters.HexysCep?.render === "function") {
+      try {
+        return window.RimuInterpreters.HexysCep.render(res, dados);
+      } catch (e) {
+        console.warn("[RENDER CEP VIA HEXYS CEP INTERPRETER ERROR]:", e);
+      }
+    }
+    if (window.RimuInterpreters && typeof window.RimuInterpreters.dispatchHexys === "function") {
+      try {
+        const out = window.RimuInterpreters.dispatchHexys(res);
+        if (out) return out;
+      } catch (e) {
+        console.warn("[RENDER CEP VIA DISPATCH ERROR]:", e);
+      }
+    }
+    if (window.OsintDarkReport && typeof window.OsintDarkReport.renderCepReport === "function") {
+      try {
+        return window.OsintDarkReport.renderCepReport({
+          termo: res?.termo || dados?.cep || "",
+          payload: res,
+          moduleLabel: "CEP",
+          sourceLabel: res?.fonte || "DNE / Correios / IBGE",
+        });
+      } catch (e) {
+        console.warn("[RENDER CEP VIA OSINT DARK REPORT ERROR]:", e);
+      }
+    }
+    return this.renderGenericObject(dados, res);
   }
 
   // RENDER: TABELA DE REGISTROS (Nome, CEP, Telefone, Vizinhos)
@@ -4061,7 +4102,7 @@ class ConsultaController {
 
     // CHECAGEM SE É CONSULTA DE CEP / ENDEREÇO GEOGRÁFICO
     const isCepGeoQuery =
-      tipoLower === "cep" &&
+      (tipoLower === "cep" || tipoLower === "endereco" || tipoLower === "logradouro") &&
       ((!Array.isArray(payload) && Boolean(payload?.logradouro || payload?.codigoIbge || payload?.totalResidentesEstimados || payload?.cidade)) ||
         (Array.isArray(payload) && payload.length > 0 && !payload[0]?.cpf && !payload[0]?.name && !payload[0]?.nome));
 

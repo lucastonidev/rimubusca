@@ -16,6 +16,7 @@ import { PhonePersonsInterpreter, extractPersonsList } from "./phone-persons.js"
 import { RelativesInterpreter } from "./relatives.js";
 import { EmailInterpreter } from "./email.js";
 import { CompanyInterpreter } from "./company.js";
+import { CepInterpreter } from "./cep.js";
 
 export {
   CpfDossierInterpreter,
@@ -28,6 +29,7 @@ export {
   RelativesInterpreter,
   EmailInterpreter,
   CompanyInterpreter,
+  CepInterpreter,
   extractPersonsList,
 };
 
@@ -117,7 +119,17 @@ export function dispatchHexys(responseData) {
     return EmailInterpreter.render(responseData, payload);
   }
 
-  // 9. Arrays / Tabular lists (Name homonyms, CEP street addresses, neighbors)
+  // 9. CEP & Geographic Address queries
+  if (
+    queryType === "cep" ||
+    queryType === "endereco" ||
+    queryType === "logradouro" ||
+    (!payload.name && !payload.cpf && (payload.cep || payload.logradouro) && (payload.cidade || payload.bairro || payload.uf))
+  ) {
+    return CepInterpreter.render(responseData, payload);
+  }
+
+  // 10. Arrays / Tabular lists (Name homonyms, CEP street addresses, neighbors)
   if (
     Array.isArray(payload) ||
     Array.isArray(payload?.resultado) ||
@@ -132,12 +144,12 @@ export function dispatchHexys(responseData) {
     return RecordsTableInterpreter.render(responseData, items);
   }
 
-  // 9. Individual Dossier Fallback
+  // 11. Individual Dossier Fallback
   if (payload.name || payload.nome || payload.cpf) {
     return CpfDossierInterpreter.render(responseData, payload);
   }
 
-  // 10. Generic Object Fallback
+  // 12. Generic Object Fallback
   return GenericInterpreter.render(responseData, payload);
 }
 
@@ -153,6 +165,7 @@ export const HexysInterpreter = {
   Relatives: RelativesInterpreter,
   Email: EmailInterpreter,
   Company: CompanyInterpreter,
+  Cep: CepInterpreter,
 };
 
 export default HexysInterpreter;
