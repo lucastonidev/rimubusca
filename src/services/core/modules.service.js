@@ -3,215 +3,64 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { supabaseAdmin } from "../../config/supabase.js";
 import { parseSupabaseError } from "../../utils/supabaseErrorParser.js";
+import { RIMU_MODULOS } from "../../data/rimuModulos.js";
 
 /**
  * ==============================================================================
  * RIMUBUSCA - SERVIÇO DE GERENCIAMENTO DE MÓDULOS (MODULES.SERVICE.JS)
  * Gerencia o catálogo de módulos do banco de dados (tabela 'modules') com
  * persistência local em cache (data/modules.json) para alta disponibilidade.
+ * Suporta os 43 módulos da RimuAPI + módulos nativos de OSINT e Forense.
  * ==============================================================================
  */
 
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const MODULES_FILE = path.join(DATA_DIR, "modules.json");
 
-// Catálogo base de módulos para seed e fallback
-export const MODULOS_PADRAO = [
-  // 1. CONSULTAS CADASTRAIS (PUXAR DADOS)
-  {
-    id: "mod-cpf",
-    slug: "cpf",
-    nome: "Puxar por CPF",
-    descricao: "Situação na Receita, nascimento, filiação e dados completos.",
-    icone: "credit-card",
-    cor_icone: "#EF4444",
-    badge_texto: "Cadastral",
-    badge_cor: "badge-red",
-    rota: "/advanced/person?tipo=cpf",
-    categoria: "consultas",
-    ordem: 1,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-nome",
-    slug: "nome",
-    nome: "Puxar por Nome",
-    descricao: "Localização de homônimos, faixa etária e mães.",
-    icone: "user",
-    cor_icone: "#A78BFA",
-    badge_texto: "Nominal",
-    badge_cor: "badge-purple",
-    rota: "/advanced/person?tipo=nome",
-    categoria: "consultas",
-    ordem: 2,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-rg",
-    slug: "rg",
-    nome: "Puxar por RG",
-    descricao: "Registro Geral, órgão emissor e UF de expedição.",
-    icone: "id-card",
-    cor_icone: "#A78BFA",
-    badge_texto: "Identidade",
-    badge_cor: "badge-purple",
-    rota: "/advanced/person?tipo=rg",
-    categoria: "consultas",
-    ordem: 3,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-telefone_puxar",
-    slug: "telefone_puxar",
-    nome: "Puxar por Telefone",
-    descricao: "Puxar nome do titular, CPF vinculado, endereço e cadastro da linha.",
-    icone: "phone-forwarded",
-    cor_icone: "#EF4444",
-    badge_texto: "Titularidade",
-    badge_cor: "badge-red",
-    rota: "/advanced/person?tipo=telefone",
-    categoria: "consultas",
-    ordem: 4,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-titulo",
-    slug: "titulo",
-    nome: "Título Eleitoral",
-    descricao: "Zona eleitoral, seção, município e biometria.",
-    icone: "vote",
-    cor_icone: "#94A3B8",
-    badge_texto: "Eleitoral",
-    badge_cor: "badge-dark",
-    rota: "/advanced/person?tipo=titulo",
-    categoria: "consultas",
-    ordem: 5,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-nis",
-    slug: "nis",
-    nome: "Puxar por NIS",
-    descricao: "Identificação Social (CadÚnico / Benefícios).",
-    icone: "badge-percent",
-    cor_icone: "#94A3B8",
-    badge_texto: "Social",
-    badge_cor: "badge-dark",
-    rota: "/advanced/person?tipo=nis",
-    categoria: "consultas",
-    ordem: 6,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-pis",
-    slug: "pis",
-    nome: "PIS / PASEP",
-    descricao: "PIS ativo, NIS vinculado e histórico funcional.",
-    icone: "briefcase",
-    cor_icone: "#94A3B8",
-    badge_texto: "Trabalho",
-    badge_cor: "badge-dark",
-    rota: "/advanced/person?tipo=pis",
-    categoria: "consultas",
-    ordem: 7,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-placa",
-    slug: "placa",
-    nome: "Placa de Veículo",
-    descricao: "Marca/modelo, ano, Renavam, multas e proprietário.",
-    icone: "car",
-    cor_icone: "#A78BFA",
-    badge_texto: "Veículos",
-    badge_cor: "badge-purple",
-    rota: "/advanced/person?tipo=placa",
-    categoria: "consultas",
-    ordem: 8,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-cnpj_puxar",
-    slug: "cnpj_puxar",
-    nome: "Puxar por CNPJ",
-    descricao: "Razão social, QSA (sócios), capital e filiais.",
-    icone: "building",
-    cor_icone: "#EF4444",
-    badge_texto: "Receita Federal",
-    badge_cor: "badge-red",
-    rota: "/advanced/person?tipo=cnpj",
-    categoria: "consultas",
-    ordem: 9,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-cep",
-    slug: "cep",
-    nome: "CEP & Endereços",
-    descricao: "Busca de moradores e empresas por logradouro.",
-    icone: "map-pin",
-    cor_icone: "#94A3B8",
-    badge_texto: "Localização",
-    badge_cor: "badge-dark",
-    rota: "/advanced/person?tipo=cep",
-    categoria: "consultas",
-    ordem: 10,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-email_puxar",
-    slug: "email_puxar",
-    nome: "E-mail Pessoal",
-    descricao: "Contas vinculadas ao titular e cadastros.",
-    icone: "mail",
-    cor_icone: "#A78BFA",
-    badge_texto: "Contas",
-    badge_cor: "badge-purple",
-    rota: "/advanced/person?tipo=email",
-    categoria: "consultas",
-    ordem: 11,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
-  {
-    id: "mod-foto",
-    slug: "foto",
-    nome: "Foto & Biometria",
-    descricao: "Registro facial de documentos e CNH.",
-    icone: "camera",
-    cor_icone: "#EF4444",
-    badge_texto: "Biometria",
-    badge_cor: "badge-red",
-    rota: "/advanced/person?tipo=foto",
-    categoria: "consultas",
-    ordem: 12,
-    ativo: true,
-    em_breve: false,
-    manutencao: false,
-  },
+function mapBadgeColor(hexColor) {
+  if (!hexColor) return "badge-purple";
+  const hex = hexColor.toLowerCase();
+  if (hex === "#10b981") return "badge-green";
+  if (hex === "#8b5cf6" || hex === "#6366f1" || hex === "#a855f7") return "badge-purple";
+  if (hex === "#3b82f6" || hex === "#06b6d4" || hex === "#0ea5e9") return "badge-purple";
+  if (hex === "#ef4444" || hex === "#dc2626" || hex === "#f43f5e") return "badge-red";
+  if (hex === "#f59e0b" || hex === "#eab308") return "badge-warning";
+  return "badge-purple";
+}
 
-  // 2. INTELIGÊNCIA OSINT
+// Catálogo base de módulos para seed e fallback resiliente
+export const MODULOS_PADRAO = [
+  // 1. OS 43 MÓDULOS OFICIAIS DA RIMUAPI
+  ...RIMU_MODULOS.map((m, index) => ({
+    id: `mod-${m.tipo}`,
+    slug: m.tipo,
+    nome: m.nome,
+    descricao: m.descricao,
+    icone: m.icone || "box",
+    imagem_url: null,
+    cor_icone: m.badgeColor || "#A78BFA",
+    badge_texto: m.badge || m.categoriaNome,
+    badge_cor: mapBadgeColor(m.badgeColor),
+    rota: `/advanced/person?tipo=${m.tipo}`,
+    categoria: "consultas",
+    ordem: index + 1,
+    ativo: true,
+    em_breve: false,
+    manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {
+      subcategoria: m.categoria,
+      categoriaNome: m.categoriaNome,
+      tipo: m.tipo,
+      placeholder: m.placeholder,
+      mask: m.mask,
+      parametroNome: m.parametroNome,
+      badge: m.badge,
+      badgeColor: m.badgeColor,
+    },
+  })),
+
+  // 2. MÓDULOS DE INTELIGÊNCIA OSINT
   {
     id: "mod-processos",
     slug: "processos",
@@ -219,46 +68,52 @@ export const MODULOS_PADRAO = [
     descricao: "Rastreamento unificado no DataJud (CNJ - 91 Tribunais), validação Módulo 97 e diários.",
     icone: "scale",
     cor_icone: "#F59E0B",
-    badge_texto: "DataJud CNJ & Scraper",
+    badge_texto: "DataJud CNJ",
     badge_cor: "badge-purple",
     rota: "/basic/processes",
     categoria: "osint",
-    ordem: 20,
+    ordem: 50,
     ativo: true,
     em_breve: false,
     manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
   },
   {
     id: "mod-redes",
     slug: "redes",
     nome: "Redes Sociais & Contas Online",
-    descricao: "Descubra contas em mais de 80 plataformas por @Username ou localize perfis cruzando Nome, E-mail e Telefone.",
+    descricao: "Descubra contas em mais de 80 plataformas por @Username ou localize perfis cruzando dados.",
     icone: "users",
     cor_icone: "#EC4899",
-    badge_texto: "80+ Redes & Instagram",
+    badge_texto: "80+ Redes",
     badge_cor: "badge-purple",
     rota: "/basic/instagram",
     categoria: "osint",
-    ordem: 21,
+    ordem: 51,
     ativo: true,
     em_breve: false,
     manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
   },
   {
-    id: "mod-telefone",
-    slug: "telefone",
+    id: "mod-telefone_osint",
+    slug: "telefone_osint",
     nome: "Telefone OSINT (Telecom)",
-    descricao: "Identificação de operadora original, DDD/região Anatel, tipo de linha e dorks.",
+    descricao: "Identificação de operadora original, DDD/região Anatel, tipo de linha e telecom.",
     icone: "phone-call",
     cor_icone: "#A78BFA",
-    badge_texto: "Dados Básicos & Telecom",
+    badge_texto: "Telecom",
     badge_cor: "badge-purple",
     rota: "/basic/smartphone",
     categoria: "osint",
-    ordem: 22,
+    ordem: 52,
     ativo: true,
     em_breve: false,
     manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
   },
   {
     id: "mod-dominio",
@@ -271,14 +126,16 @@ export const MODULOS_PADRAO = [
     badge_cor: "badge-purple",
     rota: "/basic/domain",
     categoria: "osint",
-    ordem: 23,
+    ordem: 53,
     ativo: true,
     em_breve: false,
     manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
   },
   {
-    id: "mod-email",
-    slug: "email",
+    id: "mod-email_osint",
+    slug: "email_osint",
     nome: "E-mail OSINT (Holehe & GHunt)",
     descricao: "Inteligência de e-mail com Mosint (DNS/MX), Holehe (contas sociais) e GHunt (Google).",
     icone: "mail-search",
@@ -287,45 +144,51 @@ export const MODULOS_PADRAO = [
     badge_cor: "badge-purple",
     rota: "/basic/email",
     categoria: "osint",
-    ordem: 24,
+    ordem: 54,
     ativo: true,
     em_breve: false,
     manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
   },
   {
-    id: "mod-cnpj",
-    slug: "cnpj",
-    nome: "Empresa / CNPJ",
-    descricao: "Quadro de sócios e administradores (QSA), capital social, filiais e situação cadastral.",
-    icone: "building-2",
-    cor_icone: "#F59E0B",
-    badge_texto: "Corporativo",
-    badge_cor: "badge-dark",
-    rota: "/advanced/person?tipo=cnpj",
+    id: "mod-servidores_federais",
+    slug: "servidores_federais",
+    nome: "Servidores Públicos Federais",
+    descricao: "Consulta Executivo Federal (SIAPE): vínculos, cargos, universidades/IFs e remuneração mensal (CGU).",
+    icone: "landmark",
+    cor_icone: "#38BDF8",
+    badge_texto: "CGU SIAPE",
+    badge_cor: "badge-purple",
+    rota: "/basic/servidores",
     categoria: "osint",
-    ordem: 25,
+    ordem: 55,
     ativo: true,
     em_breve: false,
     manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
   },
   {
-    id: "mod-hubapi",
-    slug: "hubapi",
-    nome: "Catálogo de APIs Pay-per-Use",
-    descricao: "46 módulos integrados da Aspect API com gestão orçamentária pré-paga e saldo dinâmico.",
-    icone: "coins",
-    cor_icone: "#F59E0B",
-    badge_texto: "Aspect Hub",
-    badge_cor: "badge-warning",
-    rota: "/hub-api",
+    id: "mod-beneficios_auxilios",
+    slug: "beneficios_auxilios",
+    nome: "Benefícios & Auxílios Sociais",
+    descricao: "Novo Bolsa Família, BPC/LOAS, Auxílio Emergencial, Seguro-Defeso, Garantia-Safra e PETI por CPF ou NIS.",
+    icone: "hand-coins",
+    cor_icone: "#10B981",
+    badge_texto: "CGU Social",
+    badge_cor: "badge-purple",
+    rota: "/basic/auxilios",
     categoria: "osint",
-    ordem: 26,
+    ordem: 56,
     ativo: true,
     em_breve: false,
     manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
   },
 
-  // 3. FORENSE
+  // 3. MÓDULOS FORENSES
   {
     id: "mod-metadados",
     slug: "metadados",
@@ -337,10 +200,48 @@ export const MODULOS_PADRAO = [
     badge_cor: "badge-purple",
     rota: "/basic/metadata",
     categoria: "forense",
-    ordem: 30,
+    ordem: 60,
     ativo: true,
     em_breve: false,
     manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
+  },
+  {
+    id: "mod-pix_boleto",
+    slug: "pix_boleto",
+    nome: "PIX & Boleto Forense",
+    descricao: "Decodificador BR Code (CRC16) e auditoria matemática de Boletos FEBRABAN (Mod 10/11 & fator 2025).",
+    icone: "qr-code",
+    cor_icone: "#34D399",
+    badge_texto: "Zero API Cost",
+    badge_cor: "badge-purple",
+    rota: "/basic/financeiro",
+    categoria: "forense",
+    ordem: 61,
+    ativo: true,
+    em_breve: false,
+    manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
+  },
+  {
+    id: "mod-bitcoin",
+    slug: "bitcoin",
+    nome: "Investigação Bitcoin (BTC)",
+    descricao: "Rastreamento on-chain (saldo, transações), cruzamento Surface Web e varredura Dark Web (.onion).",
+    icone: "bitcoin",
+    cor_icone: "#F59E0B",
+    badge_texto: "On-Chain + Dark Web",
+    badge_cor: "badge-warning",
+    rota: "/basic/bitcoin",
+    categoria: "forense",
+    ordem: 62,
+    ativo: true,
+    em_breve: false,
+    manutencao: false,
+    roles_permitidas: ["user", "admin"],
+    config: {},
   },
 ];
 
@@ -386,7 +287,7 @@ function salvarModulosLocal(modulos) {
   }
 }
 
-function comTimeout(prom, ms = 1200) {
+function comTimeout(prom, ms = 3000) {
   return Promise.race([
     prom,
     new Promise((_, reject) =>
@@ -507,7 +408,7 @@ export const getModulesService = async ({ onlyActive = false } = {}) => {
         .select("*")
         .order("ordem", { ascending: true });
 
-      const { data, error } = await comTimeout(query, 1200);
+      const { data, error } = await comTimeout(query, 3000);
 
       if (!error && Array.isArray(data) && data.length > 0) {
         const enriquecido = assegurarModulosNativosNaLista(data);
@@ -533,29 +434,54 @@ export const getModulesService = async ({ onlyActive = false } = {}) => {
 };
 
 /**
- * Busca um módulo específico pelo ID ou Slug
+ * Busca um módulo específico pelo ID ou Slug (com suporte a normalização e aliases)
  */
 export const getModuleByIdService = async (idOuSlug) => {
   if (!idOuSlug) return null;
+  const raw = String(idOuSlug).trim();
+  const lower = raw.toLowerCase();
+
+  // Mapeamento de compatibilidade de aliases
+  const aliasMap = {
+    foto: "fotos",
+    telefone_puxar: "telefone",
+    cnpj_puxar: "cnpj",
+    email_puxar: "email",
+    celular: "telefone",
+  };
+  const slugBuscado = aliasMap[lower] || lower;
 
   if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     try {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOuSlug);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
       const query = supabaseAdmin.from("modules").select("*");
       
       if (isUuid) {
-        query.eq("id", idOuSlug);
+        query.eq("id", raw);
       } else {
-        query.eq("slug", idOuSlug);
+        query.eq("slug", slugBuscado);
       }
 
-      const { data, error } = await comTimeout(query.maybeSingle(), 1200);
+      const { data, error } = await comTimeout(query.maybeSingle(), 3000);
       if (!error && data) return data;
     } catch (_) {}
   }
 
   const locais = carregarModulosLocal();
-  return locais.find((m) => m.id === idOuSlug || m.slug === idOuSlug) || null;
+  return (
+    locais.find((m) => {
+      const mSlug = String(m.slug || "").toLowerCase();
+      const mId = String(m.id || "").toLowerCase();
+      const mTipo = String(m.config?.tipo || "").toLowerCase();
+      return (
+        mId === lower ||
+        mSlug === lower ||
+        mSlug === slugBuscado ||
+        mTipo === lower ||
+        mTipo === slugBuscado
+      );
+    }) || null
+  );
 };
 
 /**

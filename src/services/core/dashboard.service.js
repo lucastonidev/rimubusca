@@ -7,11 +7,10 @@
  */
 
 import { supabaseAdmin } from "../../config/supabase.js";
+import { getModulesService } from "./modules.service.js";
 
-// Quantidade de tipos de consulta na Central de Puxar Dados (/advanced/person)
-// (CPF, Nome, Telefone, Placa, Foto, CEP, E-mail, Vizinhos, Título Eleitor,
-// Operadora, RG, CNPJ, Parentes, NIS, PIS/PASEP)
-export const TOTAL_TIPOS_PUXAR_DADOS = 15;
+// Quantidade de tipos de consulta na Central de Puxar Dados (/advanced/person) via RimuAPI
+export const TOTAL_TIPOS_PUXAR_DADOS = 43;
 export const LIMITE_DIARIO_PADRAO = 100;
 export const SALDO_PADRAO = 30.0;
 
@@ -26,7 +25,14 @@ export async function obterEstatisticasPuxarDados(userId) {
   let limiteDiario = LIMITE_DIARIO_PADRAO;
   let saldoCarteira = SALDO_PADRAO;
   let orcamentoMensal = SALDO_PADRAO;
-  const totalModulos = TOTAL_TIPOS_PUXAR_DADOS;
+  let totalModulos = TOTAL_TIPOS_PUXAR_DADOS;
+
+  try {
+    const mods = await getModulesService({ onlyActive: true });
+    if (Array.isArray(mods) && mods.length > 0) {
+      totalModulos = mods.filter((m) => m.categoria === "consultas").length || 43;
+    }
+  } catch (_) {}
 
   if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && userId) {
     try {

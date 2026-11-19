@@ -11,6 +11,8 @@ const puxarDadosSchema = z.object({
     .max(200, "Termo de busca excessivamente longo.")
     .trim(),
   uf: z.string().optional(),
+  param2: z.union([z.string(), z.number()]).optional(),
+  params: z.record(z.any()).optional(),
 });
 
 export const puxarDadosController = async (req, res) => {
@@ -27,10 +29,10 @@ export const puxarDadosController = async (req, res) => {
     });
   }
 
-  const { tipo, termo, uf } = validation.data;
+  const { tipo, termo, uf, param2, params } = validation.data;
 
   try {
-    const resultado = await puxarDados({ tipo, termo, uf });
+    const resultado = await puxarDados({ tipo, termo, uf, param2, params });
 
     // Salva no histórico de buscas do Supabase apenas se for resultado legítimo (nunca salva dados mockados ou simulados)
     if (
@@ -64,9 +66,12 @@ export const puxarDadosController = async (req, res) => {
     });
   } catch (err) {
     console.error("[ERRO CONTROLLER CONSULTA]:", err);
-    return res.status(400).json({
+    const statusCode = err.statusCode || (err.manutencao ? 503 : (err.inativo ? 403 : 400));
+    return res.status(statusCode).json({
       success: false,
       error: err.message || "Falha ao processar a consulta cadastral.",
+      manutencao: Boolean(err.manutencao),
+      inativo: Boolean(err.inativo),
     });
   }
 };

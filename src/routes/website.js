@@ -3,7 +3,9 @@ import { requireAuth } from "../middlewares/requireAuth.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { obterStatusCarteira, hubApiService } from "../services/osint/hubapi.service.js";
 import { obterEstatisticasPuxarDados } from "../services/core/dashboard.service.js";
+import { getModulesService } from "../services/core/modules.service.js";
 import { obterClassificacoesYesItsMe } from "../utils/classificacoes.utils.js";
+import { RIMU_CATEGORIAS, RIMU_MODULOS } from "../data/rimuModulos.js";
 
 const website = express.Router();
 
@@ -251,8 +253,26 @@ website.get("/btc", requireAuth, (req, res) => res.redirect("/basic/bitcoin"));
  * ==============================================================================
  */
 
-website.get("/advanced/person", requireAuth, (req, res) => {
+website.get("/advanced/person", requireAuth, async (req, res) => {
   const tipoAtivo = (req.query.type || req.query.tipo || "cpf").toLowerCase();
+
+  let modulosDb = [];
+  try {
+    modulosDb = await getModulesService({ onlyActive: false });
+  } catch (_) {}
+
+  const mapaDb = new Map(modulosDb.map((m) => [m.slug, m]));
+  const modulosEnriquecidos = RIMU_MODULOS.map((m) => {
+    const dbItem = mapaDb.get(m.tipo);
+    return {
+      ...m,
+      id: dbItem?.id || null,
+      ativo: dbItem ? dbItem.ativo : true,
+      manutencao: dbItem ? dbItem.manutencao : false,
+      em_breve: dbItem ? dbItem.em_breve : false,
+    };
+  });
+
   res.render("modules/avanced/consulta", {
     title: "Central de Consultas Cadastrais - RimuBusca",
     pageTitle: "Puxar Dados",
@@ -260,6 +280,8 @@ website.get("/advanced/person", requireAuth, (req, res) => {
     type: tipoAtivo,
     user: req.user,
     profile: req.profile,
+    categorias: RIMU_CATEGORIAS,
+    modulos: modulosEnriquecidos,
   });
 });
 

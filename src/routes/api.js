@@ -6,6 +6,7 @@ import { obterClassificacoesYesItsMe } from "../utils/classificacoes.utils.js";
 
 // Core Controllers & Services
 import { getModules } from "../controllers/system/modules.controller.js";
+import { getModulesService } from "../services/core/modules.service.js";
 import { alterarSenhaController } from "../controllers/system/configuracoes.controller.js";
 import { obterEstatisticasPuxarDados } from "../services/core/dashboard.service.js";
 
@@ -32,6 +33,7 @@ import {
   proxyMidiaBrightDataController,
 } from "../controllers/osint/brightdata.controller.js";
 import { puxarDadosController } from "../controllers/osint/consulta.controller.js";
+import { RIMU_CATEGORIAS, RIMU_MODULOS } from "../data/rimuModulos.js";
 import { salvarMetadadosController } from "../controllers/osint/metadados.controller.js";
 import {
   obterStatusCarteiraController,
@@ -93,8 +95,33 @@ api.get(["/redes/classificacoes", "/api/redes/classificacoes"], requireAuth, (re
 });
 api.post(["/redes/investigar", "/api/redes/investigar"], requireAuth, investigarRedesController);
 
-// Consultas Cadastrais (Puxar Dados)
+// Consultas Cadastrais (Puxar Dados - RimuAPI Engine)
 api.post(["/consulta/puxar", "/api/consulta/puxar"], requireAuth, puxarDadosController);
+api.get(["/rimu/modulos", "/api/rimu/modulos"], requireAuth, async (req, res) => {
+  let modulosDb = [];
+  try {
+    modulosDb = await getModulesService({ onlyActive: false });
+  } catch (_) {}
+
+  const mapaDb = new Map(modulosDb.map((m) => [m.slug, m]));
+  const modulosEnriquecidos = RIMU_MODULOS.map((m) => {
+    const dbItem = mapaDb.get(m.tipo);
+    return {
+      ...m,
+      id: dbItem?.id || null,
+      ativo: dbItem ? dbItem.ativo : true,
+      manutencao: dbItem ? dbItem.manutencao : false,
+      em_breve: dbItem ? dbItem.em_breve : false,
+    };
+  });
+
+  res.json({
+    success: true,
+    total: modulosEnriquecidos.length,
+    categorias: RIMU_CATEGORIAS,
+    modulos: modulosEnriquecidos,
+  });
+});
 
 // Forense de Arquivos & Metadados
 api.post(["/metadados/salvar-historico", "/api/metadados/salvar-historico"], requireAuth, salvarMetadadosController);

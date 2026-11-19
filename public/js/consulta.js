@@ -16,6 +16,9 @@ class ConsultaController {
   }
 
   init() {
+    this.markMaintenanceChips();
+    this.bindCategories();
+    this.bindModuleFilter();
     this.bindTabs();
     this.bindForm();
     this.bindDemos();
@@ -24,9 +27,100 @@ class ConsultaController {
     this.initFromUrl();
   }
 
+  markMaintenanceChips() {
+    const data = window.__RIMU_MODULOS_DATA__ || [];
+    data.forEach((mod) => {
+      if (mod.manutencao) {
+        const chip = document.querySelector(`.rimu-mod-chip[data-tipo="${mod.tipo}"]`);
+        if (chip) {
+          chip.style.opacity = "0.75";
+          const badge = chip.querySelector(".rimu-mod-badge");
+          if (badge) {
+            badge.textContent = "Manutenção";
+            badge.style.background = "rgba(239, 68, 68, 0.25)";
+            badge.style.color = "#EF4444";
+          }
+        }
+      }
+    });
+  }
+
+  // 1. GERENCIAMENTO DE CATEGORIAS E MÓDULOS (ESTILO HUBAPI)
+  bindCategories() {
+    const catBtns = document.querySelectorAll(".rimu-category-btn");
+    catBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        catBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        const cat = btn.dataset.cat;
+        this.filterModulesByCategory(cat);
+      });
+    });
+  }
+
+  filterModulesByCategory(cat) {
+    const chips = document.querySelectorAll(".rimu-mod-chip");
+    const searchVal = (document.getElementById("filtroModulosInput")?.value || "").toLowerCase().trim();
+
+    chips.forEach((chip) => {
+      const chipCat = chip.dataset.categoria || "";
+      const chipNome = (chip.dataset.nome || chip.textContent || "").toLowerCase();
+      const chipTipo = (chip.dataset.tipo || "").toLowerCase();
+
+      const matchesCat = cat === "todas" || chipCat === cat;
+      const matchesSearch = !searchVal || chipNome.includes(searchVal) || chipTipo.includes(searchVal);
+
+      if (matchesCat && matchesSearch) {
+        chip.style.display = "inline-flex";
+      } else {
+        chip.style.display = "none";
+      }
+    });
+  }
+
+  bindModuleFilter() {
+    const searchInput = document.getElementById("filtroModulosInput");
+    if (!searchInput) return;
+
+    searchInput.addEventListener("input", (e) => {
+      const val = e.target.value.toLowerCase().trim();
+      const activeCatBtn = document.querySelector(".rimu-category-btn.active");
+      const currentCat = activeCatBtn?.dataset.cat || "todas";
+
+      const chips = document.querySelectorAll(".rimu-mod-chip");
+      chips.forEach((chip) => {
+        const chipCat = chip.dataset.categoria || "";
+        const chipNome = (chip.dataset.nome || chip.textContent || "").toLowerCase();
+        const chipTipo = (chip.dataset.tipo || "").toLowerCase();
+        const chipDesc = (chip.dataset.desc || "").toLowerCase();
+
+        const matchesCat = currentCat === "todas" || chipCat === currentCat;
+        const matchesSearch = !val || chipNome.includes(val) || chipTipo.includes(val) || chipDesc.includes(val);
+
+        if (matchesCat && matchesSearch) {
+          chip.style.display = "inline-flex";
+        } else {
+          chip.style.display = "none";
+        }
+      });
+    });
+  }
+
+  bindTabs() {
+    // Escuta tanto os chips modernos (.rimu-mod-chip) quanto os botões legados (.tipo-tab-btn)
+    const chips = document.querySelectorAll(".rimu-mod-chip, .tipo-tab-btn");
+    chips.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tipo = btn.dataset.tipo;
+        if (tipo) this.selectTab(tipo);
+      });
+    });
+  }
+
   initFromUrl() {
     const urlParams = new URLSearchParams(window.location?.search || "");
-    const tipo = urlParams.get("tipo");
+    const tipo = urlParams.get("tipo") || urlParams.get("type");
     const termo = urlParams.get("termo");
     const auto = urlParams.get("auto");
 
@@ -55,126 +149,586 @@ class ConsultaController {
     }
   }
 
-  // 1. GERENCIAMENTO DE ABAS
-  bindTabs() {
-    const tabBtns = document.querySelectorAll(".tipo-tab-btn");
-    tabBtns.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const tipo = btn.dataset.tipo;
-        this.selectTab(tipo);
-      });
-    });
-  }
-
+  // 2. SELEÇÃO DE MÓDULOS (43 MÓDULOS OFICIAIS RIMUAPI)
   selectTab(tipo) {
-    this.currentTipo = tipo;
-    const tabBtns = document.querySelectorAll(".tipo-tab-btn");
-    tabBtns.forEach((btn) => {
-      if (btn.dataset.tipo === tipo) {
+    const cleanTipo = String(tipo || "cpf").toLowerCase().trim();
+    this.currentTipo = cleanTipo === "foto" ? "fotos" : cleanTipo;
+
+    // Atualiza chips .rimu-mod-chip e .tipo-tab-btn
+    const allChips = document.querySelectorAll(".rimu-mod-chip, .tipo-tab-btn");
+    let activeChip = null;
+    allChips.forEach((btn) => {
+      const bTipo = (btn.dataset.tipo || "").toLowerCase();
+      if (bTipo === this.currentTipo || (this.currentTipo === "fotos" && bTipo === "foto")) {
         btn.classList.add("active");
+        activeChip = btn;
       } else {
         btn.classList.remove("active");
       }
     });
 
+    // Catálogo completo de configurações e máscaras dos 43 Módulos
+    const configs = {
+      // 1. Pessoa (10)
+      cpf: {
+        nome: "CPF Básico",
+        label: "Informe o CPF (11 dígitos):",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF (11 dígitos)",
+        badge: "Oficial",
+        badgeColor: "#10B981",
+        desc: "Consulta cadastral básica oficial de pessoa física (dados, contatos e endereços).",
+      },
+      cpf_completo: {
+        nome: "CPF PRO (Dossiê)",
+        label: "Informe o CPF para Dossiê Completo (CPF PRO):",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF (11 dígitos)",
+        badge: "PRO",
+        badgeColor: "#8B5CF6",
+        desc: "Dossiê completo com dados biográficos, parentes, CNS, telefones e endereços vinculados.",
+      },
+      nome: {
+        nome: "Nome Completo",
+        label: "Informe o Nome Completo para Busca Nominal:",
+        placeholder: "Ex: Carlos Eduardo Pereira da Silva",
+        mask: null,
+        paramHint: "Nome Completo",
+        badge: "Lista",
+        badgeColor: "#3B82F6",
+        desc: "Localização de CPFs, sexo e data de nascimento a partir do nome completo.",
+      },
+      nome_similar: {
+        nome: "Nome Similar / Fonético",
+        label: "Informe o Nome Aproximado / Fonético:",
+        placeholder: "Ex: Carlos Pereira Silva",
+        mask: null,
+        paramHint: "Primeiro e último nome",
+        badge: "Fonético",
+        badgeColor: "#6366F1",
+        desc: "Busca aproximada fonética/lexical de nomes e homônimos por primeiro e último nome.",
+      },
+      rg: {
+        nome: "Registro Geral (RG)",
+        label: "Informe o Número do Registro Geral (RG):",
+        placeholder: "Ex: 28374921X",
+        mask: null,
+        paramHint: "Número do RG (com UF opcional)",
+        param2Label: "UF do RG (opcional, ex: SP)",
+        param2Placeholder: "SP",
+        badge: "RG",
+        badgeColor: "#06B6D4",
+        desc: "Busca de titular pelo número de RG e UF de expedição.",
+      },
+      titulo: {
+        nome: "Título de Eleitor",
+        label: "Informe o Número do Título de Eleitor:",
+        placeholder: "000000000000 (12 dígitos)",
+        mask: "titulo",
+        paramHint: "Título Eleitoral (12 dígitos)",
+        badge: "TSE",
+        badgeColor: "#14B8A6",
+        desc: "Consulta de dados de pessoa física através dos 12 dígitos do Título Eleitoral.",
+      },
+      cns: {
+        nome: "Cartão Nacional de Saúde (CNS)",
+        label: "Informe o Número do CNS (15 dígitos):",
+        placeholder: "700801234567890",
+        mask: null,
+        paramHint: "Número CNS (15 dígitos)",
+        badge: "SUS",
+        badgeColor: "#10B981",
+        desc: "Cartão Nacional de Saúde (CNS) com vínculos biográficos, contatos e residência.",
+      },
+      nis: {
+        nome: "NIS / PIS / PASEP",
+        label: "Informe o Número do NIS / PIS / PASEP:",
+        placeholder: "000.00000.00-0 (11 dígitos)",
+        mask: null,
+        paramHint: "Número NIS (11 dígitos)",
+        badge: "Social",
+        badgeColor: "#F59E0B",
+        desc: "Número de Identificação Social e benefícios sociais cadastrados.",
+      },
+      covid: {
+        nome: "Vacinas COVID-19",
+        label: "Informe o CPF para Histórico Vacinal COVID-19:",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF do Titular",
+        badge: "Vacinas",
+        badgeColor: "#EC4899",
+        desc: "Histórico completo de vacinas, fabricantes, doses, lotes e postos por CPF.",
+      },
+      fotos: {
+        nome: "Biometria Facial / Fotos",
+        label: "Informe o CPF do Alvo para Biometria Facial / Fotos:",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF do Alvo",
+        badge: "Foto",
+        badgeColor: "#A855F7",
+        desc: "Fotos oficiais registradas em documentos públicos (CNH/RG) em Base64 ou URL.",
+      },
+      foto: {
+        nome: "Biometria Facial / Fotos",
+        label: "Informe o CPF do Alvo para Biometria Facial / Fotos:",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF do Alvo",
+        badge: "Foto",
+        badgeColor: "#A855F7",
+        desc: "Fotos oficiais registradas em documentos públicos (CNH/RG) em Base64 ou URL.",
+      },
+
+      // 2. Contato (2)
+      telefone: {
+        nome: "Telefone & Titularidade",
+        label: "Informe o Telefone com DDD:",
+        placeholder: "(11) 98765-4321",
+        mask: "telefone",
+        paramHint: "Telefone com DDD",
+        badge: "Telecom",
+        badgeColor: "#3B82F6",
+        desc: "Localização de titular, operadora e endereços a partir do número de telefone.",
+      },
+      email: {
+        nome: "E-mail & Identidade Digital",
+        label: "Informe o Endereço de E-mail:",
+        placeholder: "carlos.silva@gmail.com",
+        mask: null,
+        paramHint: "Endereço de E-mail",
+        badge: "E-mail",
+        badgeColor: "#6366F1",
+        desc: "Vínculos cadastrais, titularidade e redes associadas a um endereço de e-mail.",
+      },
+
+      // 3. Endereço (2)
+      cep: {
+        nome: "CEP & Moradores",
+        label: "Informe o CEP (8 dígitos):",
+        placeholder: "00000-000",
+        mask: "cep",
+        paramHint: "CEP (8 dígitos)",
+        param2Label: "Número do imóvel (opcional)",
+        param2Placeholder: "Ex: 450",
+        badge: "CEP",
+        badgeColor: "#10B981",
+        desc: "Residentes e logradouro por CEP simples, com suporte a número de residência opcional.",
+      },
+      cep_avancado: {
+        nome: "CEP Avançado",
+        label: "Informe o Logradouro para Busca Avançada de CEP:",
+        placeholder: "Ex: Avenida Paulista ou Rua das Flores",
+        mask: null,
+        paramHint: "Logradouro / Rua",
+        param2Label: "UF (obrigatório, ex: SP)",
+        param2Placeholder: "SP",
+        badge: "Avançado",
+        badgeColor: "#8B5CF6",
+        desc: "Busca refinada de endereços e moradores por UF, logradouro, bairro e cidade.",
+      },
+
+      // 4. Veículos (5)
+      placa: {
+        nome: "Placa Padrão",
+        label: "Informe a Placa do Veículo (Mercosul ou Antiga):",
+        placeholder: "ABC1D23 ou ABC1234",
+        mask: "placa",
+        paramHint: "Placa Mercosul ou ABC1234",
+        badge: "Veículo",
+        badgeColor: "#F59E0B",
+        desc: "Consulta veicular padrão (marca, modelo, chassi, renavam, proprietário e restrições).",
+      },
+      placa_ghost: {
+        nome: "Placa Ghost (Dossiê)",
+        label: "Informe a Placa para Dossiê Veicular Completo (Ghost):",
+        placeholder: "ABC1D23 ou ABC1234",
+        mask: "placa",
+        paramHint: "Placa Mercosul ou ABC1234",
+        badge: "Ghost PRO",
+        badgeColor: "#EF4444",
+        desc: "Dossiê veicular ampliado com dados aprofundados do proprietário, CNH, telefones e endereços.",
+      },
+      cnh: {
+        nome: "CNH / Habilitação",
+        label: "Informe o Número da CNH ou CPF:",
+        placeholder: "01234567890",
+        mask: null,
+        paramHint: "Número da CNH ou CPF",
+        badge: "Detran",
+        badgeColor: "#10B981",
+        desc: "Carteira Nacional de Habilitação (número, categoria, validade e condutor por CNH ou CPF).",
+      },
+      chassi: {
+        nome: "Chassi Veicular",
+        label: "Informe o Número do Chassi (17 caracteres):",
+        placeholder: "Ex: 9BWAB41JXEP012345",
+        mask: null,
+        paramHint: "Chassi (17 caracteres)",
+        badge: "Chassi",
+        badgeColor: "#6B7280",
+        desc: "Busca veicular direta pelo número de Chassi (17 caracteres).",
+      },
+      renavam: {
+        nome: "Código RENAVAM",
+        label: "Informe o Código RENAVAM (9 a 11 dígitos):",
+        placeholder: "Ex: 00123456789",
+        mask: null,
+        paramHint: "Código RENAVAM",
+        badge: "Renavam",
+        badgeColor: "#3B82F6",
+        desc: "Busca veicular completa diretamente pelo código RENAVAM do veículo.",
+      },
+
+      // 5. Financeiro (3)
+      score: {
+        nome: "Score de Crédito & Renda",
+        label: "Informe o CPF para Consulta de Score & Renda Estimada:",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF do Titular",
+        badge: "Crédito",
+        badgeColor: "#F59E0B",
+        desc: "Pontuação de crédito estimada, renda presumida e classificação socioeconômica por CPF.",
+      },
+      aposentado: {
+        nome: "INSS / Previdência",
+        label: "Informe o CPF para Benefícios Previdenciários INSS:",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF do Aposentado/Pensionista",
+        badge: "INSS",
+        badgeColor: "#10B981",
+        desc: "Benefícios previdenciários do INSS (aposentadoria, pensão, valores e agência pagadora).",
+      },
+      pis: {
+        nome: "PIS / PASEP",
+        label: "Informe o Número do PIS / PASEP ou CPF:",
+        placeholder: "000.00000.00-0 ou CPF",
+        mask: null,
+        paramHint: "PIS (11 dígitos) ou CPF",
+        badge: "PIS",
+        badgeColor: "#3B82F6",
+        desc: "Cadastro e dados formais de integração de PIS / PASEP por CPF ou PIS.",
+      },
+
+      // 6. Empresa & Jurídico (8)
+      cnpj: {
+        nome: "CNPJ Completo (Receita)",
+        label: "Informe o CNPJ da Empresa (14 dígitos):",
+        placeholder: "00.000.000/0000-00",
+        mask: "cnpj",
+        paramHint: "CNPJ (14 dígitos)",
+        badge: "Receita",
+        badgeColor: "#10B981",
+        desc: "Cadastro completo PJ (Empresa, Estabelecimento, Simples Nacional e Quadro de Sócios).",
+      },
+      cnpj2: {
+        nome: "CNPJ Econômico (CNAEs)",
+        label: "Informe o CNPJ para Atividades Econômicas & CNAEs:",
+        placeholder: "00.000.000/0000-00",
+        mask: "cnpj",
+        paramHint: "CNPJ (14 dígitos)",
+        badge: "CNAEs",
+        badgeColor: "#6366F1",
+        desc: "Consulta de CNPJ com ênfase nas atividades econômicas secundárias e CNAEs.",
+      },
+      razao_social: {
+        nome: "Razão Social / Nome da Empresa",
+        label: "Informe a Razão Social ou Nome Empresarial da Empresa:",
+        placeholder: "Ex: PETROBRAS ou BANCO DO BRASIL",
+        mask: null,
+        paramHint: "Nome Empresarial",
+        badge: "Nominal",
+        badgeColor: "#3B82F6",
+        desc: "Localização de empresas a partir da Razão Social ou Nome Empresarial.",
+      },
+      socios: {
+        nome: "Quadro Societário (QSA)",
+        label: "Informe o CPF ou CNPJ para Quadro Societário (QSA):",
+        placeholder: "CPF ou CNPJ (apenas números)",
+        mask: null,
+        paramHint: "CPF ou CNPJ do Sócio",
+        badge: "QSA",
+        badgeColor: "#8B5CF6",
+        desc: "Empresas nas quais o CPF ou CNPJ figura como sócio ou administrador.",
+      },
+      socios2: {
+        nome: "Sócios Avançado (Cotas)",
+        label: "Informe o CPF ou CNPJ para Participações Societárias Avançadas:",
+        placeholder: "CPF ou CNPJ",
+        mask: null,
+        paramHint: "CPF ou CNPJ do Sócio",
+        badge: "Cotas",
+        badgeColor: "#A855F7",
+        desc: "Quadro societário avançado com participações cruzadas e percentual de capital.",
+      },
+      funcionarios: {
+        nome: "Funcionários por CNPJ",
+        label: "Informe o CNPJ da Empresa para Relação de Funcionários:",
+        placeholder: "00.000.000/0000-00",
+        mask: "cnpj",
+        paramHint: "CNPJ da Empresa",
+        badge: "Equipe",
+        badgeColor: "#EC4899",
+        desc: "Relação de vínculos empregatícios ativos e funcionários registrados por CNPJ.",
+      },
+      empregos: {
+        nome: "Histórico Trabalhista (CTPS)",
+        label: "Informe o CPF para Histórico Trabalhista (CTPS/RAIS/CAGED):",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF do Trabalhador",
+        badge: "CTPS",
+        badgeColor: "#F59E0B",
+        desc: "Histórico formal de vínculos trabalhistas (CTPS/RAIS/CAGED) por CPF.",
+      },
+      oab: {
+        nome: "Cadastro Nacional OAB / CNA",
+        label: "Informe a Inscrição OAB + UF (Ex: 18442 ES) ou Nome:",
+        placeholder: "Ex: 18442 ES ou Nome do Advogado",
+        mask: null,
+        paramHint: "Inscrição OAB + UF ou Nome",
+        badge: "OAB",
+        badgeColor: "#D97706",
+        desc: "Cadastro Nacional dos Advogados (CNA / OAB) com situação, seccional e contatos.",
+      },
+
+      // 7. Família (4)
+      mae: {
+        nome: "Filhos por Nome da Mãe",
+        label: "Informe o Nome Completo da Mãe para Localizar Filhos:",
+        placeholder: "Ex: Maria Helena Pereira da Silva",
+        mask: null,
+        paramHint: "Nome da Mãe",
+        badge: "Mãe",
+        badgeColor: "#EC4899",
+        desc: "Localização de filhos e dependentes a partir do nome completo da mãe.",
+      },
+      pai: {
+        nome: "Filhos por Nome do Pai",
+        label: "Informe o Nome Completo do Pai para Localizar Filhos:",
+        placeholder: "Ex: Jose Roberto da Silva",
+        mask: null,
+        paramHint: "Nome do Pai",
+        badge: "Pai",
+        badgeColor: "#3B82F6",
+        desc: "Localização de filhos e dependentes a partir do nome completo do pai.",
+      },
+      parentes: {
+        nome: "Parentes Diretos por CPF",
+        label: "Informe o CPF do Titular para Mapear Parentes Diretos:",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF do Titular",
+        badge: "Família",
+        badgeColor: "#10B981",
+        desc: "Vínculos familiares diretos (pais, filhos, irmãos e cônjuges) por CPF.",
+      },
+      arvore_familiar: {
+        nome: "Árvore Genealógica",
+        label: "Informe o CPF para Árvore Genealógica Ampliada:",
+        placeholder: "000.000.000-00",
+        mask: "cpf",
+        paramHint: "CPF do Titular",
+        badge: "Genealogia",
+        badgeColor: "#8B5CF6",
+        desc: "Rede genealógica ampliada com múltiplos graus de parentesco e afinidade.",
+      },
+
+      // 8. Vazados & Segurança (5)
+      desmascarador: {
+        nome: "Desmascarador de Dados / PIX",
+        label: "Informe o Dado Ofuscado com Asteriscos ou Chave PIX:",
+        placeholder: "Ex: carl***@gmail.com ou 123.***.***-00",
+        mask: null,
+        paramHint: "Dado Ofuscado / Chave PIX",
+        badge: "PIX/*",
+        badgeColor: "#8B5CF6",
+        desc: "Revela termos ofuscados ou mascarados (chaves PIX com asteriscos, CPFs parciais).",
+      },
+      cloud_url: {
+        nome: "Vazamentos por Domínio / URL",
+        label: "Informe o Domínio ou URL para Vasculhar Vazamentos:",
+        placeholder: "Ex: empresa.com.br",
+        mask: null,
+        paramHint: "Domínio ou URL",
+        badge: "Logs",
+        badgeColor: "#EF4444",
+        desc: "Credenciais e logs de acessos vazados associados a um domínio ou URL corporativa.",
+      },
+      cloud_usuario: {
+        nome: "Vazamentos por Usuário",
+        label: "Informe o Login de Usuário ou E-mail para Vazamentos:",
+        placeholder: "Ex: carlos.silva ou usuario@email.com",
+        mask: null,
+        paramHint: "Usuário ou E-mail",
+        badge: "Contas",
+        badgeColor: "#F43F5E",
+        desc: "Vazamentos de senhas e acessos vinculados a um usuário específico ou e-mail.",
+      },
+      senha: {
+        nome: "Vazamentos por Senha / Hash",
+        label: "Informe a Senha ou Hash para Checar Vazamentos Conhecidos:",
+        placeholder: "Ex: minhasenha123 ou hash",
+        mask: null,
+        paramHint: "Senha ou Hash SHA-1/MD5",
+        badge: "Senha",
+        badgeColor: "#DC2626",
+        desc: "Identifica contas e logins comprometidos associados a uma senha ou hash conhecido.",
+      },
+      dump_cpf: {
+        nome: "Dump de CPFs Vazados",
+        label: "Informe a Faixa ou Prefixo de CPF Vazado:",
+        placeholder: "Ex: 123456",
+        mask: null,
+        paramHint: "Prefixo ou Faixa de CPF",
+        badge: "Dump",
+        badgeColor: "#B91C1C",
+        desc: "Extração em lote de registros e nomes a partir de fragmentos de CPFs vazados.",
+      },
+
+      // 9. Geradores & Lotes (4)
+      dump_email: {
+        nome: "Dump de E-mails",
+        label: "Informe o Domínio Corporativo para Dump de E-mails:",
+        placeholder: "Ex: empresa.com.br",
+        mask: null,
+        paramHint: "Domínio Corporativo",
+        badge: "Lote",
+        badgeColor: "#3B82F6",
+        desc: "Extração em lote de e-mails, titulares e telefones cadastrados por domínio.",
+      },
+      dump_telefone: {
+        nome: "Dump de Telefones",
+        label: "Informe o DDD ou Prefixo para Dump de Telefones:",
+        placeholder: "Ex: 1198765",
+        mask: null,
+        paramHint: "DDD ou Prefixo Telefônico",
+        badge: "Lote",
+        badgeColor: "#0EA5E9",
+        desc: "Extração em lote de números de telefone e titulares a partir do DDD ou prefixo.",
+      },
+      gerador_estado: {
+        nome: "Gerador por Estado (UF)",
+        label: "Informe a Sigla do Estado (UF) para Gerar Dados Amostrais:",
+        placeholder: "Ex: SP, RJ, MG",
+        mask: null,
+        paramHint: "Sigla do Estado (UF)",
+        badge: "UF",
+        badgeColor: "#10B981",
+        desc: "Geração de dados cadastrais e estatísticos válidos por Estado / Unidade Federativa.",
+      },
+      gerador_cbo: {
+        nome: "Consulta Ocupações (CBO)",
+        label: "Informe o Código CBO ou Nome da Ocupação:",
+        placeholder: "Ex: 212405 ou Desenvolvedor",
+        mask: null,
+        paramHint: "Código CBO ou Título",
+        badge: "CBO",
+        badgeColor: "#8B5CF6",
+        desc: "Consulta da Classificação Brasileira de Ocupações (CBO) com código e descrição.",
+      },
+    };
+
+    const cfg = configs[this.currentTipo] || {
+      nome: this.currentTipo.toUpperCase(),
+      label: "Informe o Alvo da Consulta:",
+      placeholder: "Digite aqui...",
+      mask: null,
+      desc: "Consulta especializada via motor RimuAPI.",
+      paramHint: "Termo de busca",
+      badge: "Oficial",
+      badgeColor: "#8B5CF6",
+    };
+
+    // Atualiza Painel Hero do Módulo Ativo
+    const titleEl = document.getElementById("rimuActiveTitle");
+    const badgeEl = document.getElementById("rimuActiveBadge");
+    const descEl = document.getElementById("rimuActiveDesc");
+    const hintEl = document.getElementById("rimuActiveParamHint");
+
+    if (titleEl) titleEl.textContent = cfg.nome || activeChip?.dataset.nome || this.currentTipo.toUpperCase();
+    if (badgeEl) {
+      badgeEl.textContent = cfg.badge || "Oficial";
+      if (cfg.badgeColor) {
+        badgeEl.style.color = cfg.badgeColor;
+        badgeEl.style.background = `${cfg.badgeColor}25`;
+      }
+    }
+    if (descEl) descEl.textContent = cfg.desc || activeChip?.dataset.desc || "";
+    if (hintEl) hintEl.textContent = `Parâmetro: ${cfg.paramHint || "Chave de busca"}`;
+
+    // Configura Campo Primário
     const input = document.getElementById("consultaInput");
     const label = document.getElementById("consultaInputLabel");
-
+    if (label) label.textContent = cfg.label;
     if (input) {
-      input.value = "";
-      input.focus();
-
-      // Ajusta placeholders e máscaras por tipo
-      const configs = {
-        cpf: {
-          label: "Informe o CPF (11 dígitos):",
-          placeholder: "000.000.000-00",
-          mask: "cpf",
-        },
-        nome: {
-          label: "Informe o Nome Completo para Busca Nominal:",
-          placeholder: "Ex: Carlos Eduardo da Silva",
-          mask: null,
-        },
-        telefone: {
-          label: "Informe o Telefone com DDD:",
-          placeholder: "(11) 98765-4321",
-          mask: "telefone",
-        },
-        placa: {
-          label: "Informe a Placa do Veículo (Mercosul ou Padrão):",
-          placeholder: "Ex: BRA2E19 ou ABC1234",
-          mask: "placa",
-        },
-        foto: {
-          label: "Informe o CPF do Alvo para Biometria Facial:",
-          placeholder: "000.000.000-00",
-          mask: "cpf",
-        },
-        cep: {
-          label: "Informe o CEP (8 dígitos):",
-          placeholder: "00000-000",
-          mask: "cep",
-        },
-        email: {
-          label: "Informe o Endereço de E-mail:",
-          placeholder: "alvo@exemplo.com",
-          mask: null,
-        },
-        vizinhos: {
-          label: "Informe o CPF para Mapear Vizinhos no Logradouro:",
-          placeholder: "000.000.000-00",
-          mask: "cpf",
-        },
-        titulo: {
-          label: "Informe o Número do Título de Eleitor:",
-          placeholder: "000000000000 (12 dígitos)",
-          mask: "titulo",
-        },
-        operadora: {
-          label: "Informe o Telefone para Checagem de Operadora & Portabilidade:",
-          placeholder: "(11) 98765-4321",
-          mask: "telefone",
-        },
-        rg: {
-          label: "Informe o Número do RG:",
-          placeholder: "Ex: 12.345.678-9",
-          mask: null,
-        },
-        cnpj: {
-          label: "Informe o CNPJ da Empresa (14 dígitos):",
-          placeholder: "00.000.000/0000-00",
-          mask: "cnpj",
-        },
-        parentes: {
-          label: "Informe o Nome ou CPF do Titular para Mapear Vínculos:",
-          placeholder: "Ex: Carlos Eduardo da Silva ou CPF",
-          mask: null,
-        },
-        nis: {
-          label: "Informe o Número do NIS / PIS / PASEP:",
-          placeholder: "000.00000.00-0 (11 dígitos)",
-          mask: null,
-        },
-        pis: {
-          label: "Informe o Número do PIS / PASEP:",
-          placeholder: "000.00000.00-0",
-          mask: null,
-        },
-      };
-
-      const cfg = configs[tipo] || {
-        label: "Informe o Alvo da Consulta:",
-        placeholder: "Digite aqui...",
-        mask: null,
-      };
-      if (label) label.textContent = cfg.label;
       input.placeholder = cfg.placeholder;
       input.dataset.mask = cfg.mask || "";
+      input.value = "";
+      input.focus();
+    }
+
+    // Configura Campo Secundário (Param2 / UF / Número)
+    const param2Container = document.getElementById("param2Container");
+    const param2Input = document.getElementById("consultaInputParam2");
+    if (cfg.param2Label && param2Container && param2Input) {
+      param2Container.style.display = "block";
+      param2Input.placeholder = cfg.param2Placeholder || cfg.param2Label;
+      param2Input.value = "";
+    } else if (param2Container) {
+      param2Container.style.display = "none";
+      if (param2Input) param2Input.value = "";
+    }
+
+    // Validação de Interdição e Manutenção (via dados do Supabase)
+    const modulosData = window.__RIMU_MODULOS_DATA__ || [];
+    const modInfo = modulosData.find(
+      (m) => m.tipo === this.currentTipo || (this.currentTipo === "fotos" && m.tipo === "foto")
+    );
+
+    const bannerManutencao = document.getElementById("rimuModuloManutencaoBanner");
+    const bannerTexto = document.getElementById("rimuModuloManutencaoTexto");
+    const submitBtn = document.getElementById("btnSubmitConsulta");
+
+    if (modInfo && (modInfo.manutencao || modInfo.ativo === false)) {
+      if (bannerManutencao) {
+        bannerManutencao.style.display = "flex";
+        if (bannerTexto) {
+          bannerTexto.textContent = modInfo.manutencao
+            ? `⚠️ O módulo "${modInfo.nome}" está temporariamente em manutenção pela administração para melhorias.`
+            : `O módulo "${modInfo.nome}" foi temporariamente desativado pela administração.`;
+        }
+      }
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = "0.5";
+        submitBtn.style.cursor = "not-allowed";
+        submitBtn.title = "Módulo indisponível no momento";
+      }
+    } else {
+      if (bannerManutencao) {
+        bannerManutencao.style.display = "none";
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = "1";
+        submitBtn.style.cursor = "pointer";
+        submitBtn.title = "";
+      }
+    }
+
+    // Atualiza ícones Lucide dinâmicos se a biblioteca estiver disponível
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
     }
 
     // Atualiza demos exibidas
-    this.updateDemosVisibility(tipo);
+    this.updateDemosVisibility(this.currentTipo);
 
     // Se houver resultados de outro tipo, limpa
     this.showState("initial");
@@ -243,12 +797,20 @@ class ConsultaController {
         submitBtn.disabled = true;
 
         try {
+          const param2Input = document.getElementById("consultaInputParam2");
+          const param2Val = param2Input && param2Input.value ? param2Input.value.trim() : null;
+
+          const payload = {
+            tipo: this.currentTipo,
+            termo,
+          };
+          if (param2Val) {
+            payload.param2 = param2Val;
+          }
+
           const res = await window.api.post(
             "/api/consulta/puxar",
-            {
-              tipo: this.currentTipo,
-              termo,
-            },
+            payload,
             {
               timeout: 95000, // 95s para permitir consultas extensas de nomes e homônimos
             }
@@ -313,12 +875,12 @@ class ConsultaController {
     const badgeCredits = document.getElementById("resCreditsBadge");
 
     if (badgeTipo) badgeTipo.textContent = `MÓDULO: ${res.tipo.toUpperCase()}`;
-    if (badgeFonte) badgeFonte.textContent = res.fonte || "Hexys Dev Intelligence";
+    if (badgeFonte) badgeFonte.textContent = res.fonte || "RimuAPI Intelligence Engine";
 
     if (badgeCredits) {
       if (res.remainingCredits !== null && res.remainingCredits !== undefined) {
         badgeCredits.style.display = "inline-flex";
-        badgeCredits.textContent = `⚡ Saldo Hexys: ${Number(res.remainingCredits).toLocaleString("pt-BR")} créditos`;
+        badgeCredits.textContent = `⚡ Saldo RimuAPI: ${Number(res.remainingCredits).toLocaleString("pt-BR")} créditos`;
       } else {
         badgeCredits.style.display = "none";
       }
@@ -336,12 +898,26 @@ class ConsultaController {
 
     let html = "";
 
-    // 1. Tenta renderizar através dos visual interpreters modulares
-    if (window.RimuInterpreters && typeof window.RimuInterpreters.dispatchHexys === "function") {
-      try {
-        html = window.RimuInterpreters.dispatchHexys(res);
-      } catch (err) {
-        console.warn("[INTERPRETER HEXYS ERRO]:", err);
+    // 1. Tenta renderizar através dos visual interpreters modulares da RimuAPI
+    if (window.RimuInterpreters) {
+      if (typeof window.RimuInterpreters.dispatch === "function") {
+        try {
+          html = window.RimuInterpreters.dispatch(res, "rimuapi");
+        } catch (err) {
+          console.warn("[INTERPRETER RIMUAPI ERRO]:", err);
+        }
+      } else if (typeof window.RimuInterpreters.dispatchRimuApi === "function") {
+        try {
+          html = window.RimuInterpreters.dispatchRimuApi(res);
+        } catch (err) {
+          console.warn("[INTERPRETER RIMUAPI ERRO]:", err);
+        }
+      } else if (typeof window.RimuInterpreters.dispatchHexys === "function") {
+        try {
+          html = window.RimuInterpreters.dispatchHexys(res);
+        } catch (err) {
+          console.warn("[INTERPRETER FALLBACK ERRO]:", err);
+        }
       }
     }
 
@@ -492,7 +1068,7 @@ class ConsultaController {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 0.875rem;">
               <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md);">
                 <span style="color: var(--color-text-muted); font-size: 0.75rem; display: block;">Status da Foto</span>
-                <strong style="color: ${fotoSrc ? "#10B981" : "#F59E0B"};">${fotoSrc ? "Disponível na Base Hexys" : "Não encontrada"}</strong>
+                <strong style="color: ${fotoSrc ? "#10B981" : "#F59E0B"};">${fotoSrc ? "Disponível na Base RimuAPI" : "Não encontrada"}</strong>
               </div>
               <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md);">
                 <span style="color: var(--color-text-muted); font-size: 0.75rem; display: block;">Formato Retornado</span>
@@ -1279,7 +1855,7 @@ class ConsultaController {
 
             <!-- AÇÕES RÁPIDAS NO HEADER -->
             <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
-              <button type="button" class="btn btn-outline btn-sm btn-puxar-foto" data-cpf="${rawCpf}" title="Consultar Biometria Facial na Hexys">
+              <button type="button" class="btn btn-outline btn-sm btn-puxar-foto" data-cpf="${rawCpf}" title="Consultar Biometria Facial na RimuAPI">
                 <i data-lucide="camera" style="width: 13px; height: 13px;"></i> Biometria Facial
               </button>
               <button type="button" class="btn btn-outline btn-sm btn-puxar-vizinhos" data-cpf="${rawCpf}" title="Mapear Vizinhos no Logradouro">
@@ -2837,7 +3413,7 @@ class ConsultaController {
     const data = dataPayload || {};
     const protocolo = `OSINT-VEC-${Date.now().toString(36).toUpperCase()}`;
     const dataEmissao = new Date().toLocaleString("pt-BR");
-    const fonte = fullResponse?.fonte || "Hexys Dev Intelligence (Live)";
+    const fonte = fullResponse?.fonte || "RimuAPI Intelligence Engine (Live)";
 
     const plate = String(data.plate || data.placa || termo || "PLACA").toUpperCase().replace(/[^A-Z0-9]/g, "");
     const plateMercosul =
@@ -3389,7 +3965,7 @@ class ConsultaController {
     const data = dataPayload || {};
     const protocolo = `OSINT-EML-${Date.now().toString(36).toUpperCase()}`;
     const dataEmissao = new Date().toLocaleString("pt-BR");
-    const fonte = fullResponse?.fonte || "Hexys Dev Intelligence (Live)";
+    const fonte = fullResponse?.fonte || "RimuAPI Intelligence Engine (Live)";
     const email = String(data.email || termo || "E-mail Consultado").toLowerCase();
 
     const perfilGoogle = data.perfil_google || {};
@@ -4172,7 +4748,7 @@ class ConsultaController {
     const protocolo = `OSINT-${Date.now().toString(36).toUpperCase()}`;
     const dataEmissao = new Date().toLocaleString("pt-BR");
     const tipoUpper = String(tipo || "CONSULTA").toUpperCase();
-    const fonte = fullResponse?.fonte || "Hexys Dev Intelligence (Live)";
+    const fonte = fullResponse?.fonte || "RimuAPI Intelligence Engine (Live)";
     const termoFmt = tipoUpper === "TELEFONE" ? this.formatTelefone(termo) : tipoUpper === "CPF" ? this.formatCpf(termo) : termo;
 
     // Métricas

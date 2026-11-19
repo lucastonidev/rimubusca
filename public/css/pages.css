@@ -582,3 +582,101 @@
     font-size: 0.925rem;
   }
 }
+
+/* ==============================================================================
+ * DASHBOARD CATEGORIA TABS & BUSCA ESTILO HUBAPI
+ * ============================================================================== */
+.dash-category-filter-area {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dash-filter-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.dash-search-box {
+  position: relative;
+  flex: 1;
+  min-width: 260px;
+  max-width: 520px;
+}
+
+.dash-search-box i,
+.dash-search-box svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-dim);
+  pointer-events: none;
+  width: 16px;
+  height: 16px;
+}
+
+.dash-search-box input {
+  width: 100%;
+  padding: 10px 14px 10px 38px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  transition: all var(--transition-fast);
+}
+
+.dash-search-box input:focus {
+  outline: none;
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+.dash-tabs-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+
+.dash-tab-btn {
+  padding: 7px 13px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.dash-tab-btn:hover {
+  color: var(--color-text);
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.dash-tab-btn.active {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: #8B5CF6;
+  color: #C4B5FD;
+}
+
+.dash-tab-count {
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}

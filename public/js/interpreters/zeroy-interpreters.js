@@ -52,7 +52,7 @@ import {
  * @param {string} [preferredProvider="hexys"] - Fallback provider if not specified in responseData
  * @returns {string} Safe HTML string ready to render in the results DOM
  */
-export function dispatch(responseData, preferredProvider = "hexys") {
+export function dispatch(responseData, preferredProvider = "rimuapi") {
   if (!responseData) return "";
 
   const fonte = String(responseData.fonte || "").toLowerCase();
@@ -60,17 +60,26 @@ export function dispatch(responseData, preferredProvider = "hexys") {
     responseData.provedor ||
     responseData.provider ||
     responseData.api ||
-    (fonte.includes("hexys") ? "hexys" : fonte.includes("zeroy") ? "zeroy" : preferredProvider) ||
-    "hexys"
+    (fonte.includes("rimu")
+      ? "rimuapi"
+      : fonte.includes("hexys")
+        ? "hexys"
+        : fonte.includes("zeroy")
+          ? "zeroy"
+          : preferredProvider) ||
+    "rimuapi"
   ).toLowerCase().trim();
 
   switch (provider) {
+    case "rimuapi":
+    case "rimu":
+    case "santbuscas":
     case "hexys":
       return dispatchHexys(responseData);
     case "zeroy":
       return dispatchZeroy(responseData);
     default:
-      if (fonte.includes("hexys")) return dispatchHexys(responseData);
+      if (fonte.includes("rimu") || fonte.includes("hexys")) return dispatchHexys(responseData);
       return dispatchZeroy(responseData);
   }
 }
@@ -79,6 +88,7 @@ export function dispatch(responseData, preferredProvider = "hexys") {
 export const RimuInterpreters = {
   // Master dispatchers
   dispatch,
+  dispatchRimuApi: dispatchHexys,
   dispatchHexys,
   dispatchZeroy,
 
@@ -87,7 +97,10 @@ export const RimuInterpreters = {
   escapeHtml,
   renderScoreBadge,
 
-  // Hexys Sub-bundle
+  // RimuAPI Sub-bundle
+  RimuApi: HexysInterpreter,
+
+  // Hexys Sub-bundle (Legacy Alias)
   Hexys: HexysInterpreter,
 
   // Zeroy Sub-bundle

@@ -205,7 +205,18 @@
 
       // Filtro de texto
       if (texto) {
-        const haystack = [m.nome, m.slug, m.rota, m.descricao].join(' ').toLowerCase();
+        const haystack = [
+          m.nome,
+          m.slug,
+          m.rota,
+          m.descricao,
+          m.badge_texto,
+          m.config?.subcategoria,
+          m.config?.categoriaNome,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
         if (!haystack.includes(texto)) return false;
       }
 
@@ -236,7 +247,8 @@
     const rows = state.filtrado.map(m => {
       const { label, cls } = statusInfo(m);
       const catBadge = badgeCategoria(m.categoria);
-      const catLabel = { consultas: 'Consultas', osint: 'OSINT', forense: 'Forense', outros: 'Outros' }[m.categoria] || m.categoria;
+      const baseCat = { consultas: 'Consultas', osint: 'OSINT', forense: 'Forense', outros: 'Outros' }[m.categoria] || m.categoria;
+      const catLabel = m.config?.categoriaNome ? `${baseCat} (${m.config.categoriaNome})` : baseCat;
 
       // Status pill clicável apenas para ativo/inativo
       const pillClickable = !m.manutencao && !m.em_breve;

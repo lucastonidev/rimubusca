@@ -14,21 +14,114 @@
       box-shadow: var(--shadow-sm);
     }
 
-    /* Barra de Seleção de Tipos / Abas */
-    .tipo-tabs-bar {
+    /* ============================================================== */
+    /* BARRA DE CATEGORIAS ESTILO HUBAPI                             */
+    /* ============================================================== */
+    .rimu-categories-bar {
+      display: flex;
+      gap: var(--space-2);
+      overflow-x: auto;
+      padding-bottom: 6px;
+      margin-bottom: var(--space-4);
+      scrollbar-width: thin;
+    }
+
+    .rimu-category-btn {
+      padding: 8px 16px;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+      transition: all var(--transition-fast);
+      user-select: none;
+    }
+
+    .rimu-category-btn:hover {
+      background: var(--color-surface-3);
+      color: var(--color-text);
+      border-color: rgba(139, 92, 246, 0.4);
+    }
+
+    .rimu-category-btn.active {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.2) 100%);
+      border-color: #8B5CF6;
+      color: #FFFFFF;
+      font-weight: 700;
+      box-shadow: 0 0 16px rgba(139, 92, 246, 0.25);
+    }
+
+    .rimu-cat-count {
+      display: inline-block;
+      font-size: 0.72rem;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.08);
+      font-family: var(--font-mono);
+    }
+
+    /* Barra de Busca de Módulos */
+    .rimu-modules-search-wrap {
+      position: relative;
+      margin-bottom: var(--space-4);
+    }
+
+    .rimu-modules-search-wrap i,
+    .rimu-modules-search-wrap svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--color-text-dim);
+      pointer-events: none;
+      width: 16px;
+      height: 16px;
+    }
+
+    .rimu-modules-search-input {
+      width: 100%;
+      height: 42px;
+      padding: 0 16px 0 42px;
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 0.875rem;
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .rimu-modules-search-input:focus {
+      border-color: #8B5CF6;
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+      background: var(--color-surface);
+    }
+
+    /* Grid Responsivo dos 43 Módulos */
+    .rimu-modules-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: var(--space-2);
+      gap: 8px;
       margin-bottom: var(--space-5);
       padding-bottom: var(--space-4);
       border-bottom: 1px solid var(--color-border);
+      max-height: 220px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      padding-right: 4px;
     }
 
-    .tipo-tab-btn {
+    .rimu-mod-chip {
       background-color: var(--color-surface-2);
       border: 1px solid var(--color-border);
       color: var(--color-text-muted);
-      padding: 7px 14px;
+      padding: 7px 12px;
       border-radius: var(--radius-md);
       font-size: 0.8125rem;
       font-weight: 500;
@@ -40,24 +133,82 @@
       white-space: nowrap;
     }
 
-    .tipo-tab-btn:hover {
+    .rimu-mod-chip:hover {
       background-color: var(--color-surface-3);
       color: var(--color-text);
-      border-color: rgba(139, 92, 246, 0.3);
+      border-color: rgba(139, 92, 246, 0.4);
+      transform: translateY(-1px);
     }
 
-    .tipo-tab-btn.active {
-      background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(239, 68, 68, 0.15) 100%);
+    .rimu-mod-chip.active {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(239, 68, 68, 0.2) 100%);
       border-color: #8B5CF6;
       color: #FFFFFF;
       font-weight: 600;
-      box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+      box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
     }
 
-    .tipo-tab-btn.active i {
+    .rimu-mod-chip.active i {
+      color: #C4B5FD;
+    }
+
+    .rimu-mod-badge {
+      font-size: 0.6875rem;
+      padding: 1px 5px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    /* Painel do Módulo Selecionado (Hero Card) */
+    .rimu-active-card {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(13, 17, 26, 0.9) 100%);
+      border: 1px solid rgba(139, 92, 246, 0.25);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      margin-bottom: var(--space-4);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+    }
+
+    .rimu-active-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .rimu-active-icon-box {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-md);
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: #A78BFA;
     }
 
+    .rimu-active-name {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .rimu-active-desc {
+      font-size: 0.8125rem;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    /* Linhas de Entrada e Formulário */
     .consulta-input-row {
       display: flex;
       gap: var(--space-3);
@@ -78,8 +229,27 @@
     }
 
     .consulta-input-field:focus {
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px var(--color-primary-glow);
+      border-color: #8B5CF6;
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+      background-color: var(--color-surface);
+    }
+
+    .consulta-param2-field {
+      width: 140px;
+      padding: 12px 14px;
+      background-color: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      color: var(--color-text);
+      font-size: 0.95rem;
+      font-family: var(--font-mono);
+      outline: none;
+      transition: all var(--transition-fast);
+    }
+
+    .consulta-param2-field:focus {
+      border-color: #8B5CF6;
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
       background-color: var(--color-surface);
     }
 
@@ -117,6 +287,9 @@
     @media (max-width: 640px) {
       .consulta-input-row {
         flex-direction: column;
+      }
+      .consulta-param2-field {
+        width: 100%;
       }
     }
 
@@ -305,87 +478,381 @@
           </p>
         </div>
 
-        <!-- Caixa Principal de Consulta -->
+        <!-- Caixa Principal de Consulta (RimuAPI Engine - 43 Módulos) -->
         <div class="consulta-box">
-          <!-- Abas para Selecionar o Tipo de Busca -->
-          <div class="tipo-tabs-bar">
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'cpf' ? 'active' : '' %>" data-tipo="cpf">
-              <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i>
-              <span>CPF</span>
+          <!-- 1. BARRA DE CATEGORIAS ESTILO HUBAPI -->
+          <div class="rimu-categories-bar" id="rimuCategoriesBar">
+            <button type="button" class="rimu-category-btn active" data-cat="todas">
+              <i data-lucide="layout-grid" style="width: 15px; height: 15px;"></i>
+              <span>Todas as Categorias</span>
+              <span class="rimu-cat-count">43</span>
             </button>
 
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'nome' ? 'active' : '' %>" data-tipo="nome">
-              <i data-lucide="user" style="width: 14px; height: 14px;"></i>
-              <span>Nome</span>
+            <button type="button" class="rimu-category-btn" data-cat="pessoa">
+              <i data-lucide="user" style="width: 15px; height: 15px;"></i>
+              <span>Pessoa</span>
+              <span class="rimu-cat-count">10</span>
             </button>
 
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'telefone' ? 'active' : '' %>" data-tipo="telefone">
-              <i data-lucide="phone" style="width: 14px; height: 14px;"></i>
-              <span>Telefone</span>
+            <button type="button" class="rimu-category-btn" data-cat="contato">
+              <i data-lucide="phone-call" style="width: 15px; height: 15px;"></i>
+              <span>Contato</span>
+              <span class="rimu-cat-count">2</span>
             </button>
 
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'placa' ? 'active' : '' %>" data-tipo="placa">
-              <i data-lucide="car" style="width: 14px; height: 14px;"></i>
-              <span>Placa</span>
+            <button type="button" class="rimu-category-btn" data-cat="endereco">
+              <i data-lucide="map-pin" style="width: 15px; height: 15px;"></i>
+              <span>Endereço</span>
+              <span class="rimu-cat-count">2</span>
             </button>
 
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'foto' ? 'active' : '' %>" data-tipo="foto">
-              <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
-              <span>Foto / Facial</span>
+            <button type="button" class="rimu-category-btn" data-cat="veiculos">
+              <i data-lucide="car" style="width: 15px; height: 15px;"></i>
+              <span>Veículos</span>
+              <span class="rimu-cat-count">5</span>
             </button>
 
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'cep' ? 'active' : '' %>" data-tipo="cep">
-              <i data-lucide="map-pin" style="width: 14px; height: 14px;"></i>
-              <span>CEP</span>
+            <button type="button" class="rimu-category-btn" data-cat="financeiro">
+              <i data-lucide="trending-up" style="width: 15px; height: 15px;"></i>
+              <span>Financeiro</span>
+              <span class="rimu-cat-count">3</span>
             </button>
 
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'email' ? 'active' : '' %>" data-tipo="email">
-              <i data-lucide="mail" style="width: 14px; height: 14px;"></i>
-              <span>E-mail</span>
+            <button type="button" class="rimu-category-btn" data-cat="empresa">
+              <i data-lucide="building-2" style="width: 15px; height: 15px;"></i>
+              <span>Empresa & Jurídico</span>
+              <span class="rimu-cat-count">8</span>
             </button>
 
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'vizinhos' ? 'active' : '' %>" data-tipo="vizinhos">
-              <i data-lucide="home" style="width: 14px; height: 14px;"></i>
-              <span>Vizinhos</span>
+            <button type="button" class="rimu-category-btn" data-cat="familia">
+              <i data-lucide="users" style="width: 15px; height: 15px;"></i>
+              <span>Família</span>
+              <span class="rimu-cat-count">4</span>
             </button>
 
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'titulo' ? 'active' : '' %>" data-tipo="titulo">
-              <i data-lucide="vote" style="width: 14px; height: 14px;"></i>
-              <span>Título Eleitor</span>
+            <button type="button" class="rimu-category-btn" data-cat="vazados">
+              <i data-lucide="shield-alert" style="width: 15px; height: 15px;"></i>
+              <span>Vazados & Segurança</span>
+              <span class="rimu-cat-count">5</span>
             </button>
 
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'operadora' ? 'active' : '' %>" data-tipo="operadora">
-              <i data-lucide="radio" style="width: 14px; height: 14px;"></i>
-              <span>Operadora</span>
-            </button>
-
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'rg' ? 'active' : '' %>" data-tipo="rg">
-              <i data-lucide="id-card" style="width: 14px; height: 14px;"></i>
-              <span>RG</span>
-            </button>
-
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'cnpj' ? 'active' : '' %>" data-tipo="cnpj">
-              <i data-lucide="building-2" style="width: 14px; height: 14px;"></i>
-              <span>CNPJ</span>
-            </button>
-
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'parentes' ? 'active' : '' %>" data-tipo="parentes">
-              <i data-lucide="users" style="width: 14px; height: 14px;"></i>
-              <span>Parentes</span>
-            </button>
-
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'nis' ? 'active' : '' %>" data-tipo="nis">
-              <i data-lucide="badge-percent" style="width: 14px; height: 14px;"></i>
-              <span>NIS</span>
-            </button>
-
-            <button type="button" class="tipo-tab-btn <%= tipoAtivo === 'pis' ? 'active' : '' %>" data-tipo="pis">
-              <i data-lucide="briefcase" style="width: 14px; height: 14px;"></i>
-              <span>PIS / PASEP</span>
+            <button type="button" class="rimu-category-btn" data-cat="geradores">
+              <i data-lucide="cpu" style="width: 15px; height: 15px;"></i>
+              <span>Geradores & Lotes</span>
+              <span class="rimu-cat-count">4</span>
             </button>
           </div>
 
-          <!-- Formulário Dinâmico -->
+          <!-- 2. CAMPO DE BUSCA RÁPIDA DE MÓDULOS -->
+          <div class="rimu-modules-search-wrap">
+            <i data-lucide="search"></i>
+            <input 
+              type="text" 
+              id="filtroModulosInput" 
+              class="rimu-modules-search-input" 
+              placeholder="🔍 Filtrar entre os 43 módulos da RimuAPI (ex: CPF, Score, OAB, Placa, CNPJ, Desmascarador, Vacina)..."
+              autocomplete="off"
+            >
+          </div>
+
+          <!-- 3. GRADE DE SELEÇÃO DOS 43 MÓDULOS OFICIAIS -->
+          <div class="rimu-modules-grid" id="rimuModulesGrid">
+            <!-- 1. PESSOA (10) -->
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cpf' ? 'active' : '' %>" data-tipo="cpf" data-categoria="pessoa" data-nome="CPF Básico" data-badge="Oficial" data-badge-color="#10B981" data-desc="Consulta cadastral básica oficial de pessoa física (dados, contatos e endereços).">
+              <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i>
+              <span>CPF Básico</span>
+              <span class="rimu-mod-badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">Oficial</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cpf_completo' ? 'active' : '' %>" data-tipo="cpf_completo" data-categoria="pessoa" data-nome="CPF PRO (Dossiê)" data-badge="PRO" data-badge-color="#8B5CF6" data-desc="Dossiê completo com dados biográficos, parentes, CNS, telefones e endereços vinculados.">
+              <i data-lucide="shield-check" style="width: 14px; height: 14px; color: #10B981;"></i>
+              <span>CPF PRO</span>
+              <span class="rimu-mod-badge" style="background: rgba(139, 92, 246, 0.2); color: #C4B5FD;">PRO</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'nome' ? 'active' : '' %>" data-tipo="nome" data-categoria="pessoa" data-nome="Nome Completo" data-badge="Lista" data-badge-color="#3B82F6" data-desc="Localização de CPFs, sexo e data de nascimento a partir do nome completo.">
+              <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+              <span>Nome Completo</span>
+              <span class="rimu-mod-badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">Lista</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'nome_similar' ? 'active' : '' %>" data-tipo="nome_similar" data-categoria="pessoa" data-nome="Nome Similar" data-badge="Fonético" data-badge-color="#6366F1" data-desc="Busca aproximada fonética/lexical de nomes e homônimos por primeiro e último nome.">
+              <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+              <span>Nome Similar</span>
+              <span class="rimu-mod-badge" style="background: rgba(99, 102, 241, 0.15); color: #818CF8;">Fonético</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'rg' ? 'active' : '' %>" data-tipo="rg" data-categoria="pessoa" data-nome="Registro Geral (RG)" data-badge="RG" data-badge-color="#06B6D4" data-desc="Busca de titular pelo número de RG e UF de expedição.">
+              <i data-lucide="id-card" style="width: 14px; height: 14px;"></i>
+              <span>RG</span>
+              <span class="rimu-mod-badge" style="background: rgba(6, 182, 212, 0.15); color: #22D3EE;">RG</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'titulo' ? 'active' : '' %>" data-tipo="titulo" data-categoria="pessoa" data-nome="Título de Eleitor" data-badge="TSE" data-badge-color="#14B8A6" data-desc="Consulta de dados de pessoa física através dos 12 dígitos do Título Eleitoral.">
+              <i data-lucide="vote" style="width: 14px; height: 14px;"></i>
+              <span>Título Eleitor</span>
+              <span class="rimu-mod-badge" style="background: rgba(20, 184, 166, 0.15); color: #2DD4BF;">TSE</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cns' ? 'active' : '' %>" data-tipo="cns" data-categoria="pessoa" data-nome="Cartão Nacional de Saúde (CNS)" data-badge="SUS" data-badge-color="#10B981" data-desc="Cartão Nacional de Saúde (CNS) com vínculos biográficos, contatos e residência.">
+              <i data-lucide="activity" style="width: 14px; height: 14px;"></i>
+              <span>CNS</span>
+              <span class="rimu-mod-badge" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">SUS</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'nis' ? 'active' : '' %>" data-tipo="nis" data-categoria="pessoa" data-nome="NIS / PIS / PASEP" data-badge="Social" data-badge-color="#F59E0B" data-desc="Número de Identificação Social e benefícios sociais cadastrados.">
+              <i data-lucide="badge-percent" style="width: 14px; height: 14px;"></i>
+              <span>NIS</span>
+              <span class="rimu-mod-badge" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;">Social</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'covid' ? 'active' : '' %>" data-tipo="covid" data-categoria="pessoa" data-nome="Vacinas COVID-19" data-badge="Vacinas" data-badge-color="#EC4899" data-desc="Histórico completo de vacinas, fabricantes, doses, lotes e postos de vacinação por CPF.">
+              <i data-lucide="syringe" style="width: 14px; height: 14px;"></i>
+              <span>Vacinas COVID</span>
+              <span class="rimu-mod-badge" style="background: rgba(236, 72, 153, 0.15); color: #F472B6;">Vacinas</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'fotos' || tipoAtivo === 'foto' ? 'active' : '' %>" data-tipo="fotos" data-categoria="pessoa" data-nome="Biometria Facial / Fotos" data-badge="Foto" data-badge-color="#A855F7" data-desc="Fotos oficiais registradas em documentos públicos (CNH/RG) em Base64 ou URL.">
+              <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
+              <span>Fotos / Facial</span>
+              <span class="rimu-mod-badge" style="background: rgba(168, 85, 247, 0.15); color: #C084FC;">Foto</span>
+            </button>
+
+            <!-- 2. CONTATO (2) -->
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'telefone' ? 'active' : '' %>" data-tipo="telefone" data-categoria="contato" data-nome="Telefone & Titularidade" data-badge="Telecom" data-badge-color="#3B82F6" data-desc="Localização de titular, operadora e endereços a partir do número de telefone com DDD.">
+              <i data-lucide="phone" style="width: 14px; height: 14px;"></i>
+              <span>Telefone</span>
+              <span class="rimu-mod-badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">Telecom</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'email' ? 'active' : '' %>" data-tipo="email" data-categoria="contato" data-nome="E-mail & Identidade Digital" data-badge="E-mail" data-badge-color="#6366F1" data-desc="Vínculos cadastrais, titularidade e redes associadas a um endereço de e-mail.">
+              <i data-lucide="mail" style="width: 14px; height: 14px;"></i>
+              <span>E-mail</span>
+              <span class="rimu-mod-badge" style="background: rgba(99, 102, 241, 0.15); color: #818CF8;">E-mail</span>
+            </button>
+
+            <!-- 3. ENDEREÇO (2) -->
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cep' ? 'active' : '' %>" data-tipo="cep" data-categoria="endereco" data-nome="CEP & Moradores" data-badge="CEP" data-badge-color="#10B981" data-desc="Residentes e logradouro por CEP simples, com suporte a número de residência opcional.">
+              <i data-lucide="map-pin" style="width: 14px; height: 14px;"></i>
+              <span>CEP</span>
+              <span class="rimu-mod-badge" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">CEP</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cep_avancado' ? 'active' : '' %>" data-tipo="cep_avancado" data-categoria="endereco" data-nome="CEP Avançado" data-badge="Avançado" data-badge-color="#8B5CF6" data-desc="Busca refinada de endereços e moradores por UF, logradouro, bairro e cidade.">
+              <i data-lucide="map" style="width: 14px; height: 14px;"></i>
+              <span>CEP Avançado</span>
+              <span class="rimu-mod-badge" style="background: rgba(139, 92, 246, 0.2); color: #C4B5FD;">Avançado</span>
+            </button>
+
+            <!-- 4. VEÍCULOS (5) -->
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'placa' ? 'active' : '' %>" data-tipo="placa" data-categoria="veiculos" data-nome="Placa Padrão" data-badge="Veículo" data-badge-color="#F59E0B" data-desc="Consulta veicular padrão (marca, modelo, chassi, renavam, proprietário e restrições).">
+              <i data-lucide="car" style="width: 14px; height: 14px;"></i>
+              <span>Placa</span>
+              <span class="rimu-mod-badge" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;">Veículo</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'placa_ghost' ? 'active' : '' %>" data-tipo="placa_ghost" data-categoria="veiculos" data-nome="Placa Ghost (Dossiê)" data-badge="Ghost PRO" data-badge-color="#EF4444" data-desc="Dossiê veicular completo com dados aprofundados do proprietário, CNH, telefones e endereços.">
+              <i data-lucide="shield" style="width: 14px; height: 14px; color: #EF4444;"></i>
+              <span>Placa Ghost</span>
+              <span class="rimu-mod-badge" style="background: rgba(239, 68, 68, 0.15); color: #F87171;">Ghost PRO</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cnh' ? 'active' : '' %>" data-tipo="cnh" data-categoria="veiculos" data-nome="CNH / Habilitação" data-badge="Detran" data-badge-color="#10B981" data-desc="Carteira Nacional de Habilitação (número, categoria, validade e condutor por CNH ou CPF).">
+              <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+              <span>CNH</span>
+              <span class="rimu-mod-badge" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">Detran</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'chassi' ? 'active' : '' %>" data-tipo="chassi" data-categoria="veiculos" data-nome="Chassi Veicular" data-badge="Chassi" data-badge-color="#6B7280" data-desc="Busca de histórico veicular diretamente pelo número de Chassi (17 caracteres).">
+              <i data-lucide="binary" style="width: 14px; height: 14px;"></i>
+              <span>Chassi</span>
+              <span class="rimu-mod-badge" style="background: rgba(107, 114, 128, 0.2); color: #9CA3AF;">17 Dígitos</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'renavam' ? 'active' : '' %>" data-tipo="renavam" data-categoria="veiculos" data-nome="Código RENAVAM" data-badge="Renavam" data-badge-color="#3B82F6" data-desc="Busca veicular completa diretamente pelo código RENAVAM do veículo.">
+              <i data-lucide="hash" style="width: 14px; height: 14px;"></i>
+              <span>RENAVAM</span>
+              <span class="rimu-mod-badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">Renavam</span>
+            </button>
+
+            <!-- 5. FINANCEIRO (3) -->
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'score' ? 'active' : '' %>" data-tipo="score" data-categoria="financeiro" data-nome="Score de Crédito & Renda" data-badge="Crédito" data-badge-color="#F59E0B" data-desc="Pontuação de crédito estimada, renda presumida e classificação socioeconômica por CPF.">
+              <i data-lucide="trending-up" style="width: 14px; height: 14px; color: #F59E0B;"></i>
+              <span>Score</span>
+              <span class="rimu-mod-badge" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;">Crédito</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'aposentado' ? 'active' : '' %>" data-tipo="aposentado" data-categoria="financeiro" data-nome="INSS / Previdência" data-badge="INSS" data-badge-color="#10B981" data-desc="Benefícios previdenciários do INSS (aposentadoria, pensão, valores e agência pagadora).">
+              <i data-lucide="heart-handshake" style="width: 14px; height: 14px;"></i>
+              <span>INSS</span>
+              <span class="rimu-mod-badge" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">INSS</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'pis' ? 'active' : '' %>" data-tipo="pis" data-categoria="financeiro" data-nome="PIS / PASEP" data-badge="PIS" data-badge-color="#3B82F6" data-desc="Consulta cadastral formal de PIS / PASEP por CPF ou PIS.">
+              <i data-lucide="briefcase" style="width: 14px; height: 14px;"></i>
+              <span>PIS</span>
+              <span class="rimu-mod-badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">PIS</span>
+            </button>
+
+            <!-- 6. EMPRESA & JURÍDICO (8) -->
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cnpj' ? 'active' : '' %>" data-tipo="cnpj" data-categoria="empresa" data-nome="CNPJ Completo (Receita)" data-badge="CNPJ" data-badge-color="#10B981" data-desc="Cadastro completo PJ (Empresa, Estabelecimento, Simples Nacional e Quadro de Sócios).">
+              <i data-lucide="building-2" style="width: 14px; height: 14px;"></i>
+              <span>CNPJ</span>
+              <span class="rimu-mod-badge" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">Receita</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cnpj2' ? 'active' : '' %>" data-tipo="cnpj2" data-categoria="empresa" data-nome="CNPJ Econômico (CNAEs)" data-badge="CNAEs" data-badge-color="#6366F1" data-desc="Consulta de CNPJ com ênfase nas atividades econômicas secundárias e CNAEs.">
+              <i data-lucide="building" style="width: 14px; height: 14px;"></i>
+              <span>CNPJ CNAEs</span>
+              <span class="rimu-mod-badge" style="background: rgba(99, 102, 241, 0.15); color: #818CF8;">CNAEs</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'razao_social' ? 'active' : '' %>" data-tipo="razao_social" data-categoria="empresa" data-nome="Razão Social / Nome da Empresa" data-badge="Empresa" data-badge-color="#3B82F6" data-desc="Localização de empresas a partir da Razão Social ou Nome Empresarial.">
+              <i data-lucide="briefcase" style="width: 14px; height: 14px;"></i>
+              <span>Razão Social</span>
+              <span class="rimu-mod-badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">Nominal</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'socios' ? 'active' : '' %>" data-tipo="socios" data-categoria="empresa" data-nome="Quadro Societário (QSA)" data-badge="QSA" data-badge-color="#8B5CF6" data-desc="Empresas nas quais o CPF ou CNPJ figura como sócio ou administrador.">
+              <i data-lucide="users-round" style="width: 14px; height: 14px;"></i>
+              <span>Sócios QSA</span>
+              <span class="rimu-mod-badge" style="background: rgba(139, 92, 246, 0.2); color: #C4B5FD;">QSA</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'socios2' ? 'active' : '' %>" data-tipo="socios2" data-categoria="empresa" data-nome="Sócios Avançado" data-badge="Cotas" data-badge-color="#A855F7" data-desc="Quadro societário avançado com participações cruzadas e percentual de capital.">
+              <i data-lucide="network" style="width: 14px; height: 14px;"></i>
+              <span>Sócios Avançado</span>
+              <span class="rimu-mod-badge" style="background: rgba(168, 85, 247, 0.15); color: #C084FC;">Cotas</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'funcionarios' ? 'active' : '' %>" data-tipo="funcionarios" data-categoria="empresa" data-nome="Funcionários por CNPJ" data-badge="Equipe" data-badge-color="#EC4899" data-desc="Relação de vínculos empregatícios ativos e funcionários registrados por CNPJ.">
+              <i data-lucide="contact" style="width: 14px; height: 14px;"></i>
+              <span>Funcionários</span>
+              <span class="rimu-mod-badge" style="background: rgba(236, 72, 153, 0.15); color: #F472B6;">Equipe</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'empregos' ? 'active' : '' %>" data-tipo="empregos" data-categoria="empresa" data-nome="Histórico Trabalhista (CTPS)" data-badge="CTPS" data-badge-color="#F59E0B" data-desc="Histórico formal de vínculos trabalhistas (CTPS/RAIS/CAGED) por CPF.">
+              <i data-lucide="folder-clock" style="width: 14px; height: 14px;"></i>
+              <span>Empregos CTPS</span>
+              <span class="rimu-mod-badge" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;">CTPS</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'oab' ? 'active' : '' %>" data-tipo="oab" data-categoria="empresa" data-nome="Cadastro Nacional OAB / CNA" data-badge="Advogados" data-badge-color="#D97706" data-desc="Cadastro Nacional dos Advogados (CNA / OAB) com situação, seccional e contatos.">
+              <i data-lucide="scale" style="width: 14px; height: 14px;"></i>
+              <span>OAB Advogados</span>
+              <span class="rimu-mod-badge" style="background: rgba(217, 119, 6, 0.15); color: #FBBF24;">OAB</span>
+            </button>
+
+            <!-- 7. FAMÍLIA (4) -->
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'mae' ? 'active' : '' %>" data-tipo="mae" data-categoria="familia" data-nome="Filhos por Nome da Mãe" data-badge="Mãe" data-badge-color="#EC4899" data-desc="Localização de filhos e dependentes a partir do nome completo da mãe.">
+              <i data-lucide="heart" style="width: 14px; height: 14px;"></i>
+              <span>Mãe</span>
+              <span class="rimu-mod-badge" style="background: rgba(236, 72, 153, 0.15); color: #F472B6;">Mãe</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'pai' ? 'active' : '' %>" data-tipo="pai" data-categoria="familia" data-nome="Filhos por Nome do Pai" data-badge="Pai" data-badge-color="#3B82F6" data-desc="Localização de filhos e dependentes a partir do nome completo do pai.">
+              <i data-lucide="user-check" style="width: 14px; height: 14px;"></i>
+              <span>Pai</span>
+              <span class="rimu-mod-badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">Pai</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'parentes' ? 'active' : '' %>" data-tipo="parentes" data-categoria="familia" data-nome="Parentes Diretos por CPF" data-badge="Parentesco" data-badge-color="#10B981" data-desc="Vínculos familiares diretos (pais, filhos, irmãos e cônjuges) por CPF.">
+              <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+              <span>Parentes</span>
+              <span class="rimu-mod-badge" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">Família</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'arvore_familiar' ? 'active' : '' %>" data-tipo="arvore_familiar" data-categoria="familia" data-nome="Árvore Genealógica" data-badge="Genealogia" data-badge-color="#8B5CF6" data-desc="Rede genealógica ampliada com múltiplos graus de parentesco e afinidade.">
+              <i data-lucide="git-fork" style="width: 14px; height: 14px;"></i>
+              <span>Árvore Genealógica</span>
+              <span class="rimu-mod-badge" style="background: rgba(139, 92, 246, 0.2); color: #C4B5FD;">Genealogia</span>
+            </button>
+
+            <!-- 8. VAZADOS & SEGURANÇA (5) -->
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'desmascarador' ? 'active' : '' %>" data-tipo="desmascarador" data-categoria="vazados" data-nome="Desmascarador de Dados / PIX" data-badge="Desofuscar" data-badge-color="#8B5CF6" data-desc="Revela termos ofuscados ou mascarados (chaves PIX com asteriscos, CPFs parciais).">
+              <i data-lucide="eye" style="width: 14px; height: 14px; color: #C4B5FD;"></i>
+              <span>Desmascarador</span>
+              <span class="rimu-mod-badge" style="background: rgba(139, 92, 246, 0.25); color: #E9D5FF;">PIX/*</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cloud_url' ? 'active' : '' %>" data-tipo="cloud_url" data-categoria="vazados" data-nome="Vazamentos por Domínio / URL" data-badge="URL" data-badge-color="#EF4444" data-desc="Credenciais e logs de acessos vazados associados a um domínio ou URL corporativa.">
+              <i data-lucide="globe" style="width: 14px; height: 14px;"></i>
+              <span>Cloud URL</span>
+              <span class="rimu-mod-badge" style="background: rgba(239, 68, 68, 0.15); color: #F87171;">Logs</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'cloud_usuario' ? 'active' : '' %>" data-tipo="cloud_usuario" data-categoria="vazados" data-nome="Vazamentos por Usuário" data-badge="Contas" data-badge-color="#F43F5E" data-desc="Vazamentos de senhas e acessos vinculados a um usuário específico ou e-mail.">
+              <i data-lucide="user-x" style="width: 14px; height: 14px;"></i>
+              <span>Cloud Usuário</span>
+              <span class="rimu-mod-badge" style="background: rgba(244, 63, 94, 0.15); color: #FB7185;">Contas</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'senha' ? 'active' : '' %>" data-tipo="senha" data-categoria="vazados" data-nome="Vazamentos por Senha / Hash" data-badge="Senha" data-badge-color="#DC2626" data-desc="Identifica contas e logins comprometidos associados a uma senha ou hash conhecido.">
+              <i data-lucide="key" style="width: 14px; height: 14px;"></i>
+              <span>Vazamentos Senha</span>
+              <span class="rimu-mod-badge" style="background: rgba(220, 38, 38, 0.15); color: #FCA5A5;">Senha</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'dump_cpf' ? 'active' : '' %>" data-tipo="dump_cpf" data-categoria="vazados" data-nome="Dump de CPFs Vazados" data-badge="Dump" data-badge-color="#B91C1C" data-desc="Extração em lote de registros e nomes a partir de fragmentos de CPFs vazados.">
+              <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+              <span>Dump CPF</span>
+              <span class="rimu-mod-badge" style="background: rgba(185, 28, 28, 0.15); color: #F87171;">Dump</span>
+            </button>
+
+            <!-- 9. GERADORES & LOTES (4) -->
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'dump_email' ? 'active' : '' %>" data-tipo="dump_email" data-categoria="geradores" data-nome="Dump de E-mails" data-badge="Lote" data-badge-color="#3B82F6" data-desc="Extração em lote de e-mails, titulares e telefones cadastrados por domínio.">
+              <i data-lucide="at-sign" style="width: 14px; height: 14px;"></i>
+              <span>Dump E-mail</span>
+              <span class="rimu-mod-badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">Lote</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'dump_telefone' ? 'active' : '' %>" data-tipo="dump_telefone" data-categoria="geradores" data-nome="Dump de Telefones" data-badge="Lote" data-badge-color="#0EA5E9" data-desc="Extração em lote de números de telefone e titulares a partir do DDD ou prefixo.">
+              <i data-lucide="phone-forwarded" style="width: 14px; height: 14px;"></i>
+              <span>Dump Telefone</span>
+              <span class="rimu-mod-badge" style="background: rgba(14, 165, 233, 0.15); color: #38BDF8;">Lote</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'gerador_estado' ? 'active' : '' %>" data-tipo="gerador_estado" data-categoria="geradores" data-nome="Gerador por Estado (UF)" data-badge="Gerador" data-badge-color="#10B981" data-desc="Geração de dados cadastrais e estatísticos válidos por Estado / Unidade Federativa.">
+              <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+              <span>Gerador Estado</span>
+              <span class="rimu-mod-badge" style="background: rgba(16, 185, 129, 0.15); color: #34D399;">UF</span>
+            </button>
+
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'gerador_cbo' ? 'active' : '' %>" data-tipo="gerador_cbo" data-categoria="geradores" data-nome="Consulta Ocupações (CBO)" data-badge="CBO" data-badge-color="#8B5CF6" data-desc="Consulta da Classificação Brasileira de Ocupações (CBO) com código e descrição.">
+              <i data-lucide="award" style="width: 14px; height: 14px;"></i>
+              <span>Gerador CBO</span>
+              <span class="rimu-mod-badge" style="background: rgba(139, 92, 246, 0.2); color: #C4B5FD;">CBO</span>
+            </button>
+          </div>
+
+          <!-- 4. PAINEL HERO DO MÓDULO ATIVO -->
+          <div class="rimu-active-card" id="rimuActiveCard">
+            <div class="rimu-active-title-group">
+              <div class="rimu-active-icon-box" id="rimuActiveIconBox">
+                <i data-lucide="credit-card" id="rimuActiveIcon" style="width: 20px; height: 20px;"></i>
+              </div>
+              <div>
+                <div class="rimu-active-name">
+                  <span id="rimuActiveTitle">CPF Básico</span>
+                  <span class="rimu-mod-badge" id="rimuActiveBadge" style="background: rgba(16, 185, 129, 0.2); color: #10B981;">Oficial</span>
+                </div>
+                <div class="rimu-active-desc" id="rimuActiveDesc">
+                  Consulta cadastral básica oficial de pessoa física (dados, contatos e endereços).
+                </div>
+              </div>
+            </div>
+            <div style="font-size: 0.75rem; color: #A78BFA; font-family: var(--font-mono);">
+              <span id="rimuActiveParamHint">Parâmetro: CPF (11 dígitos)</span>
+            </div>
+          </div>
+
+          <!-- Alerta de Módulo em Manutenção ou Desativado -->
+          <div id="rimuModuloManutencaoBanner" style="display: none; margin-bottom: var(--space-4); background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: var(--radius-md); padding: 12px 16px; color: #FCA5A5; font-size: 0.875rem; align-items: center; gap: 10px;">
+            <i data-lucide="alert-triangle" style="width: 20px; height: 20px; color: #EF4444; flex-shrink: 0;"></i>
+            <span id="rimuModuloManutencaoTexto">Este módulo está temporariamente em manutenção pela administração.</span>
+          </div>
+
+          <!-- 5. FORMULÁRIO DINÂMICO DE CONSULTA -->
           <form id="consultaForm">
             <label for="consultaInput" id="consultaInputLabel" style="display: block; font-size: 0.875rem; font-weight: 500; color: var(--color-text);">
               Informe o Dado para Consulta:
@@ -401,6 +868,17 @@
                 autocomplete="off" 
                 autofocus
               >
+
+              <!-- Campo Secundário (Param2 / UF / Número) - exibido condicionalmente -->
+              <div id="param2Container" style="display: none;">
+                <input 
+                  type="text" 
+                  id="consultaInputParam2" 
+                  class="consulta-param2-field" 
+                  placeholder="UF (ex: SP)"
+                  autocomplete="off"
+                >
+              </div>
 
               <button type="submit" class="btn btn-primary" id="btnSubmitConsulta" style="padding: 12px 28px;">
                 <i data-lucide="search" style="width: 16px; height: 16px;"></i>
@@ -474,9 +952,64 @@
                 <span>🧪 Exemplo Biometria Facial</span>
               </button>
 
+              <!-- CPF PRO Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="cpf_completo" data-val="12345678900">
+                <span>🧪 Exemplo CPF PRO</span>
+              </button>
+
+              <!-- Score Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="score" data-val="12345678900">
+                <span>🧪 Exemplo Score & Renda</span>
+              </button>
+
+              <!-- INSS Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="aposentado" data-val="12345678900">
+                <span>🧪 Exemplo INSS / Aposentadoria</span>
+              </button>
+
+              <!-- COVID-19 Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="covid" data-val="12345678900">
+                <span>🧪 Exemplo Vacinas COVID</span>
+              </button>
+
+              <!-- OAB Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="oab" data-val="18442 ES">
+                <span>🧪 Exemplo OAB (18442 ES)</span>
+              </button>
+
+              <!-- Mãe Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="mae" data-val="MARIA HELENA PEREIRA DA SILVA">
+                <span>🧪 Exemplo Mãe (Filhos)</span>
+              </button>
+
+              <!-- Pai Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="pai" data-val="JOSE ROBERTO DA SILVA">
+                <span>🧪 Exemplo Pai (Filhos)</span>
+              </button>
+
+              <!-- Razão Social Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="razao_social" data-val="PETROBRAS">
+                <span>🧪 Exemplo Razão Social (PETROBRAS)</span>
+              </button>
+
+              <!-- Sócios Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="socios" data-val="12345678900">
+                <span>🧪 Exemplo Sócios QSA</span>
+              </button>
+
+              <!-- Desmascarador Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="desmascarador" data-val="carl***@gmail.com">
+                <span>🧪 Exemplo Desmascarador PIX</span>
+              </button>
+
+              <!-- Cloud URL Demo -->
+              <button type="button" class="demo-consulta-btn" data-tipo="cloud_url" data-val="empresa.com.br">
+                <span>🧪 Exemplo Cloud URL Vazamentos</span>
+              </button>
+
               <!-- CNPJ Demo -->
-              <button type="button" class="demo-consulta-btn" data-tipo="cnpj" data-val="12345678000190">
-                <span>🧪 Exemplo CNPJ (12.345.678/0001-90)</span>
+              <button type="button" class="demo-consulta-btn" data-tipo="cnpj" data-val="33000167000101">
+                <span>🧪 Exemplo CNPJ (PETROBRAS)</span>
               </button>
             </div>
           </form>
@@ -616,6 +1149,9 @@
   <!-- Biblioteca HTML2PDF para Conversão Direta sem Impressora -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+  <script>
+    window.__RIMU_MODULOS_DATA__ = <%- JSON.stringify(typeof modulos !== 'undefined' ? modulos : []) %>;
+  </script>
   <script src="/js/ui.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/historico.js"></script>

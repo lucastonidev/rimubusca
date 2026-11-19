@@ -529,17 +529,17 @@ router.get("/admin/api-keys", async (req, res) => {
       tipo: "Infraestrutura Principal",
     },
     {
-      id: "pessoa_api",
-      nome: "Hexys API (Página Principal Cadastral)",
+      id: "rimuapi",
+      nome: "RimuAPI (Sant Buscas Engine)",
       ativo: Boolean(
-        process.env.PESSOA_API_KEY &&
-        process.env.PESSOA_API_KEY !== "sua_chave_api_pessoa_aqui" &&
-        process.env.PESSOA_API_KEY !== "COLE_SUA_CHAVE_AQUI"
+        process.env.RIMUAPI_KEY &&
+        process.env.RIMUAPI_KEY !== "sua_chave_de_api_aqui" &&
+        process.env.RIMUAPI_KEY !== "COLE_SUA_CHAVE_AQUI"
       ),
-      chaveParcial: process.env.PESSOA_API_KEY
-        ? "••••••••" + process.env.PESSOA_API_KEY.slice(-4)
+      chaveParcial: process.env.RIMUAPI_KEY
+        ? "••••••••" + process.env.RIMUAPI_KEY.slice(-4)
         : "Mock Engine Ativo",
-      tipo: "Hexys Dev (10 Rotas Live)",
+      tipo: "RimuAPI Engine (43 Módulos Oficiais)",
     },
     {
       id: "hibp",

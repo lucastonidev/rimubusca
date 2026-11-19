@@ -1,18 +1,24 @@
 /**
  * ==============================================================================
  * RIMUBUSCA - BACKEND OSINT INTERPRETERS COORDINATOR
- * Multi-provider normalizers for Hexys and Zeroy.
+ * src/services/osint/interpreter/index.js
+ *
+ * Multi-provider normalizers for RimuAPI (Sant Buscas), Hexys and Zeroy.
  * Clean Code standards with English identifiers.
  * ==============================================================================
  */
 
+import { interpretRimuApi } from "./modules/rimuapi/index.js";
 import { interpretHexys } from "./modules/hexys/index.js";
 import { interpretZeroy } from "./modules/zeroy/index.js";
 
-export { interpretHexys, interpretZeroy };
+export { interpretRimuApi, interpretHexys, interpretZeroy };
 
 export function interpretData(provider, typeOrModule, rawData) {
   const p = String(provider || "").toLowerCase().trim();
+  if (p === "rimuapi" || p === "rimu" || p === "santbuscas") {
+    return interpretRimuApi(typeOrModule, rawData);
+  }
   if (p === "hexys") {
     return interpretHexys(typeOrModule, rawData);
   }
@@ -23,4 +29,3 @@ export function interpretData(provider, typeOrModule, rawData) {
 }
 
 export default interpretData;
-

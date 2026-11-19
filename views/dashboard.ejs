@@ -84,7 +84,7 @@
               <div class="kpi-info">
                 <span class="kpi-value" id="kpi-total-modules"
                   ><%= typeof estatisticas !== 'undefined' ?
-                  estatisticas.totalModulos : 15 %></span
+                  estatisticas.totalModulos : 43 %></span
                 >
                 <span class="kpi-label">Módulos & Tipos de Busca</span>
               </div>
@@ -160,7 +160,7 @@
             </div>
           </section>
 
-          <!-- 3. CATEGORIA 1: PUXAR DADOS & CONSULTAS CADASTRAIS -->
+          <!-- 3. CATEGORIA 1: PUXAR DADOS & CONSULTAS CADASTRAIS (RIMUAPI - 43 MÓDULOS) -->
           <section class="category-block" id="category-consultas">
             <div class="category-header">
               <div class="category-title">
@@ -168,12 +168,79 @@
                 <span>Puxar Dados & Consultas Pessoais</span>
               </div>
               <span class="badge badge-red" id="badge-count-consultas"
-                >Carregando...</span
+                >43 Módulos</span
               >
               <p class="category-subtitle">
-                Módulos dedicados à busca cadastral de pessoas físicas via bases
-                integradas e adaptadores de API
+                Central oficial com 43 módulos de inteligência e busca cadastral via RimuAPI
               </p>
+            </div>
+
+            <!-- Filtro de Busca & Tabs de Categoria (Estilo HubAPI) -->
+            <div class="dash-category-filter-area">
+              <div class="dash-filter-top">
+                <div class="dash-search-box">
+                  <i data-lucide="search"></i>
+                  <input
+                    type="text"
+                    id="dashModuleSearch"
+                    placeholder="🔍 Buscar entre os 43 módulos (CPF, Nome, Score, Placa Ghost, OAB, Filhos)..."
+                    autocomplete="off"
+                  />
+                </div>
+              </div>
+
+              <div class="dash-tabs-bar" id="dashCategoryTabs">
+                <button type="button" class="dash-tab-btn active" data-cat="todas">
+                  <i data-lucide="layout-grid" style="width: 14px; height: 14px;"></i>
+                  <span>Todas</span>
+                  <span class="dash-tab-count" id="dashCount-todas">43</span>
+                </button>
+                <button type="button" class="dash-tab-btn" data-cat="pessoa">
+                  <i data-lucide="user" style="width: 14px; height: 14px;"></i>
+                  <span>Pessoa</span>
+                  <span class="dash-tab-count" id="dashCount-pessoa">10</span>
+                </button>
+                <button type="button" class="dash-tab-btn" data-cat="contato">
+                  <i data-lucide="phone-call" style="width: 14px; height: 14px;"></i>
+                  <span>Contato</span>
+                  <span class="dash-tab-count" id="dashCount-contato">2</span>
+                </button>
+                <button type="button" class="dash-tab-btn" data-cat="endereco">
+                  <i data-lucide="map-pin" style="width: 14px; height: 14px;"></i>
+                  <span>Endereço</span>
+                  <span class="dash-tab-count" id="dashCount-endereco">2</span>
+                </button>
+                <button type="button" class="dash-tab-btn" data-cat="veiculos">
+                  <i data-lucide="car" style="width: 14px; height: 14px;"></i>
+                  <span>Veículos</span>
+                  <span class="dash-tab-count" id="dashCount-veiculos">5</span>
+                </button>
+                <button type="button" class="dash-tab-btn" data-cat="financeiro">
+                  <i data-lucide="trending-up" style="width: 14px; height: 14px;"></i>
+                  <span>Financeiro</span>
+                  <span class="dash-tab-count" id="dashCount-financeiro">3</span>
+                </button>
+                <button type="button" class="dash-tab-btn" data-cat="empresa">
+                  <i data-lucide="building-2" style="width: 14px; height: 14px;"></i>
+                  <span>Empresa & Jurídico</span>
+                  <span class="dash-tab-count" id="dashCount-empresa">8</span>
+                </button>
+                <button type="button" class="dash-tab-btn" data-cat="familia">
+                  <i data-lucide="users" style="width: 14px; height: 14px;"></i>
+                  <span>Família</span>
+                  <span class="dash-tab-count" id="dashCount-familia">4</span>
+                </button>
+                <button type="button" class="dash-tab-btn" data-cat="vazados">
+                  <i data-lucide="shield-alert" style="width: 14px; height: 14px;"></i>
+                  <span>Vazados & Segurança</span>
+                  <span class="dash-tab-count" id="dashCount-vazados">5</span>
+                </button>
+                <button type="button" class="dash-tab-btn" data-cat="geradores">
+                  <i data-lucide="cpu" style="width: 14px; height: 14px;"></i>
+                  <span>Geradores & Lotes</span>
+                  <span class="dash-tab-count" id="dashCount-geradores">4</span>
+                </button>
+              </div>
             </div>
 
             <div class="puxar-grid" id="modules-consultas-grid">

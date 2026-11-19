@@ -2,6 +2,7 @@
  * ==============================================================================
  * RIMUBUSCA - DASHBOARD MODULES CLIENT (DASHBOARD.JS)
  * Busca módulos no Supabase via /api/modules e renderiza os cards dinamicamente
+ * com suporte aos 43 módulos da RimuAPI, categorização dinâmica e interdição.
  * ==============================================================================
  */
 
@@ -13,7 +14,6 @@
     consultas: document.getElementById("modules-consultas-grid"),
     osint: document.getElementById("modules-osint-grid"),
     forense: document.getElementById("modules-forense-grid"),
-    dynamic: document.getElementById("modules-dynamic-container"),
   };
 
   const BADGES_COUNT = {
@@ -22,6 +22,18 @@
     forense: document.getElementById("badge-count-forense"),
     total: document.getElementById("kpi-total-modules"),
   };
+
+  // Elementos de controle de categoria e busca (Estilo HubAPI)
+  const DOM = {
+    search: document.getElementById("dashModuleSearch"),
+    tabContainer: document.getElementById("dashCategoryTabs"),
+    tabBtns: document.querySelectorAll(".dash-tab-btn"),
+  };
+
+  // Estado interno dos módulos de consulta
+  let allConsultasModules = [];
+  let currentCategory = "todas";
+  let currentSearch = "";
 
   /**
    * Renderiza os esqueletos (skeletons) de carregamento nos grids
@@ -48,21 +60,18 @@
     `;
 
     if (CONTAINERS.consultas) {
-      CONTAINERS.consultas.innerHTML = skeletonPuxar.repeat(4);
+      CONTAINERS.consultas.innerHTML = skeletonPuxar.repeat(8);
     }
     if (CONTAINERS.osint) {
       CONTAINERS.osint.innerHTML = skeletonModule.repeat(4);
     }
     if (CONTAINERS.forense) {
-      CONTAINERS.forense.innerHTML = skeletonModule.repeat(1);
+      CONTAINERS.forense.innerHTML = skeletonModule.repeat(2);
     }
   }
 
   /**
    * Renderiza elemento de ícone Lucide ou imagem/thumbnail
-   * @param {Object} mod
-   * @param {number} size
-   * @returns {string}
    */
   function renderIconOrImage(mod, size = 20) {
     if (mod.imagem_url) {
@@ -90,11 +99,19 @@
    */
   function createPuxarCard(mod) {
     const isLocked = mod.em_breve || mod.manutencao;
-    const href = isLocked ? "javascript:void(0)" : escapeHtml(mod.rota);
-    const styleCursor = isLocked ? "cursor: not-allowed; opacity: 0.75;" : "";
+    const isInactive = mod.ativo === false;
+    const href = isLocked || isInactive ? "javascript:void(0)" : escapeHtml(mod.rota);
+    const styleCursor = isLocked || isInactive ? "cursor: not-allowed; opacity: 0.68;" : "";
+    const lockAction = mod.manutencao
+      ? "data-locked='manutencao'"
+      : mod.em_breve
+      ? "data-locked='em_breve'"
+      : isInactive
+      ? "data-locked='inativo'"
+      : "";
 
     return `
-      <a href="${href}" class="puxar-card" style="${styleCursor}" data-slug="${escapeHtml(mod.slug)}">
+      <a href="${href}" class="puxar-card ${isLocked ? 'is-interdicted' : ''}" style="${styleCursor}" data-slug="${escapeHtml(mod.slug)}" ${lockAction}>
         <div class="puxar-top">
           <div class="puxar-icon" style="${mod.cor_icone ? `color: ${escapeHtml(mod.cor_icone)};` : ''}">
             ${renderIconOrImage(mod, 18)}
@@ -103,11 +120,12 @@
         </div>
         <div class="puxar-title">
           <span>${escapeHtml(mod.nome)}</span>
-          <i data-lucide="${isLocked ? 'lock' : 'arrow-right'}" style="width: 16px; height: 16px;"></i>
+          <i data-lucide="${isLocked || isInactive ? 'lock' : 'arrow-right'}" style="width: 16px; height: 16px; ${mod.manutencao ? 'color: #EF4444;' : ''}"></i>
         </div>
         <p class="puxar-desc">${escapeHtml(mod.descricao || '')}</p>
-        ${mod.em_breve ? '<span class="badge badge-dark" style="margin-top: 8px; width: fit-content;">Em breve</span>' : ''}
-        ${mod.manutencao ? '<span class="badge badge-red" style="margin-top: 8px; width: fit-content;">Manutenção</span>' : ''}
+        ${mod.manutencao ? '<span class="badge badge-red" style="margin-top: 8px; width: fit-content; font-size: 0.7rem; font-weight: 700;">⚠️ Em Manutenção</span>' : ''}
+        ${!mod.manutencao && mod.em_breve ? '<span class="badge badge-dark" style="margin-top: 8px; width: fit-content; font-size: 0.7rem;">Em breve</span>' : ''}
+        ${!mod.manutencao && isInactive ? '<span class="badge badge-dark" style="margin-top: 8px; width: fit-content; font-size: 0.7rem;">Desativado</span>' : ''}
       </a>
     `;
   }
@@ -117,8 +135,9 @@
    */
   function createModuleCard(mod) {
     const isLocked = mod.em_breve || mod.manutencao;
-    const href = isLocked ? "javascript:void(0)" : escapeHtml(mod.rota);
-    const styleCursor = isLocked ? "cursor: not-allowed; opacity: 0.8;" : "";
+    const isInactive = mod.ativo === false;
+    const href = isLocked || isInactive ? "javascript:void(0)" : escapeHtml(mod.rota);
+    const styleCursor = isLocked || isInactive ? "cursor: not-allowed; opacity: 0.75;" : "";
 
     return `
       <a href="${href}" class="module-card" style="${styleCursor}" data-slug="${escapeHtml(mod.slug)}">
@@ -127,16 +146,146 @@
         </div>
         <h3 class="module-title">
           <span>${escapeHtml(mod.nome)}</span>
-          <i data-lucide="${isLocked ? 'lock' : 'arrow-right'}" style="width: 18px; height: 18px;"></i>
+          <i data-lucide="${isLocked || isInactive ? 'lock' : 'arrow-right'}" style="width: 18px; height: 18px; ${mod.manutencao ? 'color: #EF4444;' : ''}"></i>
         </h3>
         <p class="module-desc">${escapeHtml(mod.descricao || '')}</p>
         <div class="module-footer">
           ${mod.badge_texto ? `<span class="badge ${escapeHtml(mod.badge_cor || 'badge-purple')}">${escapeHtml(mod.badge_texto)}</span>` : ''}
-          ${mod.em_breve ? '<span class="badge badge-dark">Em breve</span>' : ''}
           ${mod.manutencao ? '<span class="badge badge-red">Manutenção</span>' : ''}
+          ${!mod.manutencao && mod.em_breve ? '<span class="badge badge-dark">Em breve</span>' : ''}
         </div>
       </a>
     `;
+  }
+
+  /**
+   * Renderiza os módulos de Consulta filtrados por Categoria e Busca
+   */
+  function renderFilteredConsultas() {
+    if (!CONTAINERS.consultas) return;
+
+    const term = currentSearch.toLowerCase().trim();
+
+    const filtered = allConsultasModules.filter((mod) => {
+      // 1. Filtro de Categoria
+      if (currentCategory !== "todas") {
+        const subcat = (mod.config?.subcategoria || "").toLowerCase();
+        if (subcat !== currentCategory) return false;
+      }
+
+      // 2. Filtro de Texto de Busca
+      if (term) {
+        const haystack = [
+          mod.nome,
+          mod.slug,
+          mod.descricao,
+          mod.badge_texto,
+          mod.config?.subcategoria,
+          mod.config?.categoriaNome,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (!haystack.includes(term)) return false;
+      }
+
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      CONTAINERS.consultas.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 32px; text-align: center; color: var(--color-text-muted); background: rgba(255,255,255,0.02); border: 1px dashed var(--color-border); border-radius: var(--radius-lg);">
+          <i data-lucide="search-x" style="width: 28px; height: 28px; margin-bottom: 8px; color: var(--color-text-dim);"></i>
+          <p style="font-size: 0.9rem;">Nenhum módulo encontrado com os filtros selecionados.</p>
+        </div>
+      `;
+    } else {
+      CONTAINERS.consultas.innerHTML = filtered.map(createPuxarCard).join("");
+    }
+
+    // Atualiza contadores
+    if (BADGES_COUNT.consultas) {
+      BADGES_COUNT.consultas.textContent = `${filtered.length} de ${allConsultasModules.length} Módulos`;
+    }
+
+    // Vincula avisos toast para módulos interditados/em manutenção
+    CONTAINERS.consultas.querySelectorAll("[data-locked]").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        const tipoLock = el.getAttribute("data-locked");
+        if (tipoLock === "manutencao" && window.toast) {
+          window.toast.warning("⚠️ Este módulo está em manutenção temporária pela administração.");
+        } else if (tipoLock === "em_breve" && window.toast) {
+          window.toast.info("ℹ️ Este módulo estará disponível em breve.");
+        } else if (tipoLock === "inativo" && window.toast) {
+          window.toast.warning("Este módulo foi temporariamente desativado.");
+        }
+      });
+    });
+
+    if (window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
+  }
+
+  /**
+   * Atualiza as contagens nas abas de categoria (Pills)
+   */
+  function updateCategoryTabsCounts(modules) {
+    const counts = {
+      todas: modules.length,
+      pessoa: 0,
+      contato: 0,
+      endereco: 0,
+      veiculos: 0,
+      financeiro: 0,
+      empresa: 0,
+      familia: 0,
+      vazados: 0,
+      geradores: 0,
+    };
+
+    modules.forEach((mod) => {
+      const sub = (mod.config?.subcategoria || "").toLowerCase();
+      if (counts[sub] !== undefined) {
+        counts[sub]++;
+      }
+    });
+
+    Object.keys(counts).forEach((cat) => {
+      const elCount = document.getElementById(`dashCount-${cat}`);
+      if (elCount) {
+        elCount.textContent = counts[cat];
+      }
+    });
+  }
+
+  /**
+   * Configura os listeners dos botões de abas e do campo de busca
+   */
+  function setupCategoryTabsListeners() {
+    // Abas de categoria
+    document.querySelectorAll(".dash-tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".dash-tab-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentCategory = btn.getAttribute("data-cat") || "todas";
+        renderFilteredConsultas();
+      });
+    });
+
+    // Campo de busca com debounce
+    if (DOM.search) {
+      let debounceTimer = null;
+      DOM.search.addEventListener("input", (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          currentSearch = e.target.value || "";
+          renderFilteredConsultas();
+        }, 120);
+      });
+    }
   }
 
   /**
@@ -175,7 +324,6 @@
     try {
       let result;
 
-      // Utiliza o cliente de API global já configurado ou fetch nativo com timeout
       if (window.api && typeof window.api.get === "function") {
         result = await window.api.get("/api/modules");
       } else {
@@ -224,6 +372,9 @@
         }
       });
 
+      // Salva a lista de consultas para filtragem interativa por abas e busca
+      allConsultasModules = groups.consultas;
+
       // Controla a visibilidade das seções com base na existência de módulos
       const sectionConsultas = document.getElementById("category-consultas");
       if (sectionConsultas) {
@@ -232,7 +383,7 @@
 
       const sectionOsint = document.getElementById("category-osint");
       if (sectionOsint) {
-        sectionOsint.style.display = (groups.osint.length + groups.outros.length) > 0 ? "" : "none";
+        sectionOsint.style.display = groups.osint.length + groups.outros.length > 0 ? "" : "none";
       }
 
       const sectionForense = document.getElementById("category-forense");
@@ -240,13 +391,13 @@
         sectionForense.style.display = groups.forense.length > 0 ? "" : "none";
       }
 
-      // 1. Renderiza Categoria Consultas / Puxar
-      if (CONTAINERS.consultas && groups.consultas.length > 0) {
-        CONTAINERS.consultas.innerHTML = groups.consultas.map(createPuxarCard).join("");
-      }
+      // 1. Atualiza abas e renderiza Categoria Consultas / Puxar
+      updateCategoryTabsCounts(allConsultasModules);
+      renderFilteredConsultas();
+      setupCategoryTabsListeners();
 
-      // 2. Renderiza Categoria OSINT (e outros módulos não categorizados)
-      if (CONTAINERS.osint && (groups.osint.length + groups.outros.length) > 0) {
+      // 2. Renderiza Categoria OSINT
+      if (CONTAINERS.osint && groups.osint.length + groups.outros.length > 0) {
         const osintModules = [...groups.osint, ...groups.outros];
         CONTAINERS.osint.innerHTML = osintModules.map(createModuleCard).join("");
       }
@@ -257,9 +408,6 @@
       }
 
       // Atualiza os contadores de badge dinamicamente
-      if (BADGES_COUNT.consultas) {
-        BADGES_COUNT.consultas.textContent = `${groups.consultas.length} Módulos`;
-      }
       if (BADGES_COUNT.osint) {
         BADGES_COUNT.osint.textContent = `${groups.osint.length + groups.outros.length} Módulos`;
       }
@@ -268,21 +416,6 @@
       }
       if (BADGES_COUNT.total) {
         BADGES_COUNT.total.textContent = modules.length;
-      }
-
-      // Atualiza o saldo do Hub Pay-per-Use no banner se presente
-      const dashHubSaldo = document.getElementById("dashHubSaldo");
-      if (dashHubSaldo) {
-        try {
-          fetch("/api/hubapi/status")
-            .then((r) => r.json())
-            .then((res) => {
-              if (res.success && res.data) {
-                dashHubSaldo.textContent = res.data.saldoFormatado;
-              }
-            })
-            .catch(() => {});
-        } catch (_) {}
       }
 
       // Converte tags <i> em ícones SVG do Lucide
@@ -313,9 +446,7 @@
         const d = json.data;
         if (kpiHoje) kpiHoje.textContent = d.totalHoje;
         if (kpiHistorico) kpiHistorico.textContent = d.totalHistorico;
-        if (kpiModulos && (!kpiModulos.textContent || kpiModulos.textContent === "...")) {
-          kpiModulos.textContent = d.totalModulos;
-        }
+        if (kpiModulos) kpiModulos.textContent = d.totalModulos || 53;
         if (kpiDisponiveis) kpiDisponiveis.textContent = d.consumoFormatado || `${d.totalHoje} / ${d.limiteDiario}`;
         if (dashHubSaldo && d.saldoFormatado) dashHubSaldo.textContent = d.saldoFormatado;
         if (dashHubTeto && d.tetoFormatado) dashHubTeto.textContent = d.tetoFormatado;

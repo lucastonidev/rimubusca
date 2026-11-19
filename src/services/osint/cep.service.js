@@ -14,6 +14,7 @@
  * ==============================================================================
  */
 
+import { rimuApi } from "./rimuapi.service.js";
 import { hexysApi } from "./hexys.service.js";
 
 const BROWSER_USER_AGENT =
@@ -214,41 +215,56 @@ export function normalizarAwesomeApiCep(d, rawCep) {
 }
 
 /**
- * Normaliza resposta do Hexys caso retorne dados com sucesso
+ * Normaliza resposta da RimuAPI / Hexys caso retorne dados com sucesso
  */
-export function normalizarHexysCep(d, rawCep) {
-  const digits = String(rawCep || d.cep || "").replace(/\D/g, "");
+export function normalizarRimuApiCep(d, rawCep) {
+  const payload = Array.isArray(d) ? d[0] : d;
+  const digits = String(rawCep || payload.cep || payload.CEP || payload.ENDERECO?.CEP || "").replace(/\D/g, "");
   const cepFmt = formatarCep(digits);
 
-  const moradores = Array.isArray(d.moradores)
-    ? d.moradores
-    : Array.isArray(d.residentes)
-      ? d.residentes
-      : Array.isArray(d.pessoas)
-        ? d.pessoas
-        : [];
+  const end = payload.ENDERECO || payload.endereco || payload;
+  const logrNome = [end.LOGR_TIPO || end.tipoLogradouro, end.LOGR_NOME || end.logradouro || end.street || end.rua].filter(Boolean).join(" ").trim();
 
-  const ufFinal = (d.uf || d.estado || "N/I").toUpperCase().slice(0, 2);
-  const ibgeFinal = extrairCodigoIbge(d.codigoIbge || d.ibge);
-  const dddFinal = resolverDdd(d.ddd, ufFinal);
+  let moradores = [];
+  if (Array.isArray(d)) {
+    moradores = d
+      .filter((r) => r.DADOS?.CPF || r.DADOS?.NOME || r.CPF || r.NOME)
+      .map((r) => {
+        const item = r.DADOS || r;
+        return {
+          cpf: item.CPF || item.cpf,
+          nome: item.NOME || item.nome,
+          nascimento: item.NASC || item.NASCIMENTO || item.nascimento,
+        };
+      });
+  } else if (Array.isArray(payload.moradores)) {
+    moradores = payload.moradores;
+  }
+
+  const ufFinal = (end.UF || end.uf || end.estado || "N/I").toUpperCase().slice(0, 2);
+  const ibgeFinal = extrairCodigoIbge(end.codigoIbge || end.ibge);
+  const dddFinal = resolverDdd(end.ddd, ufFinal);
 
   return {
     cep: cepFmt,
     cepLimpo: digits,
-    logradouro: d.logradouro || d.endereco || d.street || "Não informado",
-    complemento: d.complemento || "",
-    bairro: d.bairro || d.neighborhood || "Não informado",
-    cidade: d.cidade || d.municipio || d.localidade || "Não informada",
+    logradouro: logrNome || end.logradouro || end.endereco || "Não informado",
+    numero: end.LOGR_NUMERO || end.numero || "",
+    complemento: end.LOGR_COMPLEMENTO || end.complemento || "",
+    bairro: end.BAIRRO || end.bairro || end.neighborhood || "Não informado",
+    cidade: end.CIDADE || end.cidade || end.municipio || end.localidade || "Não informada",
     uf: ufFinal,
-    estado: d.estado || d.uf || "Não informado",
+    estado: end.estado || end.uf || "Não informado",
     ddd: dddFinal,
     codigoIbge: ibgeFinal,
-    totalResidentesEstimados: d.totalResidentesEstimados || moradores.length || null,
+    totalResidentesEstimados: moradores.length || null,
     moradores,
-    provedor: "hexys",
-    fonte: "Hexys Dev Intelligence (Live)",
+    provedor: "rimuapi",
+    fonte: "RimuAPI Intelligence Engine (Live)",
   };
 }
+
+export const normalizarHexysCep = normalizarRimuApiCep;
 
 /**
  * Normaliza resposta da Zeroy API
@@ -311,21 +327,21 @@ export async function consultarEnderecoCep(termo, uf = "") {
   // CASO A: CONSULTA POR CEP (8 DÍGITOS EXATOS)
   // ============================================================================
   if (cleanCep.length === 8) {
-    // Provedor 1: Tenta Hexys API primeiro (se configurada e com permissão)
-    if (hexysApi.isConfigured()) {
+    // Provedor 1: Tenta RimuAPI (Sant Buscas Engine) primeiro (se configurada)
+    if (rimuApi.isConfigured() || hexysApi.isConfigured()) {
       try {
-        console.log(`[CEP MULTI-PROVIDER] Tentando Hexys API para CEP ${cleanCep}...`);
-        const hexysRes = await hexysApi.cep(cleanCep);
-        if (hexysRes) {
-          const payload = hexysRes.resultado !== undefined ? hexysRes.resultado : hexysRes;
-          if (payload && (payload.cep || payload.logradouro || payload.cidade)) {
-            console.log(`[CEP MULTI-PROVIDER] Sucesso via Hexys API para CEP ${cleanCep}.`);
-            return normalizarHexysCep(payload, cleanCep);
+        console.log(`[CEP MULTI-PROVIDER] Tentando RimuAPI para CEP ${cleanCep}...`);
+        const rimuRes = await (rimuApi.isConfigured() ? rimuApi.cep(cleanCep) : hexysApi.cep(cleanCep));
+        if (rimuRes) {
+          const payload = Array.isArray(rimuRes) ? rimuRes : (rimuRes.resultado !== undefined ? rimuRes.resultado : rimuRes);
+          if (payload) {
+            console.log(`[CEP MULTI-PROVIDER] Sucesso via RimuAPI para CEP ${cleanCep}.`);
+            return normalizarRimuApiCep(payload, cleanCep);
           }
         }
-      } catch (hexysErr) {
+      } catch (rimuErr) {
         console.warn(
-          `[CEP MULTI-PROVIDER] Hexys indisponível ou sem permissão de plano (HTTP ${hexysErr.status || hexysErr.message}). Alternando automaticamente para contingência multi-provider pública...`
+          `[CEP MULTI-PROVIDER] RimuAPI indisponível (HTTP ${rimuErr.status || rimuErr.message}). Alternando automaticamente para contingência multi-provider pública...`
         );
       }
     }
@@ -600,6 +616,7 @@ export async function consultarEnderecoCep(termo, uf = "") {
 
 export default {
   consultarEnderecoCep,
+  normalizarRimuApiCep,
   normalizarBrasilApiCep,
   normalizarViaCep,
   normalizarOpenCep,
