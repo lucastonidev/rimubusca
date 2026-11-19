@@ -1726,7 +1726,12 @@ class ConsultaController {
     }
 
     // Telefones & Linhas
-    const phones = dados.phones || dados.telefones || [];
+    const phones = (Array.isArray(dados.telefones) && dados.telefones.length > 0)
+      ? dados.telefones
+      : (Array.isArray(dados.phones) && dados.phones.length > 0)
+        ? dados.phones
+        : [];
+    const telsPorOp = dados.telefonesPorOperadora || null;
     const vivoLinhas = Array.isArray(dados.vivo_linhas) ? dados.vivo_linhas : [];
     const operadorasMap = {};
     if (Array.isArray(dados.telefones_operadoras)) {
@@ -1765,11 +1770,56 @@ class ConsultaController {
     // Vizinhos
     const vizinhos = dados.vizinhos || [];
 
-    // Veículos listados sob CPF
-    const vehiclesList = (dados.vehicles && Array.isArray(dados.vehicles.list)) ? dados.vehicles.list : [];
+    // Veículos listados sob CPF (Automotores com Chassi, Renavam e Motor)
+    const vehiclesList = (Array.isArray(dados.veiculos) && dados.veiculos.length > 0)
+      ? dados.veiculos
+      : (dados.vehicles && Array.isArray(dados.vehicles.list))
+        ? dados.vehicles.list
+        : (dados.raw && Array.isArray(dados.raw.HISTORICO_VEICULOS))
+          ? dados.raw.HISTORICO_VEICULOS
+          : [];
 
-    // Vazamentos / Breaches
-    const vazamentos = Array.isArray(dados.vazamentos) ? dados.vazamentos : [];
+    // Histórico Vacinal COVID-19 & Locais de Vacinação (SUS)
+    const vacinasCovid = (Array.isArray(dados.vacinas_covid) && dados.vacinas_covid.length > 0)
+      ? dados.vacinas_covid
+      : (Array.isArray(dados.covid) && dados.covid.length > 0)
+        ? dados.covid
+        : (dados.raw && Array.isArray(dados.raw.COVID))
+          ? dados.raw.COVID
+          : [];
+
+    // Dados Bancários & Contas
+    const dadosBancarios = (Array.isArray(dados.dadosBancarios) && dados.dadosBancarios.length > 0)
+      ? dados.dadosBancarios
+      : (dados.raw && Array.isArray(dados.raw.DADOS_BANCARIOS))
+        ? dados.raw.DADOS_BANCARIOS
+        : [];
+
+    // Vínculos Empregatícios (RAIS / INSS / PIS)
+    const vinculosRais = (Array.isArray(dados.vinculosEmpregaticios) && dados.vinculosEmpregaticios.length > 0)
+      ? dados.vinculosEmpregaticios
+      : (Array.isArray(dados.rais) && dados.rais.length > 0)
+        ? dados.rais
+        : (dados.raw && Array.isArray(dados.raw.RAIS))
+          ? dados.raw.RAIS
+          : [];
+    const beneficiosInss = (Array.isArray(dados.beneficiosInss) && dados.beneficiosInss.length > 0)
+      ? dados.beneficiosInss
+      : (dados.raw && Array.isArray(dados.raw.INSS))
+        ? dados.raw.INSS
+        : [];
+
+    // Vazamentos / Breaches (inclusive senhas vazadas da base CPF)
+    const vazamentos = Array.isArray(dados.vazamentos) && dados.vazamentos.length > 0
+      ? dados.vazamentos
+      : (dados.raw && Array.isArray(dados.raw.SENHA_CPF))
+        ? dados.raw.SENHA_CPF.map((s) => ({
+            cpf: dados.cpf,
+            senha: s.SENHA || s.senha,
+            fonte: "Vazamento Público de Credenciais",
+            titulo: "Senha Comprometida",
+          }))
+        : [];
     const totalVazamentos = dados.total_vazamentos || vazamentos.length || 0;
     const alvosVazamentos = dados.alvos_verificados_vazamentos || 0;
 
@@ -2068,64 +2118,217 @@ class ConsultaController {
           : ""
       }
 
-      <!-- SEÇÃO TELEFONES E LINHAS -->
+      <!-- SEÇÃO TELEFONES E LINHAS (SEPARADOS POR OPERADORA) -->
       ${
         phones.length > 0
-          ? `
-        <div class="card" style="margin-bottom: var(--space-4);">
-          <div class="card-header">
-            <h3 class="card-title" style="color: #60A5FA; display: flex; align-items: center; gap: 8px;">
-              <i data-lucide="phone" style="width: 18px; height: 18px;"></i>
-              <span>Telefones Vinculados (${phones.length})</span>
-            </h3>
-          </div>
-          <div style="display: flex; flex-wrap: wrap; gap: 10px; padding-top: 8px;">
-            ${phones
-              .map((t) => {
-                const num = typeof t === "object" ? t.numero || t.telefone : String(t);
-                const cleanNum = num.replace(/\D/g, "");
+          ? (() => {
+              const grupos = {
+                VIVO: [],
+                CLARO: [],
+                TIM: [],
+                OI: [],
+                OUTROS: [],
+              };
+
+              phones.forEach((t) => {
+                const clean = String(t.numeroLimpo || (typeof t === "object" ? t.numero || t.telefone : t) || "").replace(/\D/g, "");
+                const op = String(t.operadora || operadorasMap[clean] || "").toUpperCase();
+                if (op.includes("VIVO")) grupos.VIVO.push(t);
+                else if (op.includes("CLARO")) grupos.CLARO.push(t);
+                else if (op.includes("TIM")) grupos.TIM.push(t);
+                else if (op.includes("OI")) grupos.OI.push(t);
+                else grupos.OUTROS.push(t);
+              });
+
+              const totalOpCount =
+                (grupos.VIVO.length > 0 ? 1 : 0) +
+                (grupos.CLARO.length > 0 ? 1 : 0) +
+                (grupos.TIM.length > 0 ? 1 : 0) +
+                (grupos.OI.length > 0 ? 1 : 0);
+
+              const renderTelCard = (t) => {
+                const num = typeof t === "object" ? t.numero || t.telefone || "" : String(t);
+                const cleanNum = String(t.numeroLimpo || num).replace(/\D/g, "");
                 const fmtNum = this.formatTelefone(num);
                 const isMobile = cleanNum.length === 11 || (cleanNum.length === 9 && cleanNum.startsWith("9"));
+                const op = String(t.operadora || operadorasMap[cleanNum] || (isMobile ? "Móvel" : "Fixo")).toUpperCase();
+                const dataInst = t.dataInstalacao || t.data || null;
+                const endLinha = t.enderecoLinha || null;
 
-                // Verifica se há detalhes de operadora ou Vivo
-                const vivoInfo = vivoLinhas.find((vl) => String(vl.telefone).replace(/\D/g, "") === cleanNum);
-                const opName = operadorasMap[cleanNum] || (vivoInfo ? "VIVO" : null);
+                let opBg = "rgba(59, 130, 246, 0.15)";
+                let opColor = "#60A5FA";
+                let opBorder = "rgba(59, 130, 246, 0.3)";
+                if (op.includes("VIVO")) {
+                  opBg = "rgba(139, 92, 246, 0.18)";
+                  opColor = "#A78BFA";
+                  opBorder = "rgba(139, 92, 246, 0.4)";
+                } else if (op.includes("CLARO")) {
+                  opBg = "rgba(239, 68, 68, 0.18)";
+                  opColor = "#F87171";
+                  opBorder = "rgba(239, 68, 68, 0.4)";
+                } else if (op.includes("TIM")) {
+                  opBg = "rgba(37, 99, 235, 0.2)";
+                  opColor = "#60A5FA";
+                  opBorder = "rgba(37, 99, 235, 0.4)";
+                } else if (op.includes("OI")) {
+                  opBg = "rgba(245, 158, 11, 0.18)";
+                  opColor = "#FBBF24";
+                  opBorder = "rgba(245, 158, 11, 0.4)";
+                }
 
                 return `
-                <div style="background: var(--color-surface-2); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <span style="font-family: var(--font-mono); font-weight: 700; color: var(--color-text);">${fmtNum}</span>
+                <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 8px; flex: 1 1 280px; max-width: 100%;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-family: var(--font-mono); font-weight: 800; font-size: 1.05rem; color: #FFFFFF;">${fmtNum}</span>
+                      <span class="badge" style="background: ${opBg}; color: ${opColor}; border: 1px solid ${opBorder}; font-size: 0.68rem; font-weight: 700; padding: 2px 7px;">
+                        ${op}
+                      </span>
+                      ${t.tipo && t.tipo !== op ? `<span style="font-size: 0.7rem; color: var(--color-text-dim);">(${this.escapeHtml(t.tipo)})</span>` : ""}
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${cleanNum}" title="Copiar Telefone">
+                        <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+                      </button>
+                      <button type="button" class="btn btn-ghost btn-sm btn-puxar-operadora" data-tel="${cleanNum}" title="Checar Portabilidade & Operadora Atual">
+                        <i data-lucide="radio" style="width: 13px; height: 13px; color: #F59E0B;"></i>
+                      </button>
+                      ${
+                        isMobile
+                          ? `
+                        <a href="https://wa.me/55${cleanNum}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" title="Abrir no WhatsApp Web" style="color: #10B981;">
+                          <i data-lucide="message-circle" style="width: 14px; height: 14px;"></i>
+                        </a>
+                      `
+                          : ""
+                      }
+                      <a href="tel:${cleanNum}" class="btn btn-ghost btn-sm" title="Ligar para o número" style="color: #38BDF8;">
+                        <i data-lucide="phone-call" style="width: 13px; height: 13px;"></i>
+                      </a>
+                    </div>
+                  </div>
+
                   ${
-                    opName
-                      ? `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA; font-size: 0.68rem; padding: 1px 6px;">${opName}</span>`
-                      : ""
-                  }
-                  ${
-                    vivoInfo && vivoInfo.status_linha
-                      ? `<span class="badge" style="background: ${vivoInfo.status_linha === "ATIVO" ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)"}; color: ${vivoInfo.status_linha === "ATIVO" ? "#10B981" : "#F59E0B"}; font-size: 0.68rem; padding: 1px 6px;">${vivoInfo.status_linha}</span>`
-                      : ""
-                  }
-                  <button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${cleanNum}" title="Copiar Telefone">
-                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
-                  </button>
-                  <button type="button" class="btn btn-ghost btn-sm btn-puxar-operadora" data-tel="${cleanNum}" title="Checar Operadora & Portabilidade">
-                    <i data-lucide="radio" style="width: 12px; height: 12px; color: #F59E0B;"></i>
-                  </button>
-                  ${
-                    isMobile
+                    dataInst || endLinha
                       ? `
-                    <a href="https://wa.me/55${cleanNum}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" title="Abrir WhatsApp Web" style="color: #10B981;">
-                      <i data-lucide="message-circle" style="width: 14px; height: 14px;"></i>
-                    </a>
+                    <div style="font-size: 0.75rem; color: var(--color-text-muted); background: var(--color-surface); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.03);">
+                      ${dataInst ? `<div>📅 <strong style="color: var(--color-text);">Instalação:</strong> ${this.escapeHtml(dataInst)}</div>` : ""}
+                      ${endLinha ? `<div style="margin-top: 2px;">📍 <strong style="color: var(--color-text);">Endereço da Linha:</strong> ${this.escapeHtml(endLinha)}</div>` : ""}
+                    </div>
                   `
                       : ""
                   }
                 </div>
               `;
-              })
-              .join("")}
-          </div>
-        </div>
-      `
+              };
+
+              return `
+              <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #60A5FA;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <h3 class="card-title" style="color: #60A5FA; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="phone" style="width: 18px; height: 18px;"></i>
+                    <span>Telefones & Linhas Telefônicas (${phones.length})</span>
+                  </h3>
+                  <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    ${grupos.VIVO.length > 0 ? `<span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #C4B5FD; font-size: 0.7rem;">${grupos.VIVO.length} Vivo</span>` : ""}
+                    ${grupos.CLARO.length > 0 ? `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; font-size: 0.7rem;">${grupos.CLARO.length} Claro</span>` : ""}
+                    ${grupos.TIM.length > 0 ? `<span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93C5FD; font-size: 0.7rem;">${grupos.TIM.length} TIM</span>` : ""}
+                    ${grupos.OI.length > 0 ? `<span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #FDE68A; font-size: 0.7rem;">${grupos.OI.length} Oi</span>` : ""}
+                    ${grupos.OUTROS.length > 0 ? `<span class="badge badge-dark" style="font-size: 0.7rem;">${grupos.OUTROS.length} Outros</span>` : ""}
+                  </div>
+                </div>
+
+                ${
+                  totalOpCount > 1
+                    ? `
+                  <div style="display: flex; flex-direction: column; gap: 14px; padding-top: 10px;">
+                    ${
+                      grupos.VIVO.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #A78BFA; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #8B5CF6;"></span>
+                          Linhas Telefônicas VIVO (${grupos.VIVO.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.VIVO.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      grupos.CLARO.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #F87171; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #EF4444;"></span>
+                          Linhas Telefônicas CLARO (${grupos.CLARO.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.CLARO.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      grupos.TIM.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #60A5FA; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #3B82F6;"></span>
+                          Linhas Telefônicas TIM (${grupos.TIM.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.TIM.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      grupos.OI.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #FBBF24; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #F59E0B;"></span>
+                          Linhas Telefônicas OI (${grupos.OI.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.OI.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      grupos.OUTROS.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #64748B;"></span>
+                          Histórico Geral de Telefones (${grupos.OUTROS.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.OUTROS.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                  </div>
+                `
+                    : `
+                  <div style="display: flex; flex-wrap: wrap; gap: 10px; padding-top: 10px;">
+                    ${phones.map(renderTelCard).join("")}
+                  </div>
+                `
+                }
+              </div>
+            `;
+            })()
           : ""
       }
 
@@ -2435,45 +2638,309 @@ class ConsultaController {
           : ""
       }
 
-      <!-- SEÇÃO VEÍCULOS VINCULADOS AO CPF -->
+      <!-- SEÇÃO VEÍCULOS VINCULADOS AO CPF (AUTOMOTORES) -->
       ${
         vehiclesList.length > 0
           ? `
         <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #F59E0B;">
-          <div class="card-header">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <h3 class="card-title" style="color: #F59E0B; display: flex; align-items: center; gap: 8px;">
               <i data-lucide="car" style="width: 18px; height: 18px;"></i>
-              <span>Veículos Vinculados (${vehiclesList.length})</span>
+              <span>Veículos & Automotores Registrados (${vehiclesList.length})</span>
             </h3>
+            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24; font-size: 0.72rem; font-weight: 700;">
+              Base RENAVAM / DENATRAN
+            </span>
           </div>
-          <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px;">
+
+          <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 10px;">
             ${vehiclesList
               .map((v) => {
-                const placa = v.placa || v.plate || "";
-                const cleanPlaca = String(placa).toUpperCase().replace(/[^A-Z0-9]/g, "");
-                const modelo = v.modelo || v.model || v.marca_modelo || "Veículo Registrado";
-                const ano = v.ano || v.ano_fab || v.ano_modelo || "";
-                const cor = v.cor || v.color || "";
+                const placa = String(v.placa || v.PLACA || v.plate || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+                const placaFmt = placa.length === 7 ? `${placa.slice(0, 3)}-${placa.slice(3)}` : (placa || "SEM PLACA");
+                const modelo = v.marcaModelo || v.marca || v.modelo || v.MARCA || v.MODELO || "Veículo Registrado";
+                const chassi = v.chassi || v.CHASSI || "NÃO INFORMADO";
+                const renavam = v.renavam || v.RENAVAM || "NÃO INFORMADO";
+                const motor = v.motor || v.MOTOR || "N/I";
+                const ano = v.ano || v.ano_fab || v.ano_modelo || v.ANO || "";
+                const cor = v.cor || v.color || v.COR || "";
+                const situacao = v.situacao || v.SITUACAO || "CIRCULAR";
 
                 return `
-                <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                  <div>
-                    <strong style="color: var(--color-text); font-size: 0.95rem;">${this.escapeHtml(modelo)}</strong>
-                    <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">
-                      Placa: <span style="font-family: var(--font-mono); color: #60A5FA; font-weight: 700;">${placa}</span>
-                      ${ano ? ` &bull; Ano: ${ano}` : ""}
-                      ${cor ? ` &bull; Cor: ${cor}` : ""}
+                <div style="background: var(--color-surface-2); padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 10px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                      <!-- Badge Placa Estilo Mercosul / Oficial -->
+                      <div style="display: inline-flex; flex-direction: column; align-items: center; border: 2px solid #3B82F6; border-radius: 5px; background: #FFFFFF; color: #000000; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.4);">
+                        <div style="background: #1D4ED8; color: #FFFFFF; width: 100%; font-size: 0.55rem; font-weight: 900; text-align: center; padding: 1px 10px; letter-spacing: 1px;">
+                          BRASIL
+                        </div>
+                        <div style="font-family: var(--font-mono); font-weight: 900; font-size: 1.15rem; padding: 1px 10px; letter-spacing: 2px; color: #0F172A;">
+                          ${placaFmt}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #FFFFFF; margin: 0;">
+                          ${this.escapeHtml(modelo)}
+                        </h4>
+                        <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 3px;">
+                          ${ano ? `Ano: <strong style="color: var(--color-text);">${ano}</strong> &bull; ` : ""}
+                          ${cor ? `Cor: <strong style="color: var(--color-text);">${cor}</strong> &bull; ` : ""}
+                          Situação: <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.68rem; padding: 1px 6px;">${this.escapeHtml(situacao)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    ${
+                      placa
+                        ? `
+                      <button type="button" class="btn btn-primary btn-sm btn-puxar-placa" data-placa="${placa}" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+                        <span>Puxar Dossiê da Placa</span>
+                      </button>
+                    `
+                        : ""
+                    }
+                  </div>
+
+                  <!-- Grid de Detalhes Técnicos: Chassi, Renavam, Motor -->
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; background: var(--color-surface); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.04); font-size: 0.8rem;">
+                    <div>
+                      <span style="color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase;">Chassi:</span>
+                      <div style="font-family: var(--font-mono); color: #38BDF8; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                        <span>${this.escapeHtml(chassi)}</span>
+                        ${chassi && chassi !== "NÃO INFORMADO" ? `<button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${chassi}" title="Copiar Chassi" style="padding: 1px 4px;"><i data-lucide="copy" style="width: 11px; height: 11px;"></i></button>` : ""}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span style="color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase;">RENAVAM:</span>
+                      <div style="font-family: var(--font-mono); color: #6EE7B7; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                        <span>${this.escapeHtml(renavam)}</span>
+                        ${renavam && renavam !== "NÃO INFORMADO" ? `<button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${renavam}" title="Copiar Renavam" style="padding: 1px 4px;"><i data-lucide="copy" style="width: 11px; height: 11px;"></i></button>` : ""}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span style="color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase;">Nº do Motor:</span>
+                      <div style="font-family: var(--font-mono); color: #F1F5F9; font-weight: 600; margin-top: 2px;">
+                        ${this.escapeHtml(motor)}
+                      </div>
                     </div>
                   </div>
+                </div>
+              `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- SEÇÃO HISTÓRICO VACINAL COVID-19 & POSTOS DE APLICAÇÃO (SUS) -->
+      ${
+        vacinasCovid.length > 0
+          ? `
+        <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #EC4899;">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <h3 class="card-title" style="color: #EC4899; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="syringe" style="width: 18px; height: 18px;"></i>
+              <span>Histórico Vacinal COVID-19 & Postos de Aplicação (${vacinasCovid.length} Doses Registradas)</span>
+            </h3>
+            <span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #F472B6; font-size: 0.72rem; font-weight: 700;">
+              Base ConecteSUS / MS
+            </span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; padding-top: 10px;">
+            ${vacinasCovid
+              .map((vac, idx) => {
+                const dose = vac.dose || vac.DESCRICAO_DA_VACINA || vac.DOSE || `Dose #${idx + 1}`;
+                const vacNome = vac.vacina || vac.NOME_DA_VACINA || "COVID-19";
+                const data = vac.dataAplicacao || vac.DATA_DE_APLICACAO || vac.DATA_APLICACAO || "Data N/I";
+                const lote = vac.lote || vac.LOTE_DA_VACINA || vac.LOTE || "N/I";
+                const local = vac.localCompleto || vac.estabelecimento || vac.NOME_DO_ESTABELECIMENTO || vac.ESTABELECIMENTO || "Posto Municipal de Saúde";
+                const mun = vac.municipio || vac.MUNICIPIO || "";
+                const uf = vac.uf || vac.UF || "";
+                const aplicador = vac.aplicador || vac.APLICADOR_DE_VACINA || null;
+                const grupo = vac.grupoAtendimento || vac.GRUPO_DE_ATENDIMENTO || null;
+
+                const isPfizer = vacNome.toUpperCase().includes("PFIZER");
+                const isAstra = vacNome.toUpperCase().includes("ASTRAZENECA");
+                const isCoronavac = vacNome.toUpperCase().includes("CORONAVAC") || vacNome.toUpperCase().includes("BUTANTAN");
+                const badgeColor = isPfizer ? "#8B5CF6" : isAstra ? "#3B82F6" : isCoronavac ? "#10B981" : "#EC4899";
+
+                return `
+                <div style="background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 14px; position: relative; overflow: hidden;">
+                  <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: ${badgeColor};"></div>
+                  
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                    <div>
+                      <span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #F472B6; font-weight: 700; font-size: 0.72rem; text-transform: uppercase;">
+                        ${this.escapeHtml(dose)}
+                      </span>
+                      <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--color-text); margin: 6px 0 0 0;">
+                        ${this.escapeHtml(vacNome)}
+                      </h4>
+                    </div>
+                    <span style="font-family: var(--font-mono); font-size: 0.78rem; color: #10B981; background: rgba(16, 185, 129, 0.12); padding: 3px 8px; border-radius: 4px; white-space: nowrap; font-weight: 600;">
+                      📅 ${data}
+                    </span>
+                  </div>
+
+                  <!-- Local / Posto onde tomou a vacina -->
+                  <div style="background: var(--color-surface); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.04); margin-top: 10px;">
+                    <div style="display: flex; align-items: flex-start; gap: 6px;">
+                      <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #EC4899; flex-shrink: 0; margin-top: 2px;"></i>
+                      <div>
+                        <div style="font-size: 0.72rem; color: var(--color-text-muted); text-transform: uppercase; font-weight: 700;">
+                          Local / Posto de Vacinação:
+                        </div>
+                        <div style="font-size: 0.825rem; font-weight: 700; color: #F1F5F9; margin-top: 2px;">
+                          ${this.escapeHtml(local)}
+                        </div>
+                        ${
+                          mun || uf
+                            ? `<div style="font-size: 0.75rem; color: #94A3B8; margin-top: 2px;">Município: <strong style="color: #CBD5E1;">${mun}${uf ? `/${uf}` : ""}</strong></div>`
+                            : ""
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Detalhes do Lote e Aplicador -->
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 0.75rem;">
+                    <div>
+                      <span style="color: var(--color-text-dim);">Lote da Vacina:</span>
+                      <div style="font-family: var(--font-mono); font-weight: 700; color: #C4B5FD;">${this.escapeHtml(lote)}</div>
+                    </div>
+                    ${
+                      aplicador
+                        ? `
+                      <div>
+                        <span style="color: var(--color-text-dim);">Profissional / Aplicador:</span>
+                        <div style="color: var(--color-text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${this.escapeHtml(aplicador)}">
+                          ${this.escapeHtml(aplicador)}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                  </div>
+
                   ${
-                    cleanPlaca
+                    grupo
                       ? `
-                    <button type="button" class="btn btn-outline btn-sm btn-puxar-placa" data-placa="${cleanPlaca}">
-                      Consultar Placa
-                    </button>
+                    <div style="margin-top: 8px; font-size: 0.72rem; color: var(--color-text-muted);">
+                      Grupo de Atendimento: <span style="color: var(--color-text);">${this.escapeHtml(grupo)}</span>
+                    </div>
                   `
                       : ""
                   }
+                </div>
+              `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- SEÇÃO DADOS BANCÁRIOS & CONTAS -->
+      ${
+        dadosBancarios.length > 0
+          ? `
+        <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #3B82F6;">
+          <div class="card-header">
+            <h3 class="card-title" style="color: #60A5FA; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="landmark" style="width: 18px; height: 18px;"></i>
+              <span>Vínculos Bancários & Contas Cadastradas (${dadosBancarios.length})</span>
+            </h3>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; padding-top: 8px;">
+            ${dadosBancarios
+              .map((b) => {
+                const bNome = b.banco || b.INSTITUICAO || b.BANCO || "Instituição Financeira";
+                const bAg = b.agencia || b.AGENCIA || "Não informada";
+                const bNum = b.numero || b.NUMERO || null;
+                return `
+                <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <i data-lucide="building" style="width: 16px; height: 16px; color: #60A5FA;"></i>
+                    <strong style="color: var(--color-text); font-size: 0.875rem;">${this.escapeHtml(bNome)}</strong>
+                  </div>
+                  <div style="font-size: 0.8rem; color: var(--color-text-muted);">
+                    Agência: <span style="font-family: var(--font-mono); color: #6EE7B7; font-weight: 700;">${this.escapeHtml(bAg)}</span>
+                    ${bNum ? ` &bull; Conta: <span style="font-family: var(--font-mono); color: var(--color-text); font-weight: 600;">${this.escapeHtml(bNum)}</span>` : ""}
+                  </div>
+                </div>
+              `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- SEÇÃO HISTÓRICO TRABALHISTA & VÍNCULOS FUNCIONAIS (RAIS / INSS) -->
+      ${
+        vinculosRais.length > 0 || beneficiosInss.length > 0 || dados.pis
+          ? `
+        <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #F59E0B;">
+          <div class="card-header">
+            <h3 class="card-title" style="color: #F59E0B; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="briefcase" style="width: 18px; height: 18px;"></i>
+              <span>Vínculos Empregatícios & Histórico Funcional (RAIS / INSS)</span>
+            </h3>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 8px;">
+            ${
+              dados.pis
+                ? `
+              <div style="background: var(--color-surface-2); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 10px;">
+                <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; font-weight: 700;">PIS / PASEP</span>
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--color-text);">${this.escapeHtml(dados.pis)}</span>
+              </div>
+            `
+                : ""
+            }
+            ${vinculosRais
+              .map((r) => {
+                const rNome = r.razaoSocial || r.RAZAO_SOCIAL || "Órgão / Empregador";
+                const rCnpj = r.cnpj || r.CNPJ || "";
+                const rSit = r.situacao || r.SITUACAO || "ENTREGUE";
+                return `
+                <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                  <div>
+                    <strong style="color: var(--color-text); font-size: 0.9rem;">${this.escapeHtml(rNome)}</strong>
+                    <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">
+                      ${rCnpj ? `CNPJ: <span style="font-family: var(--font-mono); color: #60A5FA;">${this.formatCnpj(rCnpj)}</span> &bull; ` : ""}
+                      Situação RAIS: <span style="color: #10B981; font-weight: 600;">${this.escapeHtml(rSit)}</span>
+                    </div>
+                  </div>
+                  <span class="badge badge-dark" style="font-size: 0.7rem;">RAIS Oficial</span>
+                </div>
+              `;
+              })
+              .join("")}
+            ${beneficiosInss
+              .map((i) => {
+                const nb = i.nb || i.NB || "N/I";
+                const ent = i.entidade || i.ENTIDADE || "SIAPE / INSS";
+                return `
+                <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                  <div>
+                    <span style="font-size: 0.72rem; color: var(--color-text-muted); text-transform: uppercase;">Benefício Previdenciário / Vínculo Público:</span>
+                    <div style="font-weight: 700; color: #A78BFA; font-size: 0.85rem; margin-top: 2px;">${this.escapeHtml(ent)}</div>
+                  </div>
+                  <div style="text-align: right;">
+                    <span style="font-size: 0.7rem; color: var(--color-text-dim);">Nº do Benefício:</span>
+                    <div style="font-family: var(--font-mono); font-weight: 700; color: #6EE7B7;">${this.escapeHtml(nb)}</div>
+                  </div>
                 </div>
               `;
               })
@@ -2489,26 +2956,47 @@ class ConsultaController {
         vazamentos.length > 0
           ? `
         <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #EF4444;">
-          <div class="card-header">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <h3 class="card-title" style="color: #EF4444; display: flex; align-items: center; gap: 8px;">
               <i data-lucide="shield-alert" style="width: 18px; height: 18px;"></i>
               <span>Vazamentos de Credenciais / Data Breaches (${vazamentos.length})</span>
             </h3>
+            <span class="badge badge-red" style="font-size: 0.72rem; font-weight: 700;">
+              Alerta de Segurança
+            </span>
           </div>
           <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px;">
             ${vazamentos
-              .map((vz) => `
-              <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div>
-                  <strong style="color: #EF4444; font-size: 0.9rem;">${this.escapeHtml(vz.titulo || vz.fonte || "Vazamento Público")}</strong>
-                  <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">
-                    Alvo: <span style="font-family: var(--font-mono); color: var(--color-text);">${this.escapeHtml(vz.alvo || vz.email || "")}</span>
-                    ${vz.data ? ` &bull; Data: ${vz.data}` : ""}
+              .map((vz) => {
+                const titulo = vz.titulo || vz.fonte || "Vazamento Público";
+                const alvo = vz.alvo || vz.email || vz.cpf || "";
+                const senha = vz.senha || "";
+                return `
+                <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                  <div>
+                    <strong style="color: #EF4444; font-size: 0.9rem;">${this.escapeHtml(titulo)}</strong>
+                    <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">
+                      Alvo: <span style="font-family: var(--font-mono); color: var(--color-text);">${this.escapeHtml(alvo)}</span>
+                      ${vz.data ? ` &bull; Data: ${vz.data}` : ""}
+                    </div>
                   </div>
+                  ${
+                    senha
+                      ? `
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span class="badge" style="background: rgba(239, 68, 68, 0.18); color: #FCA5A5; font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700; border: 1px solid rgba(239, 68, 68, 0.35);">
+                        🔑 Senha: ${this.escapeHtml(senha)}
+                      </span>
+                      <button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${this.escapeHtml(senha)}" title="Copiar Senha">
+                        <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+                      </button>
+                    </div>
+                  `
+                      : ""
+                  }
                 </div>
-                ${vz.senha ? `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #EF4444; font-family: var(--font-mono);">Senha: ${this.escapeHtml(vz.senha)}</span>` : ""}
-              </div>
-            `)
+              `;
+              })
               .join("")}
           </div>
         </div>
@@ -5018,17 +5506,88 @@ class ConsultaController {
                 <span style="font-size: 0.72rem; color: #38BDF8; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 8px;">
                   Veículos Automotores Registrados (${veiculosList.length})
                 </span>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
                   ${veiculosList
                     .map((v) => {
-                      const vPlate = String(v.plate || v.placa || "N/A").toUpperCase();
-                      const vModel = v.model || v.modelo || (Array.isArray(v.years) ? `Ano ${v.years.join("/")}` : "");
-                      const vRenavam = v.renavam ? `Renavam ${v.renavam}` : "";
+                      const vPlate = String(v.plate || v.placa || v.PLACA || "N/A").toUpperCase();
+                      const vModel = v.marcaModelo || v.model || v.modelo || v.MARCA || v.MODELO || (Array.isArray(v.years) ? `Ano ${v.years.join("/")}` : "Veículo");
+                      const vRenavam = v.renavam || v.RENAVAM || "";
+                      const vChassi = v.chassi || v.CHASSI || "";
+                      const vMotor = v.motor || v.MOTOR || "";
                       return `
-                      <div style="background: #0D111A; border: 1px solid #1E2538; border-radius: 4px; padding: 6px 12px; font-size: 0.8rem;">
-                        <strong style="font-family: var(--font-mono); color: #38BDF8; font-size: 0.95rem;">${vPlate}</strong>
-                        ${vModel ? `<span style="color: #F1F5F9; margin-left: 6px;">${this.escapeHtml(vModel)}</span>` : ""}
-                        ${vRenavam ? `<span style="color: #94A3B8; font-family: var(--font-mono); font-size: 0.72rem; margin-left: 6px;">(${vRenavam})</span>` : ""}
+                      <div style="background: #0D111A; border: 1px solid #1E2538; border-radius: 6px; padding: 8px 12px; font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                          <strong style="font-family: var(--font-mono); color: #38BDF8; font-size: 1rem; letter-spacing: 1px;">${vPlate}</strong>
+                          <span style="color: #F1F5F9; margin-left: 8px; font-weight: 700;">${this.escapeHtml(vModel)}</span>
+                        </div>
+                        <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #94A3B8; display: flex; gap: 10px; flex-wrap: wrap;">
+                          ${vChassi && vChassi !== "NÃO INFORMADO" ? `<span>Chassi: <strong style="color: #CBD5E1;">${vChassi}</strong></span>` : ""}
+                          ${vRenavam && vRenavam !== "NÃO INFORMADO" ? `<span>Renavam: <strong style="color: #6EE7B7;">${vRenavam}</strong></span>` : ""}
+                          ${vMotor && vMotor !== "N/I" ? `<span>Motor: <strong style="color: #E2E8F0;">${vMotor}</strong></span>` : ""}
+                        </div>
+                      </div>
+                    `;
+                    })
+                    .join("")}
+                </div>
+              </div>
+            `
+                : ""
+            }
+
+            <!-- Histórico Vacinal COVID-19 & Locais de Vacinação (SUS) -->
+            ${
+              Array.isArray(p.vacinas_covid || p.covid || p.raw?.COVID) && (p.vacinas_covid || p.covid || p.raw?.COVID).length > 0
+                ? `
+              <div style="background: #080B11; padding: 12px 14px; border-radius: 6px; border: 1px solid rgba(236, 72, 153, 0.3); margin-bottom: 14px;">
+                <span style="font-size: 0.72rem; color: #EC4899; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 8px;">
+                  Histórico Vacinal COVID-19 & Postos de Aplicação (${(p.vacinas_covid || p.covid || p.raw?.COVID).length} Doses)
+                </span>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  ${(p.vacinas_covid || p.covid || p.raw?.COVID)
+                    .map((vac) => {
+                      const dose = vac.dose || vac.DESCRICAO_DA_VACINA || vac.DOSE || "Dose";
+                      const vacNome = vac.vacina || vac.NOME_DA_VACINA || "COVID-19";
+                      const data = vac.dataAplicacao || vac.DATA_DE_APLICACAO || vac.DATA_APLICACAO || "N/I";
+                      const local = vac.localCompleto || vac.estabelecimento || vac.NOME_DO_ESTABELECIMENTO || vac.ESTABELECIMENTO || "Posto Municipal";
+                      const lote = vac.lote || vac.LOTE_DA_VACINA || vac.LOTE || "";
+                      return `
+                      <div style="background: #0D111A; border: 1px solid #1E2538; border-radius: 4px; padding: 8px 12px; font-size: 0.78rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                          <strong style="color: #F472B6;">${this.escapeHtml(dose)}: ${this.escapeHtml(vacNome)}</strong>
+                          <span style="font-family: var(--font-mono); color: #10B981; font-weight: 700;">📅 ${data}</span>
+                        </div>
+                        <div style="color: #94A3B8; margin-top: 4px; font-size: 0.75rem;">
+                          📍 Posto / Local: <strong style="color: #F1F5F9;">${this.escapeHtml(local)}</strong>
+                          ${lote ? ` &bull; Lote: <span style="font-family: var(--font-mono); color: #C4B5FD;">${this.escapeHtml(lote)}</span>` : ""}
+                        </div>
+                      </div>
+                    `;
+                    })
+                    .join("")}
+                </div>
+              </div>
+            `
+                : ""
+            }
+
+            <!-- Dados Bancários Vinculados -->
+            ${
+              Array.isArray(p.dadosBancarios || p.raw?.DADOS_BANCARIOS) && (p.dadosBancarios || p.raw?.DADOS_BANCARIOS).length > 0
+                ? `
+              <div style="background: #080B11; padding: 12px 14px; border-radius: 6px; border: 1px solid rgba(59, 130, 246, 0.3); margin-bottom: 14px;">
+                <span style="font-size: 0.72rem; color: #60A5FA; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 8px;">
+                  Instituições Bancárias & Contas Cadastradas (${(p.dadosBancarios || p.raw?.DADOS_BANCARIOS).length})
+                </span>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  ${(p.dadosBancarios || p.raw?.DADOS_BANCARIOS)
+                    .map((b) => {
+                      const bNome = b.banco || b.INSTITUICAO || b.BANCO || "Instituição";
+                      const bAg = b.agencia || b.AGENCIA || "N/I";
+                      return `
+                      <div style="background: #0D111A; border: 1px solid #1E2538; border-radius: 4px; padding: 6px 12px; font-size: 0.75rem;">
+                        <strong style="color: #60A5FA;">${this.escapeHtml(bNome)}</strong>
+                        <span style="color: #94A3B8; margin-left: 6px;">Agência: <strong style="color: #F1F5F9; font-family: var(--font-mono);">${this.escapeHtml(bAg)}</strong></span>
                       </div>
                     `;
                     })

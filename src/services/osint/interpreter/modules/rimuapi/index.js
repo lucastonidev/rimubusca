@@ -549,36 +549,145 @@ function normalizarPessoaRimu(raw, tipo) {
     d.CD_SIT_CAD || d.SITUACAO || d.situacaoCadastral || "REGULAR"
   ).toUpperCase();
 
-  // Telefones
-  let rawTels = [];
-  if (Array.isArray(raw.TELEFONES) && raw.TELEFONES.length > 0) {
-    rawTels = raw.TELEFONES;
-  } else if (Array.isArray(raw.HISTORICO_TELEFONE) || Array.isArray(raw.ULTIMO_TELEFONE)) {
-    rawTels = [
-      ...(Array.isArray(raw.HISTORICO_TELEFONE) ? raw.HISTORICO_TELEFONE : []),
-      ...(Array.isArray(raw.ULTIMO_TELEFONE) ? raw.ULTIMO_TELEFONE : []),
-    ];
-  } else if (Array.isArray(raw.TELEFONE)) {
-    rawTels = raw.TELEFONE;
+  // 1. Extração rica de Telefones com separação por Operadora
+  const telsMap = new Map();
+
+  function registrarTelefone(rawNum, dadosExtras = {}) {
+    if (!rawNum) return;
+    const clean = String(rawNum).replace(/\D/g, "");
+    if (clean.length < 8) return;
+
+    let fullClean = clean;
+    if ((clean.length === 8 || clean.length === 9) && dadosExtras.ddd) {
+      const cleanDdd = String(dadosExtras.ddd).replace(/\D/g, "");
+      if (cleanDdd) fullClean = cleanDdd + clean;
+    }
+
+    const fmt = formatPhone(fullClean);
+    const isMobile = fullClean.length === 11 || (fullClean.length === 9 && fullClean.startsWith("9"));
+
+    const existing = telsMap.get(fullClean) || {};
+    telsMap.set(fullClean, {
+      numero: fmt,
+      numeroLimpo: fullClean,
+      operadora: dadosExtras.operadora || existing.operadora || (isMobile ? "Móvel" : "Fixo"),
+      tipo: dadosExtras.tipo || existing.tipo || (isMobile ? "Celular" : "Fixo"),
+      whatsApp: dadosExtras.whatsApp !== undefined ? dadosExtras.whatsApp : (isMobile || existing.whatsApp || false),
+      dataInstalacao: dadosExtras.dataInstalacao || existing.dataInstalacao || null,
+      data: dadosExtras.data || existing.data || null,
+      enderecoLinha: dadosExtras.enderecoLinha || existing.enderecoLinha || null,
+      bairro: dadosExtras.bairro || existing.bairro || null,
+      cidade: dadosExtras.cidade || existing.cidade || null,
+      uf: dadosExtras.uf || existing.uf || null,
+      cep: dadosExtras.cep || existing.cep || null,
+      origem: dadosExtras.origem || existing.origem || "Cadastro",
+    });
   }
 
-  const telsMap = new Map();
-  for (const t of rawTels) {
-    const rawNum = String(t.TELEFONE || t.telefone || t.numero || "").replace(/\D/g, "");
-    if (rawNum.length >= 8 && !telsMap.has(rawNum)) {
-      telsMap.set(rawNum, {
-        numero: formatPhone(rawNum),
-        numeroLimpo: rawNum,
-        operadora: t.OPERADORA || t.operadora || "Móvel",
-        tipo: t.TIPO_TELEFONE || t.TIPO || t.tipo || "Móvel",
-        whatsApp: String(t.WHATSAPP || t.whatsapp || "").toUpperCase() === "SIM",
-        data: t.DT_TIMESTAMP || t.DT_INFORMACAO || t.data || null,
+  // Operadora VIVO
+  if (Array.isArray(raw.OPERADORA_VIVO)) {
+    for (const v of raw.OPERADORA_VIVO) {
+      const endParts = [
+        v.ENDERECO ? `${v.ENDERECO}${v.NUMERO ? `, ${v.NUMERO}` : ""}` : null,
+        v.BAIRRO ? `Bairro ${v.BAIRRO}` : null,
+        v.CEP ? `CEP ${formatCep(v.CEP)}` : null,
+      ].filter(Boolean);
+
+      registrarTelefone(v.TELEFONE, {
+        operadora: "VIVO",
+        origem: "Base Telefônica VIVO",
+        dataInstalacao: v.DATA_INSTALACAO || null,
+        enderecoLinha: endParts.length > 0 ? endParts.join(" - ") : null,
+        bairro: v.BAIRRO || null,
+        cep: v.CEP ? formatCep(v.CEP) : null,
       });
     }
   }
-  const telefonesNormalizados = Array.from(telsMap.values());
 
-  // E-mails
+  // Operadora CLARO
+  if (Array.isArray(raw.OPERADORA_CLARO)) {
+    for (const c of raw.OPERADORA_CLARO) {
+      registrarTelefone(c.FONE || c.TELEFONE, {
+        ddd: c.DDD || "",
+        operadora: "CLARO",
+        origem: "Base Telefônica CLARO",
+        dataInstalacao: c.INST || null,
+      });
+    }
+  }
+
+  // Operadora TIM
+  if (Array.isArray(raw.OPERADORA_TIM)) {
+    for (const t of raw.OPERADORA_TIM) {
+      registrarTelefone(t.FONE || t.TELEFONE, {
+        ddd: t.DDD || "",
+        operadora: "TIM",
+        origem: "Base Telefônica TIM",
+        dataInstalacao: t.INST || t.DATA_INSTALACAO || null,
+      });
+    }
+  }
+
+  // Operadora OI
+  if (Array.isArray(raw.OPERADORA_OI)) {
+    for (const o of raw.OPERADORA_OI) {
+      registrarTelefone(o.FONE || o.TELEFONE, {
+        ddd: o.DDD || "",
+        operadora: "OI",
+        origem: "Base Telefônica OI",
+        dataInstalacao: o.INST || o.DATA_INSTALACAO || null,
+      });
+    }
+  }
+
+  // Histórico de Telefones
+  if (Array.isArray(raw.HISTORICO_TELEFONE)) {
+    for (const h of raw.HISTORICO_TELEFONE) {
+      registrarTelefone(h.TELEFONE || h.telefone, {
+        tipo: h.TIPO_TELEFONE || "Telefone",
+        data: h.DT_INCLUSAO || h.DT_INFORMACAO || null,
+        origem: "Histórico Telefônico",
+      });
+    }
+  }
+
+  // Último Telefone
+  if (Array.isArray(raw.ULTIMO_TELEFONE)) {
+    for (const u of raw.ULTIMO_TELEFONE) {
+      registrarTelefone(u.TELEFONE || u.telefone, {
+        data: u.DT_TIMESTAMP || null,
+        origem: "Último Telefone Cadastrado",
+      });
+    }
+  }
+
+  // TELEFONES genéricos
+  if (Array.isArray(raw.TELEFONES)) {
+    for (const t of raw.TELEFONES) {
+      registrarTelefone(t.TELEFONE || t.telefone || t.numero, {
+        operadora: t.OPERADORA || t.operadora,
+        tipo: t.TIPO || t.tipo,
+        data: t.DT_TIMESTAMP || t.data,
+      });
+    }
+  } else if (Array.isArray(raw.TELEFONE)) {
+    for (const t of raw.TELEFONE) {
+      registrarTelefone(t.TELEFONE || t.telefone || t.numero);
+    }
+  }
+
+  const telefonesNormalizados = Array.from(telsMap.values());
+  const telefonesPorOperadora = {
+    VIVO: telefonesNormalizados.filter((t) => t.operadora?.toUpperCase() === "VIVO"),
+    CLARO: telefonesNormalizados.filter((t) => t.operadora?.toUpperCase() === "CLARO"),
+    TIM: telefonesNormalizados.filter((t) => t.operadora?.toUpperCase() === "TIM"),
+    OI: telefonesNormalizados.filter((t) => t.operadora?.toUpperCase() === "OI"),
+    OUTROS: telefonesNormalizados.filter(
+      (t) => !["VIVO", "CLARO", "TIM", "OI"].includes(t.operadora?.toUpperCase())
+    ),
+  };
+
+  // 2. E-mails
   const rawEmails = Array.isArray(raw.EMAILS)
     ? raw.EMAILS
     : Array.isArray(raw.EMAIL)
@@ -590,19 +699,140 @@ function normalizarPessoaRimu(raw, tipo) {
     .map((e) => (typeof e === "string" ? e : e.EMAIL || e.email || ""))
     .filter(Boolean);
 
-  // Veículos vinculados
+  // 3. Veículos vinculados (HISTORICO_VEICULOS, ULTIMO_VEICULOS, VEICULOS)
   const rawVeiculos = [
     ...(Array.isArray(raw.HISTORICO_VEICULOS) ? raw.HISTORICO_VEICULOS : []),
     ...(Array.isArray(raw.ULTIMO_VEICULOS) ? raw.ULTIMO_VEICULOS : []),
     ...(Array.isArray(raw.VEICULOS) ? raw.VEICULOS : []),
   ];
 
-  // Score e dados socioeconômicos
+  const veiculosMap = new Map();
+  for (const v of rawVeiculos) {
+    const rawPlaca = String(v.PLACA || v.placa || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const rawChassi = String(v.CHASSI || v.chassi || "").toUpperCase();
+    const rawRenavam = String(v.RENAVAM || v.renavam || "").trim();
+    if (!rawPlaca && !rawChassi && !rawRenavam) continue;
+
+    const key = rawPlaca || rawChassi || rawRenavam;
+    if (!veiculosMap.has(key)) {
+      const marcaModelo = String(v.MARCA || v.marca || v.MODELO || v.modelo || "Veículo Registrado").trim();
+      const placaFmt = rawPlaca.length === 7 ? `${rawPlaca.slice(0, 3)}-${rawPlaca.slice(3)}` : rawPlaca;
+
+      veiculosMap.set(key, {
+        placa: rawPlaca,
+        placaFormatada: placaFmt,
+        plate: rawPlaca,
+        marca: marcaModelo,
+        modelo: marcaModelo,
+        model: marcaModelo,
+        marcaModelo: marcaModelo,
+        chassi: rawChassi || "NÃO INFORMADO",
+        renavam: rawRenavam || "NÃO INFORMADO",
+        motor: String(v.MOTOR || v.motor || "").trim() || "N/I",
+        ano: v.ANO || v.ano || v.ANO_MODELO || v.anoModelo || null,
+        cor: v.COR || v.cor || null,
+        situacao: (v.SITUACAO || v.situacao || "CIRCULAR").toUpperCase(),
+      });
+    }
+  }
+  const veiculosNormalizados = Array.from(veiculosMap.values());
+
+  // 4. Histórico Vacinal COVID-19 & Locais de Vacinação (SUS)
+  const rawCovid = Array.isArray(raw.COVID)
+    ? raw.COVID
+    : Array.isArray(raw.VACINAS)
+      ? raw.VACINAS
+      : [];
+
+  const vacinasCovid = rawCovid.map((v) => {
+    const estabelecimento = String(
+      v.NOME_DO_ESTABELECIMENTO || v.ESTABELECIMENTO || v.estabelecimento || "Posto de Saúde Municipal"
+    ).trim();
+    const municipio = String(v.MUNICIPIO || v.municipio || "").trim();
+    const uf = String(v.UF || v.uf || "").trim().toUpperCase();
+    const bairro = String(v.BAIRRO || v.bairro || "").trim();
+
+    const localCompleto = [
+      estabelecimento,
+      bairro ? `Bairro ${bairro}` : null,
+      municipio && uf ? `${municipio}/${uf}` : (municipio || uf || null),
+    ]
+      .filter(Boolean)
+      .join(" - ");
+
+    return {
+      dose: v.DESCRICAO_DA_VACINA || v.DOSE || v.dose || "Dose Registrada",
+      vacina: v.NOME_DA_VACINA || v.VACINA || v.vacina || "COVID-19",
+      dataAplicacao: v.DATA_DE_APLICACAO || v.DATA_APLICACAO || v.data_aplicacao || "Data não informada",
+      lote: v.LOTE_DA_VACINA || v.LOTE || v.lote || "N/I",
+      local: estabelecimento,
+      estabelecimento,
+      localCompleto,
+      municipio,
+      uf,
+      bairro,
+      aplicador: v.APLICADOR_DE_VACINA || v.APLICADOR || v.aplicador || null,
+      grupoAtendimento: v.GRUPO_DE_ATENDIMENTO || v.GRUPO || v.grupo || null,
+      status: v.STATUS || v.status || "Finalizado",
+      cns: v.CNS || v.cns || null,
+    };
+  });
+
+  // 5. Dados Bancários
+  const rawBancos = Array.isArray(raw.DADOS_BANCARIOS) ? raw.DADOS_BANCARIOS : [];
+  const dadosBancarios = rawBancos.map((b) => ({
+    banco: String(b.INSTITUICAO || b.BANCO || b.banco || "Instituição Financeira").trim(),
+    agencia: b.AGENCIA || b.agencia || "Não informada",
+    numero: b.NUMERO || b.numero || null,
+  }));
+
+  // 6. RAIS & Vínculos Empregatícios
+  const rawRais = Array.isArray(raw.RAIS) ? raw.RAIS : [];
+  const vinculosRais = rawRais.map((r) => ({
+    cnpj: formatCnpj(r.CNPJ || r.cnpj),
+    razaoSocial: String(r.RAZAO_SOCIAL || r.razao_social || "EMPRESA").toUpperCase().trim(),
+    situacao: r.SITUACAO || r.situacao || "ENTREGUE",
+    dataAdmissao: r.DATA_ADMISSAO || null,
+    dataDesligamento: r.DATA_DESLIGAMENTO || null,
+    faixaRenda: r.FAIXA_RENDA || null,
+  }));
+
+  // 7. Benefícios INSS
+  const rawInss = Array.isArray(raw.INSS) ? raw.INSS : [];
+  const beneficiosInss = rawInss.map((i) => ({
+    nb: i.NB || i.nb || "N/I",
+    especie: i.ESPECIE || i.especie || "Benefício",
+    entidade: i.ENTIDADE || i.entidade || "SIAPE/INSS",
+    valor: i.VALOR && i.VALOR !== "N" ? i.VALOR : null,
+  }));
+
+  // 8. PIS & NIS
+  const pisItem = Array.isArray(raw.PIS) && raw.PIS[0] ? raw.PIS[0] : (raw.PIS || {});
+  const pisNumero = pisItem?.PIS || d.PIS || d.NIS || null;
+
+  // 9. Poder Aquisitivo e Renda
+  const poderAquisitivoBloco = Array.isArray(raw.PODER_AQUISITIVO)
+    ? raw.PODER_AQUISITIVO[0]
+    : (raw.PODER_AQUISITIVO || {});
+  const rendaPoderAquisitivo = poderAquisitivoBloco?.RENDA_PODER_AQUISITIVO || d.RENDA || null;
+  const nivelPoderAquisitivo = poderAquisitivoBloco?.PODER_AQUISITIVO || null;
+
+  // 10. Senhas Vazadas vinculadas ao CPF
+  const rawSenhas = Array.isArray(raw.SENHA_CPF) ? raw.SENHA_CPF : [];
+  const senhasVazadas = rawSenhas.map((s) => ({
+    cpf: formatCpf(s.CPF || rawCpf),
+    senha: s.SENHA || s.senha,
+    fonte: "Vazamento Público de Credenciais",
+    titulo: "Senha Comprometida",
+    data: s.DT_INCLUSAO || null,
+  }));
+
+  // 11. Score e dados socioeconômicos
   const scoreBloco = Array.isArray(raw.SCORE) ? raw.SCORE[0] : raw.SCORE;
   const scoreValor = scoreBloco?.CSB8 || scoreBloco?.SCORE || d.SCORE || null;
   const scoreFaixa = scoreBloco?.CSB8_FAIXA || d.FAIXA_RENDA_ID || null;
 
-  // Endereços
+  // 12. Endereços
   const rawEnds = Array.isArray(raw.ENDERECOS)
     ? raw.ENDERECOS
     : Array.isArray(raw.ENDERECO)
@@ -613,7 +843,7 @@ function normalizarPessoaRimu(raw, tipo) {
 
   const enderecosNormalizados = normalizarListaEnderecos(rawEnds);
 
-  // Parentes
+  // 13. Parentes
   const rawParentes = Array.isArray(raw.PARENTES)
     ? raw.PARENTES
     : Array.isArray(raw.parentes)
@@ -627,7 +857,7 @@ function normalizarPessoaRimu(raw, tipo) {
     cpf_raw: String(p.CPF || p.CPF_VINCULO || p.cpf || "").replace(/\D/g, ""),
   }));
 
-  // CNS
+  // 14. CNS
   const rawCns = Array.isArray(raw.CNS) ? raw.CNS : raw.CNS ? [raw.CNS] : [];
   const cnsNormalizado = rawCns.map((c) => ({
     numero: c.NUMERO_CNS || c.CNS || c.cns,
@@ -660,19 +890,39 @@ function normalizarPessoaRimu(raw, tipo) {
     profissao: d.CBO || d.profissao || "Não informada",
     nacionalidade: d.NACIONALID || d.nacionalidade || "BRASILEIRA",
     situacaoCadastral: situacaoReceita,
+    pis: pisNumero,
     telefones: telefonesNormalizados,
+    phones: telefonesNormalizados,
+    telefonesPorOperadora,
     enderecos: enderecosNormalizados,
     endereco: enderecosNormalizados[0] || null,
     parentes: parentesNormalizados,
     cns: cnsNormalizado,
     emails: emailsNormalizados,
-    veiculos: rawVeiculos,
+    veiculos: veiculosNormalizados,
+    vehicles: {
+      list: veiculosNormalizados,
+      total: veiculosNormalizados.length,
+    },
+    vacinas_covid: vacinasCovid,
+    covid: vacinasCovid,
+    dadosBancarios,
+    vinculosEmpregaticios: vinculosRais,
+    rais: vinculosRais,
+    beneficiosInss,
+    rendaPoderAquisitivo,
+    nivelPoderAquisitivo,
+    rendaPresumida: rendaPoderAquisitivo ? formatCurrency(rendaPoderAquisitivo) : (d.RENDA ? formatCurrency(d.RENDA) : null),
+    vazamentos: senhasVazadas,
+    senhasVazadas,
     score: scoreValor ? { valor: scoreValor, faixa: scoreFaixa } : null,
     totalTelefones: telefonesNormalizados.length,
     totalEnderecos: enderecosNormalizados.length,
     totalParentes: parentesNormalizados.length,
     totalEmails: emailsNormalizados.length,
-    totalVeiculos: rawVeiculos.length,
+    totalVeiculos: veiculosNormalizados.length,
+    totalVacinas: vacinasCovid.length,
+    totalBancos: dadosBancarios.length,
     raw,
   };
 }
