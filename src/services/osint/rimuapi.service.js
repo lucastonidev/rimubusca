@@ -30,7 +30,7 @@ export function getRimuApiConfig() {
     ""
   ).trim();
 
-  // Autenticação básica obrigatória em instâncias remotas (Vercel)
+  // Autenticação básica requerida pela RimuAPI remota (padrão admin: quando não houver senha no .env)
   const basicUser =
     process.env.RIMUAPI_BASIC_USER ||
     process.env.RIMU_BASIC_USER ||
@@ -41,12 +41,10 @@ export function getRimuApiConfig() {
     process.env.RIMU_BASIC_PASS ||
     process.env.BASIC_AUTH_PASS ||
     "";
-  const basicAuthHeader = basicPass
-    ? "Basic " + Buffer.from(`${basicUser}:${basicPass}`).toString("base64")
-    : null;
+  const basicAuthHeader = "Basic " + Buffer.from(`${basicUser}:${basicPass}`).toString("base64");
 
-  // Está configurado se houver URL base definida
-  const isConfigured = Boolean(baseUrl);
+  // Está configurado se houver URL base e chave da RimuAPI
+  const isConfigured = Boolean(baseUrl && (apiKey || baseUrl.includes("rimuapi")));
 
   return { baseUrl, apiKey, isConfigured, basicAuthHeader };
 }
@@ -152,7 +150,7 @@ export async function consultarRimuApi({
         code = errorBody.error || code;
       } catch (_) {}
     } else if (response.status === 401) {
-      msg = "Acesso não autorizado na RimuAPI (HTTP 401). Verifique suas variáveis RIMUAPI_KEY e RIMUAPI_BASIC_PASS no painel da Vercel e certifique-se de fazer um Redeploy da aplicação.";
+      msg = "Acesso não autorizado na RimuAPI (HTTP 401). Verifique sua variável RIMUAPI_KEY no painel da Vercel e certifique-se de fazer um Redeploy da aplicação.";
       code = "UNAUTHORIZED";
     } else if (response.status === 504) {
       msg = "Servidor da RimuAPI demorou para responder (HTTP 504 Gateway Timeout).";

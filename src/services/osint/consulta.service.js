@@ -389,9 +389,7 @@ export async function puxarDados({
 
       if (err.status === 401 || err.code === "UNAUTHORIZED") {
         throw new Error(
-          err.message?.includes("Autenticação básica")
-            ? "Autenticação básica necessária para conectar à RimuAPI remota. Defina RIMUAPI_BASIC_PASS na Vercel e faça um Redeploy da aplicação."
-            : "Acesso não autorizado na RimuAPI (HTTP 401). Verifique suas variáveis RIMUAPI_KEY e RIMUAPI_BASIC_PASS no painel da Vercel e faça um Redeploy da aplicação."
+          "Acesso não autorizado na RimuAPI (HTTP 401). Verifique se a variável RIMUAPI_KEY está configurada corretamente na Vercel."
         );
       }
 
