@@ -533,12 +533,12 @@ router.get("/admin/api-keys", async (req, res) => {
       id: "rimuapi",
       nome: "RimuAPI (Sant Buscas Engine)",
       ativo: Boolean(
-        process.env.RIMUAPI_KEY &&
+        (process.env.RIMUAPI_KEY || process.env.RIMU_API_KEY || process.env.PESSOA_API_KEY) &&
         process.env.RIMUAPI_KEY !== "sua_chave_de_api_aqui" &&
         process.env.RIMUAPI_KEY !== "COLE_SUA_CHAVE_AQUI"
       ),
-      chaveParcial: process.env.RIMUAPI_KEY
-        ? "••••••••" + process.env.RIMUAPI_KEY.slice(-4)
+      chaveParcial: (process.env.RIMUAPI_KEY || process.env.RIMU_API_KEY || process.env.PESSOA_API_KEY)
+        ? "••••••••" + (process.env.RIMUAPI_KEY || process.env.RIMU_API_KEY || process.env.PESSOA_API_KEY).slice(-4)
         : "Mock Engine Ativo",
       tipo: "RimuAPI Engine (43 Módulos Oficiais)",
     },

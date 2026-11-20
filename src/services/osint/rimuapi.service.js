@@ -13,15 +13,40 @@
  * Recupera e valida as configurações oficiais da RimuAPI a partir do .env
  */
 export function getRimuApiConfig() {
-  const rawUrl = process.env.RIMUAPI_URL || "https://rimuapi.vercel.app";
+  const rawUrl =
+    process.env.RIMUAPI_URL ||
+    process.env.RIMU_API_URL ||
+    process.env.PESSOA_API_URL ||
+    "https://rimuapi.vercel.app";
   const baseUrl = String(rawUrl).trim().replace(/\/+$/, "");
-  const apiKey = (process.env.RIMUAPI_KEY || "").trim();
-  const isConfigured = Boolean(baseUrl && apiKey);
+  const apiKey = (
+    process.env.RIMUAPI_KEY ||
+    process.env.RIMU_API_KEY ||
+    process.env.RIMUAPI_TOKEN ||
+    process.env.RIMU_KEY ||
+    process.env.RIMUAPIKEY ||
+    process.env.PESSOA_API_KEY ||
+    process.env.API_KEY ||
+    ""
+  ).trim();
 
   // Autenticação básica obrigatória em instâncias remotas (Vercel)
-  const basicUser = process.env.RIMUAPI_BASIC_USER !== undefined ? process.env.RIMUAPI_BASIC_USER : "admin";
-  const basicPass = process.env.RIMUAPI_BASIC_PASS !== undefined ? process.env.RIMUAPI_BASIC_PASS : "";
-  const basicAuthHeader = "Basic " + Buffer.from(`${basicUser}:${basicPass}`).toString("base64");
+  const basicUser =
+    process.env.RIMUAPI_BASIC_USER ||
+    process.env.RIMU_BASIC_USER ||
+    process.env.BASIC_AUTH_USER ||
+    "admin";
+  const basicPass =
+    process.env.RIMUAPI_BASIC_PASS ||
+    process.env.RIMU_BASIC_PASS ||
+    process.env.BASIC_AUTH_PASS ||
+    "";
+  const basicAuthHeader = basicPass
+    ? "Basic " + Buffer.from(`${basicUser}:${basicPass}`).toString("base64")
+    : null;
+
+  // Está configurado se houver URL base definida
+  const isConfigured = Boolean(baseUrl);
 
   return { baseUrl, apiKey, isConfigured, basicAuthHeader };
 }
@@ -49,7 +74,7 @@ export async function consultarRimuApi({
 
   if (!isConfigured) {
     const err = new Error(
-      "Chave da RimuAPI (RIMUAPI_KEY) não configurada no arquivo .env."
+      "Endpoint da RimuAPI não configurado. Defina a variável RIMUAPI_URL ou RIMUAPI_KEY na Vercel."
     );
     err.code = "UNAUTHORIZED";
     err.status = 401;
@@ -78,8 +103,11 @@ export async function consultarRimuApi({
   const requestHeaders = {
     "Content-Type": "application/json",
     Accept: "application/json",
-    "x-api-key": apiKey,
   };
+
+  if (apiKey) {
+    requestHeaders["x-api-key"] = apiKey;
+  }
 
   if (basicAuthHeader) {
     requestHeaders["Authorization"] = basicAuthHeader;
@@ -124,7 +152,7 @@ export async function consultarRimuApi({
         code = errorBody.error || code;
       } catch (_) {}
     } else if (response.status === 401) {
-      msg = "Acesso não autorizado na RimuAPI. Verifique sua RIMUAPI_KEY no arquivo .env.";
+      msg = "Acesso não autorizado na RimuAPI (HTTP 401). Verifique suas variáveis RIMUAPI_KEY e RIMUAPI_BASIC_PASS no painel da Vercel e certifique-se de fazer um Redeploy da aplicação.";
       code = "UNAUTHORIZED";
     } else if (response.status === 504) {
       msg = "Servidor da RimuAPI demorou para responder (HTTP 504 Gateway Timeout).";

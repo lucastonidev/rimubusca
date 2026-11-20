@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import crypto from "node:crypto";
 import { supabaseAdmin } from "../../config/supabase.js";
 import { parseSupabaseError } from "../../utils/supabaseErrorParser.js";
@@ -14,7 +15,10 @@ import { RIMU_MODULOS } from "../../data/rimuModulos.js";
  * ==============================================================================
  */
 
-const DATA_DIR = path.resolve(process.cwd(), "data");
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.LAMBDA_TASK_ROOT);
+const DATA_DIR = IS_SERVERLESS
+  ? path.join(os.tmpdir(), "rimubusca-data")
+  : path.resolve(process.cwd(), "data");
 const MODULES_FILE = path.join(DATA_DIR, "modules.json");
 
 function mapBadgeColor(hexColor) {
@@ -250,8 +254,13 @@ export const MODULOS_PADRAO = [
  */
 function carregarModulosLocal() {
   try {
-    if (fs.existsSync(MODULES_FILE)) {
-      const raw = fs.readFileSync(MODULES_FILE, "utf-8");
+    const bundledPath = path.resolve(process.cwd(), "data", "modules.json");
+    const targetFile = fs.existsSync(MODULES_FILE)
+      ? MODULES_FILE
+      : (fs.existsSync(bundledPath) ? bundledPath : null);
+
+    if (targetFile) {
+      const raw = fs.readFileSync(targetFile, "utf-8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
