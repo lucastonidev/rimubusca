@@ -33,9 +33,10 @@ export const CpfDossierInterpreter = {
     const data = dataPayload || {};
 
     // 1. Basic Identity
-    const fullName = data.name || data.nome || "Não informado";
-    const rawCpf = String(data.cpf || responseData?.termo || "").replace(/\D/g, "");
-    const formattedCpf = Formatters.cpf(data.cpf_masked || data.cpf || rawCpf);
+    const queryType = String(responseData?.tipo || responseData?.type || "").toLowerCase().trim();
+    const fullName = data.name || data.nome || data.titularNome || "Não informado";
+    const rawCpf = String(data.cpf || data.titularCpf || (queryType.includes("cpf") ? responseData?.termo : "") || "").replace(/\D/g, "");
+    const formattedCpf = Formatters.cpf(data.cpf_masked || data.cpf || data.titularCpf || rawCpf);
     const birthDate = Formatters.date(data.birth_date || data.dataNascimento);
     const age = Formatters.age(data.birth_date || data.dataNascimento);
     const motherName = data.mother_name || data.nomeMae || data.nome_mae || "Não informada";
@@ -83,18 +84,26 @@ export const CpfDossierInterpreter = {
     // 5. Professional & Civic
     const occupation = data.occupation || data.profissao || "Não informada";
     const cbo = data.cbo || data.occupation_code || null;
-    const cnh = data.cnh?.num_cnh || data.cnh?.numero_registro || data.cnh?.numero || (typeof data.cnh === "string" ? data.cnh : "Não informado");
-    const cnhFirst = (data.cnh?.primeira_habilitacao || data.cnh?.data_primeira_habilitacao)
-      ? String(data.cnh.primeira_habilitacao || data.cnh.data_primeira_habilitacao).split("T")[0]
+    const cnh = data.cnh?.num_cnh || data.cnh?.numero_registro || data.cnh?.numero || data.cnhNumero || (typeof data.cnh === "string" ? data.cnh : "Não informado");
+    const cnhFirst = (data.cnh?.primeira_habilitacao || data.cnh?.data_primeira_habilitacao || data.cnhPrimeiraHabilitacao)
+      ? String(data.cnh?.primeira_habilitacao || data.cnh?.data_primeira_habilitacao || data.cnhPrimeiraHabilitacao).split("T")[0]
       : null;
     const mosaic = data.mosaic || data.classeSocial || "N/A";
+
+    const rawCnsList = Array.isArray(data.cns) ? data.cns : (data.cns ? [data.cns] : []);
+    const cnsPrimary = rawCnsList[0]?.numero || data.cnsNumero || (typeof data.cns === "string" ? data.cns : "Não informado");
+    const pisDoc = data.pis || data.nis || "Não informado";
 
     // 6. Google Accounts & Photos
     const googleAccounts = Array.isArray(data.contas_google) ? data.contas_google : [];
     const availablePhotos = Array.isArray(data.fotos_disponiveis) ? data.fotos_disponiveis : [];
 
     // 7. Contacts (Phones & Emails)
-    const phones = Array.isArray(data.phones) ? data.phones : Array.isArray(data.telefones) ? data.telefones : [];
+    const phones = (Array.isArray(data.telefones) && data.telefones.length > 0)
+      ? data.telefones
+      : (Array.isArray(data.phones) && data.phones.length > 0)
+        ? data.phones
+        : [];
     const vivoLines = Array.isArray(data.vivo_linhas) ? data.vivo_linhas : [];
     const carriersMap = {};
     if (Array.isArray(data.telefones_operadoras)) {
@@ -142,14 +151,49 @@ export const CpfDossierInterpreter = {
       }
     });
 
-    // 9. Vehicles
-    const vehiclesList = (data.vehicles && Array.isArray(data.vehicles.list))
-      ? data.vehicles.list
-      : (data.vehicles_proprietario && Array.isArray(data.vehicles_proprietario.list))
-        ? data.vehicles_proprietario.list
-        : Array.isArray(data.detran_vehicles)
-          ? data.detran_vehicles
+    // 9. Vehicles (Detran, Renavam, Chassi e Motor)
+    const vehiclesList = (Array.isArray(data.veiculos) && data.veiculos.length > 0)
+      ? data.veiculos
+      : (data.vehicles && Array.isArray(data.vehicles.list))
+        ? data.vehicles.list
+        : (data.vehicles_proprietario && Array.isArray(data.vehicles_proprietario.list))
+          ? data.vehicles_proprietario.list
+          : (data.raw && Array.isArray(data.raw.HISTORICO_VEICULOS))
+            ? data.raw.HISTORICO_VEICULOS
+            : Array.isArray(data.detran_vehicles)
+              ? data.detran_vehicles
+              : [];
+
+    // 9.1 COVID-19 Vaccines & Health Centers (SUS)
+    const vacinasCovid = (Array.isArray(data.vacinas_covid) && data.vacinas_covid.length > 0)
+      ? data.vacinas_covid
+      : (Array.isArray(data.covid) && data.covid.length > 0)
+        ? data.covid
+        : (data.raw && Array.isArray(data.raw.COVID))
+          ? data.raw.COVID
           : [];
+
+    // 9.2 Banking Institutions & Accounts
+    const dadosBancarios = (Array.isArray(data.dadosBancarios) && data.dadosBancarios.length > 0)
+      ? data.dadosBancarios
+      : (data.raw && Array.isArray(data.raw.DADOS_BANCARIOS))
+        ? data.raw.DADOS_BANCARIOS
+        : [];
+
+    // 9.3 Employment ties (RAIS / INSS / PIS)
+    const vinculosRais = (Array.isArray(data.vinculosEmpregaticios) && data.vinculosEmpregaticios.length > 0)
+      ? data.vinculosEmpregaticios
+      : (Array.isArray(data.rais) && data.rais.length > 0)
+        ? data.rais
+        : (data.raw && Array.isArray(data.raw.RAIS))
+          ? data.raw.RAIS
+          : [];
+    const beneficiosInss = (Array.isArray(data.beneficiosInss) && data.beneficiosInss.length > 0)
+      ? data.beneficiosInss
+      : (data.raw && Array.isArray(data.raw.INSS))
+        ? data.raw.INSS
+        : [];
+    const pisNumero = data.pis || (data.raw && (data.raw.PIS || data.raw.DADOS_PESSOAIS?.PIS)) || null;
 
     // 10. Relatives & Companies
     const relatives = (Array.isArray(data.serasa_completo?.parentes) && data.serasa_completo.parentes.length > 0)
@@ -167,9 +211,19 @@ export const CpfDossierInterpreter = {
         ? data.empresas_vinculadas
         : [];
 
-    // 11. Leaks & Breaches
-    const leaks = Array.isArray(data.vazamentos) ? data.vazamentos : [];
-    const totalLeaks = data.total_vazamentos || leaks.length || 0;
+    // 11. Leaks & Compromised Passwords
+    const senhasVazadas = (Array.isArray(data.senhasVazadas) && data.senhasVazadas.length > 0)
+      ? data.senhasVazadas
+      : (data.raw && Array.isArray(data.raw.SENHA_CPF))
+        ? data.raw.SENHA_CPF.map((s) => ({
+            senha: s.SENHA || s.senha,
+            fonte: "Vazamento Público CPF",
+            data: s.DATA || null,
+          }))
+        : [];
+    const rawLeaks = Array.isArray(data.vazamentos) ? data.vazamentos : [];
+    const leaks = [...rawLeaks];
+    const totalLeaks = data.total_vazamentos || leaks.length + senhasVazadas.length;
     const auditedTargets = data.alvos_verificados_vazamentos || 0;
 
     // 12. Neighbors
@@ -258,10 +312,13 @@ export const CpfDossierInterpreter = {
 
           <!-- Score & Renda Widgets -->
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <div style="background: var(--color-surface-2); padding: 8px 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--color-border); min-width: 110px;">
+            <div style="background: var(--color-surface-2); padding: 8px 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--color-border); min-width: 120px;">
               <span style="font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase;">Score de Crédito</span>
               <div style="font-size: 1.25rem; font-weight: 800; color: #60A5FA;">${escapeHtml(scoreVal)}</div>
-              ${csb8Range ? `<span style="font-size: 0.65rem; color: #34D399; font-weight: 700;">CSB8: ${escapeHtml(csb8Range)}</span>` : ""}
+              <div style="display: flex; gap: 6px; justify-content: center; margin-top: 2px; flex-wrap: wrap;">
+                ${scoreObj.csb8 ? `<span style="font-size: 0.65rem; color: #34D399; font-weight: 700;" title="Score CSB8">CSB8: ${escapeHtml(scoreObj.csb8)}</span>` : csb8Range ? `<span style="font-size: 0.65rem; color: #34D399; font-weight: 700;">${escapeHtml(csb8Range)}</span>` : ""}
+                ${scoreObj.csba ? `<span style="font-size: 0.65rem; color: #A78BFA; font-weight: 700;" title="Score CSBA">CSBA: ${escapeHtml(scoreObj.csba)}</span>` : ""}
+              </div>
             </div>
 
             <div style="background: var(--color-surface-2); padding: 8px 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--color-border); min-width: 130px;">
@@ -328,6 +385,16 @@ export const CpfDossierInterpreter = {
           <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
             <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Mosaico / Classe Social</span>
             <strong style="color: #F59E0B;">${escapeHtml(mosaic)}</strong>
+          </div>
+
+          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Cartão SUS (CNS)</span>
+            <strong style="color: #38BDF8; font-family: var(--font-mono);">${escapeHtml(cnsPrimary)}</strong>
+          </div>
+
+          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">PIS / NIS</span>
+            <strong style="color: #A78BFA; font-family: var(--font-mono);">${escapeHtml(pisDoc)}</strong>
           </div>
         </div>
       </div>
@@ -433,72 +500,224 @@ export const CpfDossierInterpreter = {
       }
 
       <!-- ============================================================== -->
-      <!-- 3. VEÍCULOS & FROTA AUTOMOTIVA                                  -->
+      <!-- 3. VEÍCULOS & FROTA AUTOMOTIVA (MERCOSUL / RENAVAM / CHASSI)   -->
       <!-- ============================================================== -->
-      <div class="card" style="margin-bottom: var(--space-4);">
-        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+      ${
+        vehiclesList.length > 0
+          ? `
+      <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #3B82F6;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <h3 class="card-title" style="display: flex; align-items: center; gap: 8px; color: #60A5FA;">
             <i data-lucide="car" style="color: #3B82F6; width: 18px; height: 18px;"></i>
-            <span>Veículos Registrados (${vehiclesList.length})</span>
+            <span>Veículos Registrados &amp; Frota (${vehiclesList.length})</span>
           </h3>
-          <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">Bases Detran & Renavam</span>
+          <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">Bases Detran &amp; Renavam</span>
         </div>
 
-        ${
-          vehiclesList.length > 0
-            ? `
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 8px;">
             ${vehiclesList
               .map((v) => {
-                const plate = String(v.plate || v.placa || "N/A").toUpperCase();
-                const model = v.model || v.modelo || v.brand || v.marca || "Veículo";
-                const year = v.year_model || v.ano || (Array.isArray(v.years) ? v.years.join("/") : "N/A");
-                const color = v.color || v.cor || "N/A";
-                const renavam = v.renavam || "N/A";
-                const chassis = v.chassis || v.chassi || "N/A";
-                const city = v.city || v.cidade || "";
-                const uf = v.state || v.uf || "";
-                const loc = [city, uf].filter(Boolean).join(" / ");
+                const rawPlate = String(v.placa || v.PLACA || v.plate || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+                const formattedPlate = rawPlate.length === 7 ? `${rawPlate.slice(0, 3)}-${rawPlate.slice(3)}` : (rawPlate || "SEM PLACA");
+                const model = v.marcaModelo || v.marca || v.modelo || v.MARCA || v.MODELO || v.model || v.brand || "Veículo Registrado";
+                const year = v.ano || v.ano_fab || v.ano_modelo || v.ANO || v.year_model || (Array.isArray(v.years) ? v.years.join("/") : "");
+                const color = v.cor || v.COR || v.color || "";
+                const situation = v.situacao || v.SITUACAO || "CIRCULAR";
+                const renavam = v.renavam || v.RENAVAM || "NÃO INFORMADO";
+                const chassis = v.chassi || v.CHASSI || v.chassis || "NÃO INFORMADO";
+                const motor = v.motor || v.MOTOR || "N/I";
 
                 return `
-                <div style="background: var(--color-surface-2); padding: 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="background: #FFF; border: 2px solid #000; border-radius: 4px; padding: 1px 8px; font-family: var(--font-mono); font-weight: 800; font-size: 1rem; color: #000;">
-                      ${plate}
+                <div style="background: var(--color-surface-2); padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 10px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                      <!-- Badge Placa Estilo Mercosul Oficial -->
+                      <div style="display: inline-flex; flex-direction: column; align-items: center; border: 2px solid #3B82F6; border-radius: 5px; background: #FFFFFF; color: #000000; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.4); flex-shrink: 0;">
+                        <div style="background: #1D4ED8; color: #FFFFFF; width: 100%; font-size: 0.55rem; font-weight: 900; text-align: center; padding: 1px 10px; letter-spacing: 1px;">
+                          BRASIL
+                        </div>
+                        <div style="font-family: var(--font-mono); font-weight: 900; font-size: 1.15rem; padding: 1px 10px; letter-spacing: 2px; color: #0F172A;">
+                          ${formattedPlate}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 style="font-size: 1.05rem; font-weight: 800; color: #FFFFFF; margin: 0;">
+                          ${escapeHtml(model)}
+                        </h4>
+                        <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 3px;">
+                          ${year ? `Ano: <strong style="color: var(--color-text);">${escapeHtml(year)}</strong> &bull; ` : ""}
+                          ${color ? `Cor: <strong style="color: var(--color-text);">${escapeHtml(color)}</strong> &bull; ` : ""}
+                          Situação: <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-size: 0.68rem; padding: 1px 6px;">${escapeHtml(situation)}</span>
+                        </div>
+                      </div>
                     </div>
-                    <button type="button" class="btn btn-outline btn-sm btn-puxar-placa" data-placa="${plate}" style="font-size: 0.72rem; padding: 3px 8px;">
-                      <i data-lucide="search" style="width: 12px; height: 12px;"></i> Puxar Placa
-                    </button>
+
+                    ${
+                      rawPlate
+                        ? `
+                      <button type="button" class="btn btn-primary btn-sm btn-puxar-placa" data-placa="${rawPlate}" style="display: inline-flex; align-items: center; gap: 6px;">
+                        <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+                        <span>Puxar Dossiê da Placa</span>
+                      </button>
+                    `
+                        : ""
+                    }
                   </div>
-                  <strong style="color: var(--color-text); font-size: 0.95rem; display: block;">${escapeHtml(model)}</strong>
-                  <div style="font-size: 0.78rem; color: var(--color-text-muted); margin-top: 4px;">
-                    <span>Ano: <strong>${escapeHtml(year)}</strong></span> | 
-                    <span>Cor: <strong>${escapeHtml(color)}</strong></span>
-                    ${loc ? ` | <span>${escapeHtml(loc)}</span>` : ""}
-                  </div>
-                  <div style="font-size: 0.75rem; font-family: var(--font-mono); color: #60A5FA; margin-top: 6px;">
-                    Chassi: ${escapeHtml(chassis)}
-                  </div>
-                  <div style="font-size: 0.75rem; font-family: var(--font-mono); color: #34D399;">
-                    Renavam: ${escapeHtml(renavam)}
+
+                  <!-- Grid de Detalhes Técnicos: Chassi, Renavam, Motor -->
+                  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; background: var(--color-surface); padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.04); font-size: 0.8rem;">
+                    <div>
+                      <span style="color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase;">Chassi:</span>
+                      <div style="font-family: var(--font-mono); color: #38BDF8; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                        <span>${escapeHtml(chassis)}</span>
+                        ${chassis && chassis !== "NÃO INFORMADO" ? `<button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${escapeHtml(chassis)}" title="Copiar Chassi" style="padding: 1px 4px;"><i data-lucide="copy" style="width: 11px; height: 11px;"></i></button>` : ""}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span style="color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase;">RENAVAM:</span>
+                      <div style="font-family: var(--font-mono); color: #6EE7B7; font-weight: 700; display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+                        <span>${escapeHtml(renavam)}</span>
+                        ${renavam && renavam !== "NÃO INFORMADO" ? `<button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${escapeHtml(renavam)}" title="Copiar Renavam" style="padding: 1px 4px;"><i data-lucide="copy" style="width: 11px; height: 11px;"></i></button>` : ""}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span style="color: var(--color-text-dim); font-size: 0.72rem; text-transform: uppercase;">Nº do Motor:</span>
+                      <div style="font-family: var(--font-mono); color: #F1F5F9; font-weight: 600; margin-top: 2px;">
+                        ${escapeHtml(motor)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               `;
               })
               .join("")}
           </div>
-        `
-            : `
-          <p style="color: var(--color-text-muted); font-size: 0.85rem; padding: var(--space-2) 0;">
-            Nenhum veículo vinculado a este CPF nos registros nacionais do DETRAN.
-          </p>
-        `
-        }
-      </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- ============================================================== -->
+      <!-- 3.1 HISTÓRICO VACINAL COVID-19 & LOCAIS DE VACINAÇÃO (SUS)     -->
+      <!-- ============================================================== -->
+      ${
+        vacinasCovid.length > 0
+          ? `
+        <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #EC4899;">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <h3 class="card-title" style="color: #EC4899; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="syringe" style="width: 18px; height: 18px;"></i>
+              <span>Histórico Vacinal COVID-19 &amp; Postos de Aplicação (${vacinasCovid.length} Doses Registradas)</span>
+            </h3>
+            <span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #F472B6; font-size: 0.72rem; font-weight: 700;">
+              Base ConecteSUS / MS
+            </span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 10px;">
+            ${vacinasCovid
+              .map((vac, idx) => {
+                const dose = vac.dose || vac.DESCRICAO_DA_VACINA || vac.DOSE || `Dose #${idx + 1}`;
+                const vacNome = vac.vacina || vac.NOME_DA_VACINA || "COVID-19";
+                const data = vac.dataAplicacao || vac.DATA_DE_APLICACAO || vac.DATA_APLICACAO || "Data N/I";
+                const lote = vac.lote || vac.LOTE_DA_VACINA || vac.LOTE || "N/I";
+                const local = vac.localCompleto || vac.estabelecimento || vac.NOME_DO_ESTABELECIMENTO || vac.ESTABELECIMENTO || "Posto Municipal de Saúde";
+                const mun = vac.municipio || vac.MUNICIPIO || "";
+                const uf = vac.uf || vac.UF || "";
+                const aplicador = vac.aplicador || vac.APLICADOR_DE_VACINA || null;
+                const grupo = vac.grupoAtendimento || vac.GRUPO_DE_ATENDIMENTO || null;
+
+                const isPfizer = String(vacNome).toUpperCase().includes("PFIZER");
+                const isAstra = String(vacNome).toUpperCase().includes("ASTRAZENECA");
+                const isCoronavac = String(vacNome).toUpperCase().includes("CORONAVAC") || String(vacNome).toUpperCase().includes("BUTANTAN");
+                const badgeColor = isPfizer ? "#8B5CF6" : isAstra ? "#3B82F6" : isCoronavac ? "#10B981" : "#EC4899";
+
+                return `
+                <div style="background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 14px; position: relative; overflow: hidden;">
+                  <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: ${badgeColor};"></div>
+                  
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                    <div>
+                      <span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #F472B6; font-weight: 700; font-size: 0.72rem; text-transform: uppercase;">
+                        ${escapeHtml(dose)}
+                      </span>
+                      <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--color-text); margin: 6px 0 0 0;">
+                        ${escapeHtml(vacNome)}
+                      </h4>
+                    </div>
+                    <span style="font-family: var(--font-mono); font-size: 0.78rem; color: #10B981; background: rgba(16, 185, 129, 0.12); padding: 3px 8px; border-radius: 4px; white-space: nowrap; font-weight: 600;">
+                      📅 ${escapeHtml(data)}
+                    </span>
+                  </div>
+
+                  <!-- Local / Posto onde tomou a vacina -->
+                  <div style="background: var(--color-surface); padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.04); margin-top: 10px;">
+                    <div style="display: flex; align-items: flex-start; gap: 6px;">
+                      <i data-lucide="map-pin" style="width: 14px; height: 14px; color: #EC4899; flex-shrink: 0; margin-top: 2px;"></i>
+                      <div>
+                        <div style="font-size: 0.72rem; color: var(--color-text-muted); text-transform: uppercase; font-weight: 700;">
+                          Local / Posto de Vacinação:
+                        </div>
+                        <div style="font-size: 0.825rem; font-weight: 700; color: #F1F5F9; margin-top: 2px;">
+                          ${escapeHtml(local)}
+                        </div>
+                        ${
+                          mun || uf
+                            ? `<div style="font-size: 0.75rem; color: #94A3B8; margin-top: 2px;">Município: <strong style="color: #CBD5E1;">${escapeHtml(mun)}${uf ? `/${escapeHtml(uf)}` : ""}</strong></div>`
+                            : ""
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Detalhes do Lote e Aplicador -->
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 0.75rem;">
+                    <div>
+                      <span style="color: var(--color-text-dim);">Lote da Vacina:</span>
+                      <div style="font-family: var(--font-mono); font-weight: 700; color: #C4B5FD;">${escapeHtml(lote)}</div>
+                    </div>
+                    ${
+                      aplicador
+                        ? `
+                      <div>
+                        <span style="color: var(--color-text-dim);">Profissional / Aplicador:</span>
+                        <div style="color: var(--color-text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(aplicador)}">
+                          ${escapeHtml(aplicador)}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                  </div>
+
+                  ${
+                    grupo
+                      ? `
+                    <div style="margin-top: 8px; font-size: 0.72rem; color: var(--color-text-muted);">
+                      Grupo de Atendimento: <span style="color: var(--color-text);">${escapeHtml(grupo)}</span>
+                    </div>
+                  `
+                      : ""
+                  }
+                </div>
+              `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
 
       <!-- ============================================================== -->
       <!-- 4. ENDEREÇOS & LOGRADOUROS (COM DELIVERY / E-COMMERCE)           -->
       <!-- ============================================================== -->
+      ${
+        allAddresses.length > 0
+          ? `
       <div class="card" style="margin-bottom: var(--space-4);">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
@@ -508,10 +727,7 @@ export const CpfDossierInterpreter = {
           <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">Residencial & E-Commerce</span>
         </div>
 
-        ${
-          allAddresses.length > 0
-            ? `
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 12px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 12px;">
             ${allAddresses
               .map((addr, idx) => {
                 const tipo = addr.type || addr.tipo || "";
@@ -540,84 +756,249 @@ export const CpfDossierInterpreter = {
               `;
               })
               .join("")}
-          </div>
-        `
-            : `
-          <p style="color: var(--color-text-muted); font-size: 0.85rem; padding: var(--space-2) 0;">
-            Nenhum endereço localizado na base.
-          </p>
-        `
-        }
-      </div>
-
-      <!-- ============================================================== -->
-      <!-- 5. TELEFONES & LINHAS DE CONTATO                                -->
-      <!-- ============================================================== -->
-      <div class="card" style="margin-bottom: var(--space-4);">
-        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-            <i data-lucide="phone" style="color: #F59E0B; width: 18px; height: 18px;"></i>
-            <span>Telefones & Linhas Telefônicas (${phones.length + vivoLines.length})</span>
-          </h3>
-          <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B;">Operadoras & Histórico</span>
         </div>
+      </div>
+      `
+          : ""
+      }
 
-        ${
-          phones.length > 0 || vivoLines.length > 0
-            ? `
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px;">
-            ${phones
-              .map((p) => {
-                const phoneStr = typeof p === "object" ? p.number || p.telefone || p.numero : String(p);
-                const cleanPhone = String(phoneStr).replace(/\D/g, "");
-                const formattedPhone = Formatters.phone(p.ddd, phoneStr);
-                const tipo = p.tipo || p.type || "Móvel";
-                const operadora = carriersMap[cleanPhone] || p.operadora || null;
+      <!-- ============================================================== -->
+      <!-- 5. TELEFONES & LINHAS DE CONTATO (SEPARADOS POR OPERADORA)     -->
+      <!-- ============================================================== -->
+      ${
+        phones.length > 0 || vivoLines.length > 0
+          ? (() => {
+              const grupos = {
+                VIVO: [],
+                CLARO: [],
+                TIM: [],
+                OI: [],
+                OUTROS: [],
+              };
+
+              phones.forEach((t) => {
+                const phoneStr = typeof t === "object" ? t.numero || t.telefone || t.number : String(t);
+                const clean = String(t.numeroLimpo || phoneStr || "").replace(/\D/g, "");
+                const op = String(t.operadora || carriersMap[clean] || "").toUpperCase();
+                if (op.includes("VIVO")) grupos.VIVO.push(t);
+                else if (op.includes("CLARO")) grupos.CLARO.push(t);
+                else if (op.includes("TIM")) grupos.TIM.push(t);
+                else if (op.includes("OI")) grupos.OI.push(t);
+                else grupos.OUTROS.push(t);
+              });
+
+              // Also integrate vivoLines if any are not already in VIVO
+              vivoLines.forEach((vl) => {
+                const clean = String(vl.numero || vl).replace(/\D/g, "");
+                const exists = grupos.VIVO.some((x) => String(x.numero || x.telefone || x).replace(/\D/g, "") === clean);
+                if (!exists) {
+                  grupos.VIVO.push({
+                    numero: clean,
+                    operadora: "VIVO",
+                    tipo: "Linha Ativa Vivo",
+                  });
+                }
+              });
+
+              const totalCount = phones.length + vivoLines.length;
+              const totalOpCount =
+                (grupos.VIVO.length > 0 ? 1 : 0) +
+                (grupos.CLARO.length > 0 ? 1 : 0) +
+                (grupos.TIM.length > 0 ? 1 : 0) +
+                (grupos.OI.length > 0 ? 1 : 0);
+
+              const renderTelCard = (t) => {
+                const phoneStr = typeof t === "object" ? t.numero || t.telefone || t.number : String(t);
+                const cleanNum = String(t.numeroLimpo || phoneStr || "").replace(/\D/g, "");
+                const fmtNum = Formatters.phone(t.ddd, phoneStr);
+                const isMobile = cleanNum.length === 11 || (cleanNum.length === 9 && cleanNum.startsWith("9"));
+                const op = String(t.operadora || carriersMap[cleanNum] || (isMobile ? "Móvel" : "Fixo")).toUpperCase();
+                const dataInst = t.dataInstalacao || t.data || null;
+                const endLinha = t.enderecoLinha || t.ENDERECO || null;
+
+                let opBg = "rgba(59, 130, 246, 0.15)";
+                let opColor = "#60A5FA";
+                let opBorder = "rgba(59, 130, 246, 0.3)";
+                if (op.includes("VIVO")) {
+                  opBg = "rgba(139, 92, 246, 0.18)";
+                  opColor = "#A78BFA";
+                  opBorder = "rgba(139, 92, 246, 0.4)";
+                } else if (op.includes("CLARO")) {
+                  opBg = "rgba(239, 68, 68, 0.18)";
+                  opColor = "#F87171";
+                  opBorder = "rgba(239, 68, 68, 0.4)";
+                } else if (op.includes("TIM")) {
+                  opBg = "rgba(37, 99, 235, 0.2)";
+                  opColor = "#60A5FA";
+                  opBorder = "rgba(37, 99, 235, 0.4)";
+                } else if (op.includes("OI")) {
+                  opBg = "rgba(245, 158, 11, 0.18)";
+                  opColor = "#FBBF24";
+                  opBorder = "rgba(245, 158, 11, 0.4)";
+                }
 
                 return `
-                <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
-                  <div>
-                    <span style="font-family: var(--font-mono); font-weight: 700; color: #6EE7B7; font-size: 0.95rem;">${formattedPhone}</span>
-                    <div style="font-size: 0.72rem; color: var(--color-text-muted); margin-top: 2px;">
-                      <span>${escapeHtml(tipo)}</span>
-                      ${operadora ? ` • <strong style="color: #60A5FA;">${escapeHtml(operadora)}</strong>` : ""}
+                <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 8px; flex: 1 1 280px; max-width: 100%;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span style="font-family: var(--font-mono); font-weight: 800; font-size: 1.05rem; color: #FFFFFF;">${fmtNum}</span>
+                      <span class="badge" style="background: ${opBg}; color: ${opColor}; border: 1px solid ${opBorder}; font-size: 0.68rem; font-weight: 700; padding: 2px 7px;">
+                        ${op}
+                      </span>
+                      ${t.tipo && t.tipo !== op ? `<span style="font-size: 0.7rem; color: var(--color-text-dim);">(${escapeHtml(t.tipo)})</span>` : ""}
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${cleanNum}" title="Copiar Telefone">
+                        <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+                      </button>
+                      <button type="button" class="btn btn-ghost btn-sm btn-puxar-operadora" data-tel="${cleanNum}" data-telefone="${cleanNum}" title="Checar Portabilidade &amp; Operadora Atual">
+                        <i data-lucide="radio" style="width: 13px; height: 13px; color: #F59E0B;"></i>
+                      </button>
+                      ${
+                        isMobile
+                          ? `
+                        <a href="https://wa.me/55${cleanNum}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" title="Abrir no WhatsApp Web" style="color: #10B981;">
+                          <i data-lucide="message-circle" style="width: 14px; height: 14px;"></i>
+                        </a>
+                      `
+                          : ""
+                      }
+                      <a href="tel:${cleanNum}" class="btn btn-ghost btn-sm" title="Ligar para o número" style="color: #38BDF8;">
+                        <i data-lucide="phone-call" style="width: 13px; height: 13px;"></i>
+                      </a>
                     </div>
                   </div>
-                  <button type="button" class="btn btn-ghost btn-sm btn-puxar-operadora" data-telefone="${cleanPhone}" title="Identificar Operadora">
-                    <i data-lucide="radio" style="width: 14px; height: 14px; color: #60A5FA;"></i>
-                  </button>
-                </div>
-              `;
-              })
-              .join("")}
 
-            ${vivoLines
-              .map((vl) => {
-                const clean = String(vl.numero || vl).replace(/\D/g, "");
-                return `
-                <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid rgba(139, 92, 246, 0.3); display: flex; justify-content: space-between; align-items: center;">
-                  <div>
-                    <span style="font-family: var(--font-mono); font-weight: 700; color: #C4B5FD; font-size: 0.95rem;">${Formatters.phone("", clean)}</span>
-                    <div style="font-size: 0.72rem; color: #A78BFA; margin-top: 2px;">Linha Ativa Vivo</div>
-                  </div>
-                  <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #C4B5FD; font-size: 0.65rem;">VIVO</span>
+                  ${
+                    dataInst || endLinha
+                      ? `
+                    <div style="font-size: 0.75rem; color: var(--color-text-muted); background: var(--color-surface); padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(255, 255, 255, 0.03);">
+                      ${dataInst ? `<div>📅 <strong style="color: var(--color-text);">Instalação:</strong> ${escapeHtml(dataInst)}</div>` : ""}
+                      ${endLinha ? `<div style="margin-top: 2px;">📍 <strong style="color: var(--color-text);">Endereço da Linha:</strong> ${escapeHtml(endLinha)}</div>` : ""}
+                    </div>
+                  `
+                      : ""
+                  }
                 </div>
               `;
-              })
-              .join("")}
-          </div>
-        `
-            : `
-          <p style="color: var(--color-text-muted); font-size: 0.85rem; padding: var(--space-2) 0;">
-            Nenhum telefone localizado na base de telecomunicações.
-          </p>
-        `
-        }
-      </div>
+              };
+
+              return `
+              <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #60A5FA;">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <h3 class="card-title" style="color: #60A5FA; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="phone" style="width: 18px; height: 18px;"></i>
+                    <span>Telefones &amp; Linhas Telefônicas (${totalCount})</span>
+                  </h3>
+                  <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    ${grupos.VIVO.length > 0 ? `<span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #C4B5FD; font-size: 0.7rem;">${grupos.VIVO.length} Vivo</span>` : ""}
+                    ${grupos.CLARO.length > 0 ? `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #FCA5A5; font-size: 0.7rem;">${grupos.CLARO.length} Claro</span>` : ""}
+                    ${grupos.TIM.length > 0 ? `<span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93C5FD; font-size: 0.7rem;">${grupos.TIM.length} TIM</span>` : ""}
+                    ${grupos.OI.length > 0 ? `<span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #FDE68A; font-size: 0.7rem;">${grupos.OI.length} Oi</span>` : ""}
+                    ${grupos.OUTROS.length > 0 ? `<span class="badge badge-dark" style="font-size: 0.7rem;">${grupos.OUTROS.length} Outros</span>` : ""}
+                  </div>
+                </div>
+
+                ${
+                  totalOpCount > 1
+                    ? `
+                  <div style="display: flex; flex-direction: column; gap: 14px; padding-top: 10px;">
+                    ${
+                      grupos.VIVO.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #A78BFA; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #8B5CF6;"></span>
+                          Linhas Telefônicas VIVO (${grupos.VIVO.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.VIVO.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      grupos.CLARO.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #F87171; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #EF4444;"></span>
+                          Linhas Telefônicas CLARO (${grupos.CLARO.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.CLARO.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      grupos.TIM.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #60A5FA; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #3B82F6;"></span>
+                          Linhas Telefônicas TIM (${grupos.TIM.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.TIM.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      grupos.OI.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #FBBF24; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #F59E0B;"></span>
+                          Linhas Telefônicas OI (${grupos.OI.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.OI.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                    ${
+                      grupos.OUTROS.length > 0
+                        ? `
+                      <div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                          <span style="width: 8px; height: 8px; border-radius: 50%; background: #64748B;"></span>
+                          Histórico Geral de Telefones (${grupos.OUTROS.length})
+                        </div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                          ${grupos.OUTROS.map(renderTelCard).join("")}
+                        </div>
+                      </div>
+                    `
+                        : ""
+                    }
+                  </div>
+                `
+                    : `
+                  <div style="display: flex; flex-wrap: wrap; gap: 10px; padding-top: 10px;">
+                    ${phones.map(renderTelCard).join("")}
+                  </div>
+                `
+                }
+              </div>
+            `;
+            })()
+          : ""
+      }
 
       <!-- ============================================================== -->
       <!-- 6. E-MAILS & IDENTIDADE DIGITAL                                -->
       <!-- ============================================================== -->
+      ${
+        allEmails.length > 0
+          ? `
       <div class="card" style="margin-bottom: var(--space-4);">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
@@ -627,35 +1008,31 @@ export const CpfDossierInterpreter = {
           <span class="badge" style="background: rgba(236, 72, 153, 0.15); color: #F472B6;">Identidade Digital</span>
         </div>
 
-        ${
-          allEmails.length > 0
-            ? `
-          <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-            ${allEmails
-              .map((email) => {
-                return `
-                <div style="background: var(--color-surface-2); padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 8px;">
-                  <span style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-text);">${escapeHtml(email)}</span>
-                  <button type="button" class="btn btn-ghost btn-sm btn-copiar-generico" data-copy="${escapeHtml(email)}" title="Copiar E-mail">
-                    <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
-                  </button>
-                </div>
-              `;
-              })
-              .join("")}
-          </div>
-        `
-            : `
-          <p style="color: var(--color-text-muted); font-size: 0.85rem; padding: var(--space-2) 0;">
-            Nenhum e-mail registrado.
-          </p>
-        `
-        }
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+          ${allEmails
+            .map((email) => {
+              return `
+              <div style="background: var(--color-surface-2); padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 8px;">
+                <span style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--color-text);">${escapeHtml(email)}</span>
+                <button type="button" class="btn btn-ghost btn-sm btn-copiar-generico" data-copy="${escapeHtml(email)}" title="Copiar E-mail">
+                  <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                </button>
+              </div>
+            `;
+            })
+            .join("")}
+        </div>
       </div>
+      `
+          : ""
+      }
 
       <!-- ============================================================== -->
       <!-- 7. PARENTES & VÍNCULOS FAMILIARES                              -->
       <!-- ============================================================== -->
+      ${
+        relatives.length > 0
+          ? `
       <div class="card" style="margin-bottom: var(--space-4);">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
@@ -665,49 +1042,45 @@ export const CpfDossierInterpreter = {
           <span class="badge" style="background: rgba(99, 102, 241, 0.15); color: #818CF8;">Grau de Parentesco</span>
         </div>
 
-        ${
-          relatives.length > 0
-            ? `
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;">
-            ${relatives
-              .map((par) => {
-                const pNome = par.nome || par.name || "Parente";
-                const pVinculo = par.vinculo || par.grau || par.relacao || "Familiar";
-                const pCpf = par.cpf ? Formatters.cpf(par.cpf) : null;
-                const rawParCpf = String(par.cpf || "").replace(/\D/g, "");
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;">
+          ${relatives
+            .map((par) => {
+              const pNome = par.nome || par.name || "Parente";
+              const pVinculo = par.vinculo || par.grau || par.relacao || "Familiar";
+              const pCpf = par.cpf ? Formatters.cpf(par.cpf) : null;
+              const rawParCpf = String(par.cpf || "").replace(/\D/g, "");
 
-                return `
-                <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
-                  <div>
-                    <strong style="color: var(--color-text); font-size: 0.875rem; display: block;">${escapeHtml(pNome)}</strong>
-                    <div style="font-size: 0.75rem; color: #818CF8; margin-top: 2px;">
-                      ${escapeHtml(pVinculo)} ${pCpf ? `• <span style="font-family: var(--font-mono);">${pCpf}</span>` : ""}
-                    </div>
+              return `
+              <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <strong style="color: var(--color-text); font-size: 0.875rem; display: block;">${escapeHtml(pNome)}</strong>
+                  <div style="font-size: 0.75rem; color: #818CF8; margin-top: 2px;">
+                    ${escapeHtml(pVinculo)} ${pCpf ? `• <span style="font-family: var(--font-mono);">${pCpf}</span>` : ""}
                   </div>
-                  ${
-                    rawParCpf
-                      ? `<button type="button" class="btn btn-outline btn-sm btn-puxar-cpf-item" data-cpf="${rawParCpf}" title="Investigar Parente">
-                           <i data-lucide="search" style="width: 12px; height: 12px;"></i>
-                         </button>`
-                      : ""
-                  }
                 </div>
-              `;
-              })
-              .join("")}
-          </div>
-        `
-            : `
-          <p style="color: var(--color-text-muted); font-size: 0.85rem; padding: var(--space-2) 0;">
-            Nenhum vínculo de parentesco indexado na base.
-          </p>
-        `
-        }
+                ${
+                  rawParCpf
+                    ? `<button type="button" class="btn btn-outline btn-sm btn-puxar-cpf-item" data-cpf="${rawParCpf}" title="Investigar Parente">
+                         <i data-lucide="search" style="width: 12px; height: 12px;"></i>
+                       </button>`
+                    : ""
+                }
+              </div>
+            `;
+            })
+            .join("")}
+        </div>
       </div>
+      `
+          : ""
+      }
 
       <!-- ============================================================== -->
       <!-- 8. EMPRESAS & PARTICIPAÇÕES SOCIETÁRIAS (QSA)                  -->
       <!-- ============================================================== -->
+      ${
+        companies.length > 0
+          ? `
       <div class="card" style="margin-bottom: var(--space-4);">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
@@ -717,52 +1090,185 @@ export const CpfDossierInterpreter = {
           <span class="badge" style="background: rgba(20, 184, 166, 0.15); color: #2DD4BF;">Receita Federal (QSA)</span>
         </div>
 
-        ${
-          companies.length > 0
-            ? `
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
-            ${companies
-              .map((emp) => {
-                const cnpj = Formatters.cnpj(emp.cnpj);
-                const razao = emp.razao_social || emp.nome || "Empresa";
-                const cargo = emp.qualificacao || emp.cargo || "Sócio / Administrador";
-                const participacao = emp.participacao ? `${emp.participacao}%` : null;
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+          ${companies
+            .map((emp) => {
+              const cnpj = Formatters.cnpj(emp.cnpj);
+              const razao = emp.razao_social || emp.nome || "Empresa";
+              const cargo = emp.qualificacao || emp.cargo || "Sócio / Administrador";
+              const participacao = emp.participacao ? `${emp.participacao}%` : null;
 
+              return `
+              <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+                <span style="font-family: var(--font-mono); font-size: 0.75rem; color: #2DD4BF; font-weight: 700;">${cnpj}</span>
+                <strong style="color: var(--color-text); font-size: 0.9rem; display: block; margin-top: 2px;">${escapeHtml(razao)}</strong>
+                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px;">
+                  Cargo: <strong>${escapeHtml(cargo)}</strong>
+                  ${participacao ? ` • Cota: <strong>${participacao}</strong>` : ""}
+                </div>
+              </div>
+            `;
+            })
+            .join("")}
+        </div>
+      </div>
+      `
+          : ""
+      }
+
+      <!-- ============================================================== -->
+      <!-- 8.1 DADOS BANCÁRIOS & CONTAS CADASTRADAS                       -->
+      <!-- ============================================================== -->
+      ${
+        dadosBancarios.length > 0
+          ? `
+        <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #3B82F6;">
+          <div class="card-header">
+            <h3 class="card-title" style="color: #60A5FA; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="landmark" style="width: 18px; height: 18px;"></i>
+              <span>Vínculos Bancários &amp; Contas Cadastradas (${dadosBancarios.length})</span>
+            </h3>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; padding-top: 8px;">
+            ${dadosBancarios
+              .map((b) => {
+                const bNome = b.banco || b.INSTITUICAO || b.BANCO || "Instituição Financeira";
+                const bAg = b.agencia || b.AGENCIA || "Não informada";
+                const bNum = b.numero || b.NUMERO || null;
                 return `
                 <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-                  <span style="font-family: var(--font-mono); font-size: 0.75rem; color: #2DD4BF; font-weight: 700;">${cnpj}</span>
-                  <strong style="color: var(--color-text); font-size: 0.9rem; display: block; margin-top: 2px;">${escapeHtml(razao)}</strong>
-                  <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px;">
-                    Cargo: <strong>${escapeHtml(cargo)}</strong>
-                    ${participacao ? ` • Cota: <strong>${participacao}</strong>` : ""}
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                    <i data-lucide="building" style="width: 16px; height: 16px; color: #60A5FA;"></i>
+                    <strong style="color: var(--color-text); font-size: 0.875rem;">${escapeHtml(bNome)}</strong>
+                  </div>
+                  <div style="font-size: 0.8rem; color: var(--color-text-muted);">
+                    Agência: <span style="font-family: var(--font-mono); color: #6EE7B7; font-weight: 700;">${escapeHtml(bAg)}</span>
+                    ${bNum ? ` &bull; Conta: <span style="font-family: var(--font-mono); color: var(--color-text); font-weight: 600;">${escapeHtml(bNum)}</span>` : ""}
                   </div>
                 </div>
               `;
               })
               .join("")}
           </div>
-        `
-            : `
-          <p style="color: var(--color-text-muted); font-size: 0.85rem; padding: var(--space-2) 0;">
-            O titular não possui participações societárias ativas registradas na Receita Federal.
-          </p>
-        `
-        }
-      </div>
+        </div>
+      `
+          : ""
+      }
 
       <!-- ============================================================== -->
-      <!-- 9. VAZAMENTOS DE CREDENCIAIS & SENHAS                           -->
+      <!-- 8.2 HISTÓRICO TRABALHISTA & VÍNCULOS FUNCIONAIS (RAIS / INSS) -->
       <!-- ============================================================== -->
-      <div class="card" style="margin-bottom: var(--space-4);">
+      ${
+        vinculosRais.length > 0 || beneficiosInss.length > 0 || pisNumero
+          ? `
+        <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #F59E0B;">
+          <div class="card-header">
+            <h3 class="card-title" style="color: #F59E0B; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="briefcase" style="width: 18px; height: 18px;"></i>
+              <span>Vínculos Empregatícios &amp; Histórico Funcional (RAIS / INSS)</span>
+            </h3>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 8px;">
+            ${
+              pisNumero
+                ? `
+              <div style="background: var(--color-surface-2); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 10px;">
+                <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #F59E0B; font-weight: 700;">PIS / PASEP</span>
+                <span style="font-family: var(--font-mono); font-weight: 700; color: var(--color-text);">${escapeHtml(pisNumero)}</span>
+              </div>
+            `
+                : ""
+            }
+            ${vinculosRais
+              .map((r) => {
+                const rNome = r.razaoSocial || r.RAZAO_SOCIAL || "Órgão / Empregador";
+                const rCnpj = r.cnpj || r.CNPJ || "";
+                const rSit = r.situacao || r.SITUACAO || "ENTREGUE";
+                return `
+                <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                  <div>
+                    <strong style="color: var(--color-text); font-size: 0.9rem;">${escapeHtml(rNome)}</strong>
+                    <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">
+                      ${rCnpj ? `CNPJ: <span style="font-family: var(--font-mono); color: #60A5FA;">${Formatters.cnpj(rCnpj)}</span> &bull; ` : ""}
+                      Situação RAIS: <span style="color: #10B981; font-weight: 600;">${escapeHtml(rSit)}</span>
+                    </div>
+                  </div>
+                  <span class="badge badge-dark" style="font-size: 0.7rem;">RAIS Oficial</span>
+                </div>
+              `;
+              })
+              .join("")}
+            ${beneficiosInss
+              .map((i) => {
+                const nb = i.nb || i.NB || "N/I";
+                const ent = i.entidade || i.ENTIDADE || "SIAPE / INSS";
+                return `
+                <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                  <div>
+                    <span style="font-size: 0.72rem; color: var(--color-text-muted); text-transform: uppercase;">Benefício Previdenciário / Vínculo Público:</span>
+                    <div style="font-weight: 700; color: #A78BFA; font-size: 0.85rem; margin-top: 2px;">${escapeHtml(ent)}</div>
+                  </div>
+                  <div style="text-align: right;">
+                    <span style="font-size: 0.7rem; color: var(--color-text-dim);">Nº do Benefício:</span>
+                    <div style="font-family: var(--font-mono); font-weight: 700; color: #6EE7B7;">${escapeHtml(nb)}</div>
+                  </div>
+                </div>
+              `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- ============================================================== -->
+      <!-- 9. VAZAMENTOS DE CREDENCIAIS & SENHAS COMPROMETIDAS             -->
+      <!-- ============================================================== -->
+      ${
+        senhasVazadas.length > 0 || leaks.length > 0
+          ? `
+      <div class="card" style="margin-bottom: var(--space-4); border-left: 4px solid #EF4444;">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
             <i data-lucide="shield-alert" style="color: #EF4444; width: 18px; height: 18px;"></i>
-            <span>Vazamentos de Credenciais & Senhas (${leaks.length})</span>
+            <span>Vazamentos de Credenciais &amp; Senhas (${senhasVazadas.length + leaks.length})</span>
           </h3>
-          <span class="badge" style="background: ${leaks.length === 0 ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)"}; color: ${leaks.length === 0 ? "#10B981" : "#EF4444"};">
-            ${leaks.length === 0 ? "Nenhum Vazamento Crítico" : "Comprometido"}
+          <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #EF4444; font-weight: 700;">
+            Comprometido
           </span>
         </div>
+
+        ${
+          senhasVazadas.length > 0
+            ? `
+          <div style="margin-bottom: 14px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: #F87171; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #EF4444;"></span>
+              Senhas Comprometidas Indexadas (${senhasVazadas.length})
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              ${senhasVazadas
+                .map((s) => {
+                  const pass = s.senha || s.SENHA || "";
+                  return `
+                  <div style="background: var(--color-surface-2); padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(239, 68, 68, 0.3); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      <span class="badge badge-red" style="font-size: 0.65rem;">SENHA EXPOSTA</span>
+                      <span style="font-family: var(--font-mono); font-weight: 800; color: #FCA5A5; font-size: 0.95rem;">${escapeHtml(pass)}</span>
+                    </div>
+                    <button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${escapeHtml(pass)}" title="Copiar Senha">
+                      <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                    </button>
+                  </div>
+                `;
+                })
+                .join("")}
+            </div>
+          </div>
+        `
+            : ""
+        }
 
         ${
           leaks.length > 0
@@ -787,13 +1293,12 @@ export const CpfDossierInterpreter = {
               .join("")}
           </div>
         `
-            : `
-          <p style="color: #10B981; font-size: 0.85rem; padding: var(--space-2) 0;">
-            ✓ Nenhum registro de senha ou credencial vazada localizada nas bases de Dark Web monitoradas.
-          </p>
-        `
+            : ""
         }
       </div>
+      `
+          : ""
+      }
 
       <!-- ============================================================== -->
       <!-- 10. VIZINHOS GEOGRÁFICOS NO LOGRADOURO                          -->

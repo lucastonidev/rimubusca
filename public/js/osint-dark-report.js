@@ -2641,13 +2641,14 @@
 
   function downloadHtml({ innerHtml, titlePrefix = "dossie-osint", termo = "" }) {
     if (!innerHtml) return false;
-    const safeTerm = String(termo || "consulta").replace(/[^a-zA-Z0-9_-]/g, "_");
-    const fullDoc = buildStandaloneHtmlDocument(innerHtml, `${titlePrefix} — ${termo}`);
+    const cleanTerm = String(termo || "").replace(/\D/g, "") || String(termo || "alvo").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const docTitle = `${cleanTerm}_relatorio_rimubuscas`;
+    const fullDoc = buildStandaloneHtmlDocument(innerHtml, docTitle);
     const blob = new Blob([fullDoc], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${titlePrefix}_${safeTerm}_${Date.now()}.html`;
+    a.download = `${docTitle}.html`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -2655,8 +2656,13 @@
     return true;
   }
 
-  function exportPdf({ innerHtml, titleText = "Dossiê OSINT" }) {
+  function exportPdf({ innerHtml, titleText = "Dossiê OSINT", termo = "" }) {
     if (!innerHtml) return false;
+    let finalTitle = titleText;
+    if (termo) {
+      const cleanTerm = String(termo).replace(/\D/g, "") || String(termo).replace(/[^a-zA-Z0-9_-]/g, "_");
+      finalTitle = `${cleanTerm}_relatorio_rimubuscas`;
+    }
     const printFrame = document.createElement("iframe");
     printFrame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;";
     document.body.appendChild(printFrame);
@@ -2668,7 +2674,7 @@
     }
 
     frameDoc.open();
-    frameDoc.write(buildStandaloneHtmlDocument(innerHtml, titleText));
+    frameDoc.write(buildStandaloneHtmlDocument(innerHtml, finalTitle));
     frameDoc.close();
 
     setTimeout(() => {

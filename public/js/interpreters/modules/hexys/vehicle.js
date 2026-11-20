@@ -54,7 +54,7 @@ export const VehicleInterpreter = {
     const fuel = data.fuel || data.combustivel || "N/A";
     const chassis = data.chassis || data.chassi || "N/A";
     const renavam = data.renavam || "N/A";
-    const engine = data.engine || data.motor || "N/A";
+    const engine = data.engine || data.motor || data.numeroMotor || data.num_motor || "N/A";
     const gearboxNumber = data.gearboxNumber || data.caixa_cambio || "N/A";
     const transmission = data.transmission || data.cambio || "N/A";
     const traction = data.traction || data.tracao || "N/A";
@@ -148,15 +148,19 @@ export const VehicleInterpreter = {
     const owner = data.owner || data.proprietario || null;
     const ownerDetails = data.proprietario_detalhes || {};
     const ownerName =
+      owner?.nome ||
       owner?.name ||
       ownerDetails.nome ||
       data.owner_name ||
-      data.owner ||
+      (typeof data.owner === "string" ? data.owner : null) ||
       data.nome_proprietario ||
       null;
 
     const ownerDocRaw =
+      owner?.documento ||
       owner?.document ||
+      owner?.cpf ||
+      owner?.cnpj ||
       ownerDetails.cpf ||
       ownerDetails.cpf_cnpj ||
       data.cpf ||
@@ -172,6 +176,7 @@ export const VehicleInterpreter = {
           : ownerDocRaw);
 
     const ownerIncome =
+      owner?.renda ||
       owner?.incomeFormatted ||
       (ownerDetails.renda_presumida
         ? Number(ownerDetails.renda_presumida).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
@@ -182,23 +187,44 @@ export const VehicleInterpreter = {
       owner?.scoreCsbaRange || ownerDetails.score_faixa || ownerDetails.faixa_risco || null;
     const ownerCnh =
       owner?.cnh?.numero ||
+      owner?.cnh?.NUMERO_CNH ||
       ownerDetails.cnh?.numero_cnh ||
       ownerDetails.cnh?.numero ||
-      null;
+      (typeof owner?.cnh === "string" ? owner.cnh : null);
     const ownerMother =
-      owner?.motherName || ownerDetails.mae || ownerDetails.nome_mae || data.owner_mother_name || null;
+      owner?.nomeMae || owner?.motherName || owner?.mae || ownerDetails.mae || ownerDetails.nome_mae || data.owner_mother_name || null;
     const ownerBirthDate =
-      owner?.birthDate || ownerDetails.nascimento || ownerDetails.data_nascimento || data.owner_birth_date || null;
+      owner?.nascimento || owner?.birthDate || ownerDetails.nascimento || ownerDetails.data_nascimento || data.owner_birth_date || null;
     const ownerOccupation =
-      owner?.occupation || ownerDetails.profissao || ownerDetails.ocupacao || null;
+      owner?.profissao || owner?.occupation || owner?.cbo || ownerDetails.profissao || ownerDetails.ocupacao || null;
     const ownerPhones =
-      owner?.phones || ownerDetails.telefones || data.owner_phones || [];
+      owner?.telefones || owner?.phones || ownerDetails.telefones || data.owner_phones || [];
     const ownerEmails =
       owner?.emails || ownerDetails.emails || (data.owner_email ? [data.owner_email] : []);
     const otherVehicles =
       owner?.otherVehicles || ownerDetails.outros_veiculos || data.owner_vehicles || [];
     const ownerAddress =
-      owner?.address || ownerDetails.endereco_principal || ownerDetails.endereco || data.address || null;
+      owner?.enderecos || owner?.addresses || owner?.endereco || owner?.address || ownerDetails.endereco_principal || ownerDetails.endereco || data.address || null;
+    const ownerAddresses = Array.isArray(ownerAddress)
+      ? ownerAddress
+      : (Array.isArray(owner?.enderecos)
+        ? owner.enderecos
+        : (Array.isArray(owner?.addresses)
+          ? owner.addresses
+          : (ownerAddress && typeof ownerAddress === "object" ? [ownerAddress] : [])));
+
+    const hasFipe = Boolean(
+      (fipeValue && fipeValue !== "N/A") ||
+      (venalValue && venalValue !== "N/A") ||
+      (ipvaEstimated && ipvaEstimated !== "N/A") ||
+      (ipvaStates && ipvaStates.length > 0)
+    );
+    const hasSpecs = Boolean(
+      technicalBlocks.length > 0 ||
+      [power, torque, acceleration, topSpeed, urbanConsumption, highwayConsumption, trunk, tank, weight, tires, engineCode, displacement, warranty].some(
+        (v) => v && v !== "N/A" && v !== "Não informado"
+      )
+    );
 
     return `
       <div class="vehicle-dossier-wrapper" style="margin-bottom: var(--space-5);">
@@ -572,11 +598,13 @@ export const VehicleInterpreter = {
               ownerPhones && ownerPhones.length > 0
                 ? `
               <div style="margin-top: 14px; background: #080B11; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid #1E2538;">
-                <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; display: block; margin-bottom: 8px;">Telefones Vinculados ao Titular</span>
+                <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; display: block; margin-bottom: 8px;">Telefones Vinculados ao Titular (${ownerPhones.length})</span>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                   ${ownerPhones
                     .map((phone) => {
-                      const cleanPhone = String(phone).replace(/\D/g, "");
+                      const rawPhone = typeof phone === "object" ? (phone.numero || phone.telefone || phone.number || "") : String(phone);
+                      const cleanPhone = String(rawPhone).replace(/\D/g, "");
+                      if (!cleanPhone) return "";
                       const formattedPhone = Formatters.phone(cleanPhone);
                       return `
                       <div style="display: flex; align-items: center; gap: 4px; background: #131A29; border: 1px solid #23304A; padding: 4px 10px; border-radius: 6px;">
@@ -599,7 +627,7 @@ export const VehicleInterpreter = {
               ownerEmails && ownerEmails.length > 0
                 ? `
               <div style="margin-top: 10px; background: #080B11; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid #1E2538;">
-                <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; display: block; margin-bottom: 8px;">E-mails Cadastrais</span>
+                <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; display: block; margin-bottom: 8px;">E-mails Cadastrais (${ownerEmails.length})</span>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                   ${ownerEmails
                     .map((email) => `
@@ -616,17 +644,35 @@ export const VehicleInterpreter = {
                 : ""
             }
 
-            <!-- Endereço do Proprietário -->
+            <!-- Endereços do Proprietário -->
             ${
-              ownerAddress
+              ownerAddresses && ownerAddresses.length > 0
                 ? `
-              <div style="margin-top: 10px; background: #080B11; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid #1E2538; display: flex; align-items: center; gap: 10px;">
-                <i data-lucide="home" style="width: 18px; height: 18px; color: #A78BFA; flex-shrink: 0;"></i>
-                <div style="font-size: 0.85rem; color: #E2E8F0;">
-                  <strong style="color: #FFFFFF;">${escapeHtml([ownerAddress.logradouro || ownerAddress.street, ownerAddress.numero || ownerAddress.number].filter(Boolean).join(", "))}</strong>
-                  ${ownerAddress.bairro || ownerAddress.neighborhood ? `&bull; ${escapeHtml(ownerAddress.bairro || ownerAddress.neighborhood)}` : ""}
-                  ${ownerAddress.cidade || ownerAddress.city ? `&bull; ${escapeHtml(ownerAddress.cidade || ownerAddress.city)}/${escapeHtml(ownerAddress.uf || ownerAddress.state)}` : ""}
-                  ${ownerAddress.cep || ownerAddress.zip_code ? `&bull; CEP: <span style="font-family: var(--font-mono); color: #6EE7B7;">${Formatters.cep(ownerAddress.cep || ownerAddress.zip_code)}</span>` : ""}
+              <div style="margin-top: 10px; background: #080B11; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid #1E2538;">
+                <span style="font-size: 0.72rem; color: #94A3B8; text-transform: uppercase; display: block; margin-bottom: 8px;">Endereços Vinculados ao Proprietário (${ownerAddresses.length})</span>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  ${ownerAddresses
+                    .map((addr) => {
+                      const logr = addr.logradouro || addr.street || addr.logr_nome || "";
+                      const num = addr.numero || addr.number || addr.logr_numero || "S/N";
+                      const compl = addr.complemento || addr.complement ? ` (${addr.complemento || addr.complement})` : "";
+                      const bairro = addr.bairro || addr.neighborhood || "";
+                      const cid = addr.cidade || addr.city || "";
+                      const uf = addr.uf || addr.state || "";
+                      const cep = addr.cep || addr.zip_code || "";
+                      return `
+                      <div style="display: flex; align-items: center; gap: 10px; background: #131A29; border: 1px solid #23304A; padding: 8px 12px; border-radius: 6px;">
+                        <i data-lucide="map-pin" style="width: 16px; height: 16px; color: #A78BFA; flex-shrink: 0;"></i>
+                        <div style="font-size: 0.85rem; color: #E2E8F0;">
+                          <strong style="color: #FFFFFF;">${escapeHtml([logr, num].filter(Boolean).join(", "))}</strong>${escapeHtml(compl)}
+                          ${bairro ? ` &bull; ${escapeHtml(bairro)}` : ""}
+                          ${cid ? ` &bull; ${escapeHtml(cid)}${uf ? `/${escapeHtml(uf)}` : ""}` : ""}
+                          ${cep ? ` &bull; CEP: <span style="font-family: var(--font-mono); color: #6EE7B7;">${Formatters.cep(cep)}</span>` : ""}
+                        </div>
+                      </div>
+                    `;
+                    })
+                    .join("")}
                 </div>
               </div>
             `
@@ -685,6 +731,9 @@ export const VehicleInterpreter = {
         <!-- ============================================================== -->
         <!-- 5. AVALIAÇÃO DE MERCADO (FIPE) & IPVA NACIONAL (27 ESTADOS)    -->
         <!-- ============================================================== -->
+        ${
+          hasFipe
+            ? `
         <div class="card" style="margin-bottom: var(--space-4);">
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
             <h3 style="font-size: 0.95rem; font-weight: 800; color: #10B981; margin: 0; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -807,10 +856,16 @@ export const VehicleInterpreter = {
           }
 
         </div>
+        `
+            : ""
+        }
 
         <!-- ============================================================== -->
         <!-- 6. FICHA TÉCNICA, DESEMPENHO & CONSUMO                         -->
         <!-- ============================================================== -->
+        ${
+          hasSpecs
+            ? `
         <div class="card" style="margin-bottom: var(--space-4);">
           <h3 style="font-size: 0.95rem; font-weight: 800; color: #F59E0B; margin-top: 0; margin-bottom: var(--space-4); display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
             <i data-lucide="gauge" style="width: 16px; height: 16px;"></i> Ficha Técnica & Indicadores de Performance
@@ -924,6 +979,9 @@ export const VehicleInterpreter = {
           }
 
         </div>
+        `
+            : ""
+        }
 
         <!-- ============================================================== -->
         <!-- 7. EQUIPAMENTOS DE SÉRIE & OPCIONAIS (70+ ITENS)               -->

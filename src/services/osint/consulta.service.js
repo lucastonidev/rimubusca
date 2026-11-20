@@ -110,7 +110,7 @@ export async function puxarDados({
             break;
 
           case "rg":
-            rimuResult = await rimuApi.rg(cleanTerm, uf || param2);
+            rimuResult = await rimuApi.rg(cleanTerm);
             break;
 
           case "titulo":
@@ -256,9 +256,12 @@ export async function puxarDados({
             rimuResult = await rimuApi.arvoreFamiliar(cleanTerm);
             break;
 
-          case "desmascarador":
-            rimuResult = await rimuApi.desmascarador(cleanTerm);
+          case "desmascarador": {
+            const cpfParcial = String(cleanTerm).replace(/\D/g, "");
+            const nomeCompleto = param2 ? String(param2).trim() : "";
+            rimuResult = await rimuApi.desmascarador(cpfParcial, nomeCompleto);
             break;
+          }
 
           case "cloud_url":
             rimuResult = await rimuApi.cloudUrl(cleanTerm);
@@ -320,7 +323,7 @@ export async function puxarDados({
 
       if (rimuResult) {
         const rawPayload = rimuResult.resultado !== undefined ? rimuResult.resultado : rimuResult;
-        const payloadData = interpretRimuApi(tipoNormalizado, rawPayload);
+        const payloadData = interpretRimuApi(tipoNormalizado, rawPayload, cleanTerm);
 
         // Grava no cache persistente com TTL inteligente:
         // 7 dias para documentos cadastrais (cpf, rg, titulo, foto, parentes, cnpj, cep)
@@ -405,7 +408,7 @@ export async function puxarDados({
   if (isMock) {
     const mockRes = gerarMockPorTipo(tipoNormalizado, cleanTerm);
     if (mockRes && mockRes.dados) {
-      mockRes.dados = interpretRimuApi(tipoNormalizado, mockRes.dados);
+      mockRes.dados = interpretRimuApi(tipoNormalizado, mockRes.dados, cleanTerm);
       mockRes.isMock = true;
       mockRes.fonte = "Simulação Mock (MOCK_MODE=true)";
     }

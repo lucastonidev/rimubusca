@@ -378,12 +378,12 @@ export const EmailInterpreter = {
 
     const nomeMae = String(p.mother_name || p.nomeMae || p.nome_mae || "Não informada").toUpperCase();
     const nomePai = String(p.father_name || p.nomePai || p.nome_pai || "Não informado").toUpperCase();
-    const renda = p.renda_formatada || (p.income ? Formatters.currency(p.income) : "Não estimada");
-    const profissao = String(p.occupation || p.profissao || "Não informada");
+    const renda = p.renda_formatada || p.rendaPresumida || (p.income ? Formatters.currency(p.income) : (p.renda ? (typeof p.renda === "number" ? Formatters.currency(p.renda) : p.renda) : "Não estimada"));
+    const profissao = String(p.occupation || p.profissao || p.cbo || "Não informada");
 
     // Documents
-    const rg = p.rg ? `${p.rg}${p.rg_issuer ? ` - ${p.rg_issuer}` : ''}` : "Não consta";
-    const tituloEleitor = p.voter_id || p.titulo_eleitor || p.titulo || "Não consta";
+    const rg = p.rg || p.rgEmissor || (p.rg_issuer ? `${p.rg_issuer}` : "Não consta");
+    const tituloEleitor = p.voter_id || p.titulo_eleitor || p.tituloEleitor || p.titulo || "Não consta";
     const cnhObj = p.cnh || (p.numero_cnh ? { numero: p.numero_cnh, uf: p.uf_cnh } : null);
 
     // Phones
@@ -396,8 +396,8 @@ export const EmailInterpreter = {
           : [];
 
     // Addresses
-    const endereco = p.endereco_principal || p.endereco_completo || p.address || p.endereco || null;
-    let enderecoTexto = "Endereço não informado";
+    const endereco = p.endereco_principal || p.endereco_completo || p.address || p.endereco || (Array.isArray(p.enderecos) ? p.enderecos[0] : null) || null;
+    let enderecoTexto = "";
     if (endereco && typeof endereco === "object") {
       const parts = [
         endereco.street || endereco.logradouro,
@@ -407,8 +407,8 @@ export const EmailInterpreter = {
         endereco.zip_code || endereco.cep ? `CEP: ${Formatters.cep(endereco.zip_code || endereco.cep)}` : null,
       ].filter(Boolean);
       if (parts.length > 0) enderecoTexto = parts.join(" - ");
-    } else if (typeof endereco === "string") {
-      enderecoTexto = endereco;
+    } else if (typeof endereco === "string" && endereco.trim()) {
+      enderecoTexto = endereco.trim();
     }
 
     // Vehicles
@@ -679,8 +679,14 @@ export const EmailInterpreter = {
         }
 
         <!-- ENDEREÇO & E-MAILS ADICIONAIS -->
+        ${
+          enderecoTexto || emailsList.length > 0
+            ? `
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px;">
           <!-- Endereço -->
+          ${
+            enderecoTexto
+              ? `
           <div style="background: #080B11; border: 1px solid #1E2538; border-radius: 6px; padding: 10px 12px;">
             <span style="font-size: 0.7rem; color: #94A3B8; text-transform: uppercase; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 4px;">
               <i data-lucide="map-pin" style="width: 11px; height: 11px; color: #06B6D4;"></i> Endereço Cadastral
@@ -689,6 +695,9 @@ export const EmailInterpreter = {
               ${escapeHtml(enderecoTexto)}
             </div>
           </div>
+          `
+              : ""
+          }
 
           <!-- Outros E-mails Vinculados -->
           ${
@@ -714,6 +723,9 @@ export const EmailInterpreter = {
               : ""
           }
         </div>
+        `
+            : ""
+        }
 
         <!-- FONTES AUDITADAS -->
         ${
@@ -819,6 +831,7 @@ export const EmailInterpreter = {
   renderVazamentosSection(vazamentos, seguranca) {
     const total = vazamentos.length;
     const isVulnerable = total > 0;
+    if (!isVulnerable) return "";
 
     return `
       <div class="card" style="margin-bottom: var(--space-4); background: var(--color-surface); border: 1px solid ${isVulnerable ? '#EF4444' : 'var(--color-border)'}; padding: 18px;">

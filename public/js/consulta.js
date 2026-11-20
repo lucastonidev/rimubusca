@@ -154,6 +154,15 @@ class ConsultaController {
     const cleanTipo = String(tipo || "cpf").toLowerCase().trim();
     this.currentTipo = cleanTipo === "foto" ? "fotos" : cleanTipo;
 
+    // Sincroniza o parâmetro na URL (?tipo=...) sem recarregar a página
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("tipo") !== this.currentTipo) {
+        url.searchParams.set("tipo", this.currentTipo);
+        window.history.replaceState({ tipo: this.currentTipo }, "", url.toString());
+      }
+    } catch (_) {}
+
     // Atualiza chips .rimu-mod-chip e .tipo-tab-btn
     const allChips = document.querySelectorAll(".rimu-mod-chip, .tipo-tab-btn");
     let activeChip = null;
@@ -195,10 +204,10 @@ class ConsultaController {
         label: "Informe o Nome Completo para Busca Nominal:",
         placeholder: "Ex: Carlos Eduardo Pereira da Silva",
         mask: null,
-        paramHint: "Nome Completo",
-        badge: "Lista",
+        paramHint: "Nome Completo Exato",
+        badge: "Oficial",
         badgeColor: "#3B82F6",
-        desc: "Localização de CPFs, sexo e data de nascimento a partir do nome completo.",
+        desc: "Localização cadastral individual do titular a partir do nome completo exato (entrega 1 resultado oficial).",
       },
       nome_similar: {
         nome: "Nome Similar / Fonético",
@@ -206,21 +215,19 @@ class ConsultaController {
         placeholder: "Ex: Carlos Pereira Silva",
         mask: null,
         paramHint: "Primeiro e último nome",
-        badge: "Fonético",
+        badge: "Homônimos",
         badgeColor: "#6366F1",
-        desc: "Busca aproximada fonética/lexical de nomes e homônimos por primeiro e último nome.",
+        desc: "Busca ampla fonética e aproximada de homônimos (entrega a lista de todos os registros semelhantes).",
       },
       rg: {
         nome: "Registro Geral (RG)",
         label: "Informe o Número do Registro Geral (RG):",
-        placeholder: "Ex: 28374921X",
+        placeholder: "Ex: 28374921X ou apenas números",
         mask: null,
-        paramHint: "Número do RG (com UF opcional)",
-        param2Label: "UF do RG (opcional, ex: SP)",
-        param2Placeholder: "SP",
+        paramHint: "Número do RG (apenas números)",
         badge: "RG",
         badgeColor: "#06B6D4",
-        desc: "Busca de titular pelo número de RG e UF de expedição.",
+        desc: "Busca do dossiê cadastral do titular diretamente pelo número do RG.",
       },
       titulo: {
         nome: "Título de Eleitor",
@@ -541,14 +548,16 @@ class ConsultaController {
 
       // 8. Vazados & Segurança (5)
       desmascarador: {
-        nome: "Desmascarador de Dados / PIX",
-        label: "Informe o Dado Ofuscado com Asteriscos ou Chave PIX:",
-        placeholder: "Ex: carl***@gmail.com ou 123.***.***-00",
-        mask: null,
-        paramHint: "Dado Ofuscado / Chave PIX",
+        nome: "Desmascarador de PIX / CPF",
+        label: "Informe os 6 Dígitos Centrais do CPF:",
+        placeholder: "Ex: 123456 ou ***.123.456-**",
+        mask: "desmascarador",
+        paramHint: "6 dígitos centrais do CPF",
+        param2Label: "Nome Completo do Titular (conforme comprovante PIX):",
+        param2Placeholder: "Ex: CARLOS EDUARDO DA SILVA",
         badge: "PIX/*",
         badgeColor: "#8B5CF6",
-        desc: "Revela termos ofuscados ou mascarados (chaves PIX com asteriscos, CPFs parciais).",
+        desc: "Localização do CPF completo e dossiê a partir dos 6 dígitos centrais exibidos no PIX e do Nome Completo do favorecido.",
       },
       cloud_url: {
         nome: "Vazamentos por Domínio / URL",
@@ -562,55 +571,55 @@ class ConsultaController {
       },
       cloud_usuario: {
         nome: "Vazamentos por Usuário",
-        label: "Informe o Login de Usuário ou E-mail para Vazamentos:",
-        placeholder: "Ex: carlos.silva ou usuario@email.com",
+        label: "Informe apenas o Nome de Usuário (Username):",
+        placeholder: "Ex: rimublinda",
         mask: null,
-        paramHint: "Usuário ou E-mail",
-        badge: "Contas",
+        paramHint: "Apenas username (ex: rimublinda)",
+        badge: "Username",
         badgeColor: "#F43F5E",
-        desc: "Vazamentos de senhas e acessos vinculados a um usuário específico ou e-mail.",
+        desc: "Busca de vazamentos de credenciais exclusivamente por nome de usuário (username/nickname).",
       },
       senha: {
-        nome: "Vazamentos por Senha / Hash",
-        label: "Informe a Senha ou Hash para Checar Vazamentos Conhecidos:",
-        placeholder: "Ex: minhasenha123 ou hash",
+        nome: "Vazamentos por Senha / Credenciais",
+        label: "Informe o CPF ou E-mail para Vazamentos de Senha:",
+        placeholder: "Ex: 000.000.000-00 ou usuario@email.com",
         mask: null,
-        paramHint: "Senha ou Hash SHA-1/MD5",
-        badge: "Senha",
+        paramHint: "CPF ou E-mail",
+        badge: "Senhas",
         badgeColor: "#DC2626",
-        desc: "Identifica contas e logins comprometidos associados a uma senha ou hash conhecido.",
+        desc: "Identifica senhas vazadas e credenciais comprometidas a partir do CPF ou endereço de e-mail do titular.",
       },
       dump_cpf: {
-        nome: "Dump de CPFs Vazados",
-        label: "Informe a Faixa ou Prefixo de CPF Vazado:",
-        placeholder: "Ex: 123456",
+        nome: "Dump de CPFs (Em Massa)",
+        label: "Informe os CPFs separados por vírgula (Consulta em Massa):",
+        placeholder: "Ex: 12345678900, 98765432100, 11122233344",
         mask: null,
-        paramHint: "Prefixo ou Faixa de CPF",
-        badge: "Dump",
+        paramHint: "CPFs separados por vírgula",
+        badge: "Dump Lote",
         badgeColor: "#B91C1C",
-        desc: "Extração em lote de registros e nomes a partir de fragmentos de CPFs vazados.",
+        desc: "Consulta e extração em massa de dados cadastrais e nomes a partir de múltiplos CPFs separados por vírgula.",
       },
 
       // 9. Geradores & Lotes (4)
       dump_email: {
-        nome: "Dump de E-mails",
-        label: "Informe o Domínio Corporativo para Dump de E-mails:",
-        placeholder: "Ex: empresa.com.br",
+        nome: "Dump de E-mails (Em Massa)",
+        label: "Informe os E-mails separados por vírgula (Consulta em Massa):",
+        placeholder: "Ex: contato@empresa.com, carlos@gmail.com",
         mask: null,
-        paramHint: "Domínio Corporativo",
-        badge: "Lote",
+        paramHint: "E-mails separados por vírgula",
+        badge: "Dump Lote",
         badgeColor: "#3B82F6",
-        desc: "Extração em lote de e-mails, titulares e telefones cadastrados por domínio.",
+        desc: "Consulta e extração em massa de dados, vínculos e titulares a partir de múltiplos e-mails separados por vírgula.",
       },
       dump_telefone: {
-        nome: "Dump de Telefones",
-        label: "Informe o DDD ou Prefixo para Dump de Telefones:",
-        placeholder: "Ex: 1198765",
+        nome: "Dump de Telefones (Em Massa)",
+        label: "Informe os Telefones com DDD separados por vírgula (Consulta em Massa):",
+        placeholder: "Ex: 11987654321, 21998765432",
         mask: null,
-        paramHint: "DDD ou Prefixo Telefônico",
-        badge: "Lote",
+        paramHint: "Telefones com DDD separados por vírgula",
+        badge: "Dump Lote",
         badgeColor: "#0EA5E9",
-        desc: "Extração em lote de números de telefone e titulares a partir do DDD ou prefixo.",
+        desc: "Consulta e extração em massa de dados e titulares a partir de múltiplos números de telefone separados por vírgula.",
       },
       gerador_estado: {
         nome: "Gerador por Estado (UF)",
@@ -679,7 +688,13 @@ class ConsultaController {
     if (cfg.param2Label && param2Container && param2Input) {
       param2Container.style.display = "block";
       param2Input.placeholder = cfg.param2Placeholder || cfg.param2Label;
+      param2Input.title = cfg.param2Label;
       param2Input.value = "";
+      if (this.currentTipo === "desmascarador") {
+        param2Input.style.width = "280px";
+      } else {
+        param2Input.style.width = "140px";
+      }
     } else if (param2Container) {
       param2Container.style.display = "none";
       if (param2Input) param2Input.value = "";
@@ -771,6 +786,17 @@ class ConsultaController {
           e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
         } else if (mask === "titulo") {
           e.target.value = e.target.value.replace(/\D/g, "").slice(0, 12);
+        } else if (mask === "desmascarador") {
+          const raw = e.target.value.replace(/\D/g, "").slice(0, 6);
+          if (raw.length === 6) {
+            e.target.value = `***.${raw.slice(0, 3)}.${raw.slice(3, 6)}-**`;
+          } else if (raw.length > 3) {
+            e.target.value = `***.${raw.slice(0, 3)}.${raw.slice(3)}`;
+          } else if (raw.length > 0) {
+            e.target.value = `***.${raw}`;
+          } else {
+            e.target.value = "";
+          }
         }
       });
     }
@@ -786,6 +812,24 @@ class ConsultaController {
           return;
         }
 
+        let termoEnvio = termo;
+        const param2Input = document.getElementById("consultaInputParam2");
+        const param2Val = param2Input && param2Input.value ? param2Input.value.trim() : null;
+
+        if (this.currentTipo === "desmascarador") {
+          termoEnvio = termo.replace(/\D/g, "");
+          if (termoEnvio.length !== 6) {
+            window.toast?.error("Informe os 6 dígitos centrais do CPF (ex: 123456 ou ***.123.456-**).");
+            input.focus();
+            return;
+          }
+          if (!param2Val) {
+            window.toast?.error("Informe o Nome Completo do Titular (conforme comprovante PIX).");
+            if (param2Input) param2Input.focus();
+            return;
+          }
+        }
+
         this.currentComplianceData = null;
         const compBox = document.getElementById("consultaComplianceContainer");
         if (compBox) {
@@ -797,12 +841,9 @@ class ConsultaController {
         submitBtn.disabled = true;
 
         try {
-          const param2Input = document.getElementById("consultaInputParam2");
-          const param2Val = param2Input && param2Input.value ? param2Input.value.trim() : null;
-
           const payload = {
             tipo: this.currentTipo,
-            termo,
+            termo: termoEnvio,
           };
           if (param2Val) {
             payload.param2 = param2Val;
@@ -3060,7 +3101,7 @@ class ConsultaController {
     });
 
     // 5.2 Copiar Texto Genérico
-    container.querySelectorAll(".btn-copiar-texto").forEach((btn) => {
+    container.querySelectorAll(".btn-copiar-texto, .btn-copiar-generico").forEach((btn) => {
       btn.addEventListener("click", () => {
         const text = btn.getAttribute("data-copy");
         if (text && window.copyToClipboard) {
@@ -3070,7 +3111,7 @@ class ConsultaController {
     });
 
     // 5.3 Ação Rápida: Puxar CPF da lista / parente / sócio
-    container.querySelectorAll(".btn-puxar-cpf").forEach((btn) => {
+    container.querySelectorAll(".btn-puxar-cpf, .btn-puxar-cpf-item").forEach((btn) => {
       btn.addEventListener("click", () => {
         const cpf = btn.getAttribute("data-cpf");
         if (cpf) {
@@ -3126,7 +3167,7 @@ class ConsultaController {
     // 5.6 Ação Rápida: Checar Operadora
     container.querySelectorAll(".btn-puxar-operadora").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const tel = btn.getAttribute("data-tel");
+        const tel = btn.getAttribute("data-tel") || btn.getAttribute("data-telefone");
         if (tel) {
           this.selectTab("operadora");
           const input = document.getElementById("consultaInput");
@@ -3824,9 +3865,17 @@ class ConsultaController {
       btnDownload.addEventListener("click", () => {
         const contentEl = document.getElementById("modalRelatorioContent");
         if (!contentEl) return;
-        const tipoClean = (this.currentData?.tipo || this.currentTipo || "consulta").toLowerCase();
-        const termoClean = String(this.currentData?.termo || "alvo").replace(/[^a-zA-Z0-9]/g, "_");
-        const filename = `dossie-osint-${tipoClean}-${termoClean}.html`;
+        const targetTerm =
+          this.currentData?.dados?.cpf ||
+          this.currentData?.cpf ||
+          this.currentData?.termo ||
+          this.currentData?.dados?.placa ||
+          this.currentData?.placa ||
+          this.currentData?.dados?.cnpj ||
+          this.currentData?.cnpj ||
+          "alvo";
+        const termoClean = String(targetTerm).replace(/\D/g, "") || String(targetTerm).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+        const filename = `${termoClean}_relatorio_rimubuscas.html`;
         this.downloadRelatorioHtml(filename, contentEl.innerHTML);
       });
     }
@@ -5774,9 +5823,17 @@ class ConsultaController {
       if (window.lucide) window.lucide.createIcons({ root: btnPdf });
     }
 
-    const tipoClean = (this.currentData?.tipo || this.currentTipo || "consulta").toLowerCase();
-    const termoClean = String(this.currentData?.termo || "alvo").replace(/[^a-zA-Z0-9]/g, "_");
-    const docTitle = `Dossiê OSINT - ${tipoClean.toUpperCase()} - ${termoClean}`;
+    const targetTerm =
+      this.currentData?.dados?.cpf ||
+      this.currentData?.cpf ||
+      this.currentData?.termo ||
+      this.currentData?.dados?.placa ||
+      this.currentData?.placa ||
+      this.currentData?.dados?.cnpj ||
+      this.currentData?.cnpj ||
+      "alvo";
+    const termoClean = String(targetTerm).replace(/\D/g, "") || String(targetTerm).trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+    const docTitle = `${termoClean}_relatorio_rimubuscas`;
 
     // Cria um iframe isolado para imprimir EXCLUSIVAMENTE o dossiê (sem nenhuma parte da página web de fundo)
     const printFrame = document.createElement("iframe");

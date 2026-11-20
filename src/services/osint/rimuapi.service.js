@@ -234,8 +234,8 @@ export const rimuApi = {
   nomeSimilar: (nome) =>
     consultarRimuApi({ tipo: "nome_similar", chave: String(nome).trim() }),
 
-  rg: (rg, uf) =>
-    consultarRimuApi({ tipo: "rg", chave: String(rg).trim(), param2: uf }),
+  rg: (rg) =>
+    consultarRimuApi({ tipo: "rg", chave: String(rg).replace(/\D/g, "") || String(rg).trim() }),
 
   titulo: (titulo) =>
     consultarRimuApi({ tipo: "titulo", chave: String(titulo).replace(/\D/g, "") }),
@@ -370,8 +370,12 @@ export const rimuApi = {
   // ============================================================================
   // 8. CATEGORIA: VAZADOS & SEGURANÇA (5 Módulos)
   // ============================================================================
-  desmascarador: (termo) =>
-    consultarRimuApi({ tipo: "desmascarador", chave: String(termo).trim() }),
+  desmascarador: (termo, nome) =>
+    consultarRimuApi({
+      tipo: "desmascarador",
+      chave: String(termo).replace(/\D/g, ""),
+      param2: nome ? String(nome).trim().toUpperCase() : null,
+    }),
 
   cloudUrl: (urlOuDominio) =>
     consultarRimuApi({ tipo: "cloud_url", chave: String(urlOuDominio).trim() }),

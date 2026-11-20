@@ -60,9 +60,19 @@ export function extractPersonsList(payload, responseData) {
   if (Array.isArray(responseData?.raw?.resultados)) return responseData.raw.resultados;
   if (Array.isArray(responseData?.raw?.data)) return responseData.raw.data;
 
-  // 5. Single person object
-  if (payload && typeof payload === "object" && (payload.name || payload.nome || payload.cpf)) {
-    return [payload];
+  // 5. Single person object or titular record
+  if (payload && typeof payload === "object") {
+    if (payload.name || payload.nome || payload.cpf || payload.titularNome || payload.titularCpf) {
+      return [
+        {
+          ...payload,
+          nome: payload.nome || payload.name || payload.titularNome,
+          name: payload.name || payload.nome || payload.titularNome,
+          cpf: payload.cpf || payload.titularCpf,
+          cpf_masked: payload.cpf_masked || payload.cpf || payload.titularCpf,
+        },
+      ];
+    }
   }
 
   return [];

@@ -24,7 +24,7 @@ import {
  * @param {any} rawData - Resposta em dados.response da RimuAPI (array ou objeto)
  * @returns {any} DTO formatado e enriquecido
  */
-export function interpretRimuApi(tipo, rawData) {
+export function interpretRimuApi(tipo, rawData, termo = null) {
   if (!rawData) return rawData;
 
   const t = String(tipo || "").toLowerCase().trim();
@@ -45,9 +45,37 @@ export function interpretRimuApi(tipo, rawData) {
     }
 
     // ==========================================================================
-    // 2. NOMES & HOMÔNIMOS (LISTAS)
+    // 2. NOMES: NOME COMPLETO (1 RESULTADO) vs NOME SIMILAR (LISTA HOMÔNIMOS)
     // ==========================================================================
-    case "nome":
+    case "nome": {
+      const lista = registros.map((item) => {
+        const cpfRaw = item.CPF || item.cpf || "";
+        const birthInfo = parseBirthDate(item.NASCIMENTO || item.NASC || item.nascimento);
+        return {
+          cpf: formatCpf(cpfRaw),
+          cpf_raw: cpfRaw,
+          nome: String(item.NOME || item.nome || "").toUpperCase(),
+          sexo: (item.SEXO || item.sexo || "NÃO INFORMADO").toUpperCase(),
+          nascimento: birthInfo.birthFormatted || item.NASCIMENTO || item.NASC || "Não informada",
+          data_nascimento: birthInfo.birthFormatted,
+          idade: birthInfo.age,
+          signo: birthInfo.sign,
+          nomeMae: item.NOME_MAE || item.nome_mae || null,
+          nomePai: item.NOME_PAI || item.nome_pai || null,
+          ...(item.DADOS ? item.DADOS : {}),
+        };
+      });
+
+      const primeiroNome = lista[0] || {};
+      return {
+        tipo: "nome",
+        ...primeiroNome,
+        total: 1,
+        resultado: [primeiroNome],
+        resultados: [primeiroNome],
+      };
+    }
+
     case "nome_similar": {
       const lista = registros.map((item) => {
         const cpfRaw = item.CPF || item.cpf || "";
@@ -67,12 +95,11 @@ export function interpretRimuApi(tipo, rawData) {
       });
 
       return {
-        tipo: t,
+        tipo: "nome_similar",
         isList: true,
         total: lista.length,
         resultado: lista,
         resultados: lista,
-        ...(lista.length === 1 ? lista[0] : {}),
       };
     }
 
@@ -137,7 +164,44 @@ export function interpretRimuApi(tipo, rawData) {
     case "telefone":
     case "celular":
     case "operadora": {
-      const d = primeiro.DADOS || primeiro;
+      const d = primeiro.DADOS || primeiro.dados || (Array.isArray(primeiro.DADOS_PESSOAIS) ? primeiro.DADOS_PESSOAIS[0] : (primeiro.DADOS_PESSOAIS || primeiro.dadosPessoais)) || primeiro;
+
+      // 1. Caso a API retorne o dossiê cadastral completo do titular associado à linha
+      if (
+        primeiro.DADOS ||
+        primeiro.dados ||
+        primeiro.CPF ||
+        primeiro.cpf ||
+        primeiro.NOME ||
+        primeiro.nome ||
+        primeiro.DADOS_PESSOAIS ||
+        primeiro.dadosPessoais ||
+        d.CPF ||
+        d.cpf ||
+        d.NOME ||
+        d.nome
+      ) {
+        const pessoaNorm = normalizarPessoaRimu(primeiro, "telefone");
+        const telConsultado = formatPhone(
+          termo ||
+          rawData?.termo ||
+          primeiro.TELEFONE?.[0]?.TELEFONE ||
+          d.TELEFONE ||
+          d.telefone ||
+          (Array.isArray(d.telefones) && (d.telefones[0]?.numero || d.telefones[0]?.telefone)) ||
+          ""
+        );
+
+        return {
+          ...pessoaNorm,
+          tipo: "telefone",
+          numeroConsultado: telConsultado,
+          titularNome: pessoaNorm.nome,
+          titularCpf: pessoaNorm.cpf,
+        };
+      }
+
+      // 2. Consulta de operadora ou lista de telefones sem titular completo
       const telArr = Array.isArray(primeiro.TELEFONE)
         ? primeiro.TELEFONE
         : Array.isArray(primeiro.TELEFONES)
@@ -163,19 +227,12 @@ export function interpretRimuApi(tipo, rawData) {
 
       return {
         tipo: "telefone",
-        numeroConsultado: formatPhone(primeiro.TELEFONE?.[0]?.TELEFONE || d.TELEFONE || ""),
-        titularNome: (d.NOME || d.nome || "Não informado").toUpperCase(),
-        titularCpf: formatCpf(d.CPF || d.cpf),
-        dataNascimento: d.NASC || d.nascimento || "Não informada",
-        sexo: d.SEXO || d.sexo || "NÃO INFORMADO",
+        numeroConsultado: formatPhone(rawData?.termo || primeiro.TELEFONE?.[0]?.TELEFONE || primeiro.telefone || ""),
+        operadora: primeiro.OPERADORA || primeiro.operadora || telefonesNormalizados[0]?.operadora || "Telefonia Móvel",
+        portabilidade: primeiro.PORTABILIDADE || primeiro.portabilidade || false,
         telefones: telefonesNormalizados,
         enderecos: enderecosNormalizados,
         totalTelefones: telefonesNormalizados.length,
-        resultado: {
-          dados: d,
-          telefones: telefonesNormalizados,
-          enderecos: enderecosNormalizados,
-        },
       };
     }
 
@@ -183,6 +240,60 @@ export function interpretRimuApi(tipo, rawData) {
     // 6. E-MAIL & VÍNCULOS DIGITAIS
     // ==========================================================================
     case "email": {
+      const emailConsultado = String(
+        termo ||
+        rawData?.termo ||
+        primeiro.EMAIL ||
+        primeiro.email ||
+        primeiro.DADOS?.EMAIL ||
+        primeiro.dados?.EMAIL ||
+        (Array.isArray(primeiro.VINCULOS) && primeiro.VINCULOS[0]?.EMAIL) ||
+        (Array.isArray(primeiro.vinculos) && primeiro.vinculos[0]?.email) ||
+        ""
+      ).trim().toLowerCase();
+
+      // 1. Caso a API retorne o dossiê da pessoa titular vinculada ao e-mail
+      if (
+        primeiro.DADOS ||
+        primeiro.dados ||
+        primeiro.CPF ||
+        primeiro.cpf ||
+        primeiro.NOME ||
+        primeiro.nome ||
+        primeiro.DADOS_PESSOAIS ||
+        primeiro.dadosPessoais
+      ) {
+        const pessoaNorm = normalizarPessoaRimu(primeiro, "email");
+        const rawVinculos = Array.isArray(primeiro.VINCULOS)
+          ? primeiro.VINCULOS
+          : Array.isArray(primeiro.vinculos)
+            ? primeiro.vinculos
+            : [];
+        const vinculos = rawVinculos.map((v) => ({
+          email: v.EMAIL || v.email,
+          dominio: v.DOMINIO || v.dominio,
+          origem: v.ORIGEM || v.origem || "Cadastro Oficial",
+          ultimaAtualizacao: v.ULTIMA_ATUALIZACAO || v.ultima_atualizacao,
+        }));
+
+        const emailsList = Array.from(
+          new Set([emailConsultado, ...(pessoaNorm.emails || [])].filter(Boolean))
+        );
+
+        return {
+          ...pessoaNorm,
+          tipo: "email",
+          email: emailConsultado,
+          emails: emailsList,
+          vinculos,
+          totalEmails: emailsList.length,
+          titularNome: pessoaNorm.nome,
+          titularCpf: pessoaNorm.cpf,
+          raw: rawData,
+        };
+      }
+
+      // 2. Consulta de vínculos pura
       const d = primeiro.DADOS || primeiro;
       const vinculos = Array.isArray(primeiro.VINCULOS)
         ? primeiro.VINCULOS
@@ -192,7 +303,7 @@ export function interpretRimuApi(tipo, rawData) {
 
       return {
         tipo: "email",
-        email: vinculos[0]?.EMAIL || d.EMAIL || "",
+        email: emailConsultado,
         cpf: formatCpf(d.CPF || d.cpf),
         nome: (d.NOME || d.nome || "").toUpperCase(),
         sexo: d.SEXO || d.sexo || "",
@@ -203,10 +314,6 @@ export function interpretRimuApi(tipo, rawData) {
           origem: v.ORIGEM || v.origem || "Cadastro Oficial",
           ultimaAtualizacao: v.ULTIMA_ATUALIZACAO || v.ultima_atualizacao,
         })),
-        resultado: {
-          dados: d,
-          vinculos,
-        },
       };
     }
 
@@ -524,11 +631,13 @@ export function interpretRimuApi(tipo, rawData) {
 function normalizarPessoaRimu(raw, tipo) {
   if (!raw || typeof raw !== "object") return {};
 
-  // Caso 1: Envelope canônico DADOS (ex: módulo cpf básico, rg, titulo, cns)
-  // Caso 2: Envelope canônico DADOS_PESSOAIS (ex: módulo cpf_completo / PRO)
+  // Caso 1: Envelope canônico DADOS / dados (ex: módulo cpf básico, rg, titulo, cns)
+  // Caso 2: Envelope canônico DADOS_PESSOAIS / dadosPessoais (ex: módulo cpf_completo / PRO)
   const d =
     raw.DADOS ||
-    (Array.isArray(raw.DADOS_PESSOAIS) ? raw.DADOS_PESSOAIS[0] : raw.DADOS_PESSOAIS) ||
+    raw.dados ||
+    (Array.isArray(raw.DADOS_PESSOAIS) ? raw.DADOS_PESSOAIS[0] : (raw.DADOS_PESSOAIS || raw.dadosPessoais)) ||
+    (Array.isArray(raw.dados_pessoais) ? raw.dados_pessoais[0] : raw.dados_pessoais) ||
     raw;
 
   const rawCpf = String(d.CPF || raw.CPF || d.cpf || "").replace(/\D/g, "");
@@ -661,19 +770,26 @@ function normalizarPessoaRimu(raw, tipo) {
     }
   }
 
-  // TELEFONES genéricos
-  if (Array.isArray(raw.TELEFONES)) {
-    for (const t of raw.TELEFONES) {
-      registrarTelefone(t.TELEFONE || t.telefone || t.numero, {
-        operadora: t.OPERADORA || t.operadora,
-        tipo: t.TIPO || t.tipo,
-        data: t.DT_TIMESTAMP || t.data,
-      });
-    }
-  } else if (Array.isArray(raw.TELEFONE)) {
-    for (const t of raw.TELEFONE) {
-      registrarTelefone(t.TELEFONE || t.telefone || t.numero);
-    }
+  // TELEFONES genéricos (suporta maiúsculas, minúsculas e aninhamento sob dados)
+  const rawTels = [
+    ...(Array.isArray(raw.TELEFONES) ? raw.TELEFONES : []),
+    ...(Array.isArray(raw.telefones) ? raw.telefones : []),
+    ...(Array.isArray(raw.TELEFONE) ? raw.TELEFONE : []),
+    ...(Array.isArray(raw.telefone) ? raw.telefone : []),
+    ...(Array.isArray(d.TELEFONES) ? d.TELEFONES : []),
+    ...(Array.isArray(d.telefones) ? d.telefones : []),
+    ...(Array.isArray(d.TELEFONE) ? d.TELEFONE : []),
+    ...(Array.isArray(d.telefone) ? d.telefone : []),
+  ];
+
+  for (const t of rawTels) {
+    if (!t) continue;
+    const num = typeof t === "string" ? t : (t.TELEFONE || t.telefone || t.numero || t.numeroLimpo);
+    const op = typeof t === "object" ? (t.OPERADORA || t.operadora) : null;
+    const tip = typeof t === "object" ? (t.TIPO || t.tipo) : null;
+    const wpp = typeof t === "object" ? (t.WHATSAPP !== undefined ? t.WHATSAPP : (t.whatsapp !== undefined ? t.whatsapp : true)) : true;
+    const dt = typeof t === "object" ? (t.DT_TIMESTAMP || t.data) : null;
+    registrarTelefone(num, { operadora: op, tipo: tip, whatsApp: wpp, data: dt });
   }
 
   const telefonesNormalizados = Array.from(telsMap.values());
@@ -702,8 +818,15 @@ function normalizarPessoaRimu(raw, tipo) {
   // 3. Veículos vinculados (HISTORICO_VEICULOS, ULTIMO_VEICULOS, VEICULOS)
   const rawVeiculos = [
     ...(Array.isArray(raw.HISTORICO_VEICULOS) ? raw.HISTORICO_VEICULOS : []),
+    ...(Array.isArray(raw.historicoVeiculos) ? raw.historicoVeiculos : []),
     ...(Array.isArray(raw.ULTIMO_VEICULOS) ? raw.ULTIMO_VEICULOS : []),
+    ...(Array.isArray(raw.ultimoVeiculos) ? raw.ultimoVeiculos : []),
     ...(Array.isArray(raw.VEICULOS) ? raw.VEICULOS : []),
+    ...(Array.isArray(raw.veiculos) ? raw.veiculos : []),
+    ...(Array.isArray(d.HISTORICO_VEICULOS) ? d.HISTORICO_VEICULOS : []),
+    ...(Array.isArray(d.historicoVeiculos) ? d.historicoVeiculos : []),
+    ...(Array.isArray(d.VEICULOS) ? d.VEICULOS : []),
+    ...(Array.isArray(d.veiculos) ? d.veiculos : []),
   ];
 
   const veiculosMap = new Map();
@@ -738,11 +861,16 @@ function normalizarPessoaRimu(raw, tipo) {
   const veiculosNormalizados = Array.from(veiculosMap.values());
 
   // 4. Histórico Vacinal COVID-19 & Locais de Vacinação (SUS)
-  const rawCovid = Array.isArray(raw.COVID)
-    ? raw.COVID
-    : Array.isArray(raw.VACINAS)
-      ? raw.VACINAS
-      : [];
+  const rawCovid = [
+    ...(Array.isArray(raw.COVID) ? raw.COVID : []),
+    ...(Array.isArray(raw.covid) ? raw.covid : []),
+    ...(Array.isArray(raw.VACINAS) ? raw.VACINAS : []),
+    ...(Array.isArray(raw.vacinas) ? raw.vacinas : []),
+    ...(Array.isArray(d.COVID) ? d.COVID : []),
+    ...(Array.isArray(d.covid) ? d.covid : []),
+    ...(Array.isArray(d.VACINAS) ? d.VACINAS : []),
+    ...(Array.isArray(d.vacinas) ? d.vacinas : []),
+  ];
 
   const vacinasCovid = rawCovid.map((v) => {
     const estabelecimento = String(
@@ -827,28 +955,57 @@ function normalizarPessoaRimu(raw, tipo) {
     data: s.DT_INCLUSAO || null,
   }));
 
-  // 11. Score e dados socioeconômicos
-  const scoreBloco = Array.isArray(raw.SCORE) ? raw.SCORE[0] : raw.SCORE;
-  const scoreValor = scoreBloco?.CSB8 || scoreBloco?.SCORE || d.SCORE || null;
-  const scoreFaixa = scoreBloco?.CSB8_FAIXA || d.FAIXA_RENDA_ID || null;
+  // 10.5 CNH (Carteira Nacional de Habilitação)
+  const rawCnh = Array.isArray(raw.CNH) ? raw.CNH : raw.CNH ? [raw.CNH] : [];
+  const cnhPrincipal = rawCnh[0] || {};
+  const cnhNumero = cnhPrincipal.NUMERO_CNH || cnhPrincipal.numero || d.CNH || d.cnh || null;
+  const cnhUf = cnhPrincipal.SIGLA_UF || cnhPrincipal.uf || null;
+  const cnhPrimeira = cnhPrincipal.DT_PRIMEIRA_CNH || cnhPrincipal.data_primeira_habilitacao || null;
+  const cnhUltima = cnhPrincipal.DT_ULTIMA_ATUALIZACAO || null;
+  const cnhObj = cnhNumero
+    ? {
+        numero: cnhNumero,
+        num_cnh: cnhNumero,
+        numero_registro: cnhNumero,
+        uf: cnhUf,
+        primeira_habilitacao: cnhPrimeira,
+        data_primeira_habilitacao: cnhPrimeira,
+        ultima_atualizacao: cnhUltima,
+      }
+    : (d.CNH || d.cnh ? { num_cnh: d.CNH || d.cnh } : null);
+
+  // 11. Score e dados socioeconômicos (CSB8 / CSBA)
+  const scoreBloco = Array.isArray(raw.SCORE) ? raw.SCORE[0] : (raw.SCORE || {});
+  const csb8Val = scoreBloco?.CSB8 || null;
+  const csbaVal = scoreBloco?.CSBA || null;
+  const scoreValor = csb8Val || csbaVal || scoreBloco?.SCORE || d.SCORE || null;
+  const scoreFaixa = scoreBloco?.CSB8_FAIXA || scoreBloco?.CSBA_FAIXA || d.FAIXA_RENDA_ID || null;
 
   // 12. Endereços
-  const rawEnds = Array.isArray(raw.ENDERECOS)
-    ? raw.ENDERECOS
-    : Array.isArray(raw.ENDERECO)
-      ? raw.ENDERECO
-      : raw.ENDERECO
-        ? [raw.ENDERECO]
-        : [];
+  const rawEnds = [
+    ...(Array.isArray(raw.ENDERECOS) ? raw.ENDERECOS : []),
+    ...(Array.isArray(raw.enderecos) ? raw.enderecos : []),
+    ...(Array.isArray(raw.ENDERECO) ? raw.ENDERECO : []),
+    ...(Array.isArray(raw.endereco) ? raw.endereco : []),
+    ...(Array.isArray(d.ENDERECOS) ? d.ENDERECOS : []),
+    ...(Array.isArray(d.enderecos) ? d.enderecos : []),
+    ...(Array.isArray(d.ENDERECO) ? d.ENDERECO : []),
+    ...(Array.isArray(d.endereco) ? d.endereco : []),
+    ...(raw.ENDERECO && typeof raw.ENDERECO === "object" && !Array.isArray(raw.ENDERECO) ? [raw.ENDERECO] : []),
+    ...(raw.endereco && typeof raw.endereco === "object" && !Array.isArray(raw.endereco) ? [raw.endereco] : []),
+    ...(d.ENDERECO && typeof d.ENDERECO === "object" && !Array.isArray(d.ENDERECO) ? [d.ENDERECO] : []),
+    ...(d.endereco && typeof d.endereco === "object" && !Array.isArray(d.endereco) ? [d.endereco] : []),
+  ];
 
   const enderecosNormalizados = normalizarListaEnderecos(rawEnds);
 
   // 13. Parentes
-  const rawParentes = Array.isArray(raw.PARENTES)
-    ? raw.PARENTES
-    : Array.isArray(raw.parentes)
-      ? raw.parentes
-      : [];
+  const rawParentes = [
+    ...(Array.isArray(raw.PARENTES) ? raw.PARENTES : []),
+    ...(Array.isArray(raw.parentes) ? raw.parentes : []),
+    ...(Array.isArray(d.PARENTES) ? d.PARENTES : []),
+    ...(Array.isArray(d.parentes) ? d.parentes : []),
+  ];
 
   const parentesNormalizados = rawParentes.map((p) => ({
     nome: (p.NOME || p.NOME_VINCULO || p.nome || "").toUpperCase(),
@@ -857,11 +1014,11 @@ function normalizarPessoaRimu(raw, tipo) {
     cpf_raw: String(p.CPF || p.CPF_VINCULO || p.cpf || "").replace(/\D/g, ""),
   }));
 
-  // 14. CNS
+  // 14. CNS (Cartão Nacional de Saúde)
   const rawCns = Array.isArray(raw.CNS) ? raw.CNS : raw.CNS ? [raw.CNS] : [];
   const cnsNormalizado = rawCns.map((c) => ({
-    numero: c.NUMERO_CNS || c.CNS || c.cns,
-    tipo: c.TIPO || c.tipo || "DEFINITIVO",
+    numero: c.CNS_NUMERO || c.NUMERO_CNS || c.CNS || c.cns,
+    tipo: c.TIPO_DE_CARTAO === "D" ? "DEFINITIVO" : c.TIPO_DE_CARTAO === "P" ? "PROVISÓRIO" : (c.TIPO || c.tipo || "DEFINITIVO"),
     ativo: c.ATIVO || c.ativo || "SIM",
   }));
 
@@ -886,6 +1043,11 @@ function normalizarPessoaRimu(raw, tipo) {
     rg: d.RG || d.rg || null,
     rgEmissor: d.ORGAO_EMISSOR || d.UF_EMISSAO ? `${d.ORGAO_EMISSOR || "SSP"}/${d.UF_EMISSAO || ""}` : null,
     tituloEleitor: d.TITULO_ELEITOR || d.titulo || null,
+    cnh: cnhObj,
+    cnhNumero: cnhNumero || d.CNH || d.cnh || null,
+    cnhUf,
+    cnhPrimeiraHabilitacao: cnhPrimeira,
+    cnhDetalhes: rawCnh,
     cbo: d.CBO || d.cbo || null,
     profissao: d.CBO || d.profissao || "Não informada",
     nacionalidade: d.NACIONALID || d.nacionalidade || "BRASILEIRA",
@@ -915,7 +1077,20 @@ function normalizarPessoaRimu(raw, tipo) {
     rendaPresumida: rendaPoderAquisitivo ? formatCurrency(rendaPoderAquisitivo) : (d.RENDA ? formatCurrency(d.RENDA) : null),
     vazamentos: senhasVazadas,
     senhasVazadas,
-    score: scoreValor ? { valor: scoreValor, faixa: scoreFaixa } : null,
+    score: (scoreValor !== null && scoreValor !== undefined)
+      ? {
+          valor: scoreValor,
+          value: scoreValor,
+          score: scoreValor,
+          csb8: csb8Val,
+          csba: csbaVal,
+          faixa: scoreFaixa,
+          csb8_faixa: scoreBloco?.CSB8_FAIXA,
+          csba_faixa: scoreBloco?.CSBA_FAIXA,
+          csb8_range: scoreBloco?.CSB8_FAIXA,
+          csba_range: scoreBloco?.CSBA_FAIXA,
+        }
+      : null,
     totalTelefones: telefonesNormalizados.length,
     totalEnderecos: enderecosNormalizados.length,
     totalParentes: parentesNormalizados.length,
@@ -942,7 +1117,10 @@ function normalizarVeiculoRimu(raw, tipo) {
   const cor = (v.COR_DO_VEICULO || v.cor || "N/I").toUpperCase();
   const anoModelo = v.ANO_DO_MODELO || v.anoModelo || "N/I";
   const anoFabricacao = v.ANO_DE_FABRICACAO || v.anoFabricacao || "N/I";
-  const combustivel = v.combustivel || "ALCOOL/GASOLINA";
+  const combustivel = v.COMBUSTIVEL || v.combustivel || "ALCOOL/GASOLINA";
+  const potencia = v.POTENCIA || v.potencia || null;
+  const cilindradas = v.CILINDRADAS || v.cilindradas || null;
+  const numeroMotor = v.MOTOR || v.numeromotor || v.motor || null;
   const situacao = (v.SITUACAO_DO_VEICULO || v.situacao || "CIRCULAR").toUpperCase();
   const cidade = v.CIDADE || v.municipio_nome || "N/I";
   const uf = (v.UF_PLACA || v.municipio_uf || "").toUpperCase();
@@ -950,10 +1128,23 @@ function normalizarVeiculoRimu(raw, tipo) {
   // Proprietário
   let propNome = v.PROPRIETARIO_NOME || v.proprietario_nome || null;
   let propDoc = v.PROPRIETARIO_DOC || v.proprietario_documento || null;
+  let propMae = null;
+  let propNasc = null;
+  let propCbo = null;
+  let propRenda = null;
+  let propTitulo = null;
+  let propSexo = null;
 
   if (Array.isArray(raw.PROPRIETARIO_DADOS) && raw.PROPRIETARIO_DADOS[0]) {
     const pd = raw.PROPRIETARIO_DADOS[0];
     propNome = propNome || pd.NOME;
+    propDoc = propDoc || pd.CPF || pd.cpf;
+    propMae = pd.NOME_MAE || pd.nomeMae;
+    propNasc = pd.NASC || pd.nascimento;
+    propCbo = pd.CBO || pd.cbo;
+    propRenda = pd.RENDA || pd.renda;
+    propTitulo = pd.TITULO_ELEITOR || pd.tituloEleitor;
+    propSexo = pd.SEXO || pd.sexo;
   }
 
   const telefonesProp = (raw.PROPRIETARIO_TELEFONE || []).map((t) => ({
@@ -965,9 +1156,10 @@ function normalizarVeiculoRimu(raw, tipo) {
 
   const cnhProp = Array.isArray(raw.PROPRIETARIO_CNH) && raw.PROPRIETARIO_CNH[0]
     ? {
-        numero: raw.PROPRIETARIO_CNH[0].NUMERO_CNH,
-        uf: raw.PROPRIETARIO_CNH[0].SIGLA_UF,
-        primeiraHabilitacao: raw.PROPRIETARIO_CNH[0].DT_PRIMEIRA_CNH,
+        numero: raw.PROPRIETARIO_CNH[0].NUMERO_CNH || raw.PROPRIETARIO_CNH[0].numero,
+        uf: raw.PROPRIETARIO_CNH[0].SIGLA_UF || raw.PROPRIETARIO_CNH[0].uf,
+        primeiraHabilitacao: raw.PROPRIETARIO_CNH[0].DT_PRIMEIRA_CNH || raw.PROPRIETARIO_CNH[0].primeiraHabilitacao,
+        ultimaAtualizacao: raw.PROPRIETARIO_CNH[0].DT_ULTIMA_ATUALIZACAO || null,
       }
     : null;
 
@@ -985,19 +1177,33 @@ function normalizarVeiculoRimu(raw, tipo) {
     anoModelo,
     anoFabricacao,
     combustivel,
-    potencia: v.potencia || null,
-    cilindradas: v.cilindradas || null,
+    potencia,
+    cilindradas,
     situacao,
-    numeroMotor: v.numeromotor || null,
+    numeroMotor,
+    motor: numeroMotor,
+    engine: numeroMotor,
     cidade,
     uf,
     municipio: cidade && uf ? `${cidade}/${uf}` : cidade,
     proprietario: {
-      nome: propNome ? String(propNome).toUpperCase() : "Não informado",
-      documento: propDoc ? (propDoc.length > 11 ? formatCnpj(propDoc) : formatCpf(propDoc)) : "N/I",
+      nome: propNome ? String(propNome).toUpperCase() : null,
+      name: propNome ? String(propNome).toUpperCase() : null,
+      documento: propDoc ? (propDoc.length > 11 ? formatCnpj(propDoc) : formatCpf(propDoc)) : null,
+      cpf: propDoc ? (propDoc.length > 11 ? formatCnpj(propDoc) : formatCpf(propDoc)) : null,
+      mae: propMae,
+      nomeMae: propMae,
+      nascimento: propNasc,
+      birth_date: propNasc,
+      sexo: propSexo,
+      cbo: propCbo,
+      renda: propRenda,
+      tituloEleitor: propTitulo,
       cnh: cnhProp,
       telefones: telefonesProp,
+      phones: telefonesProp,
       enderecos: enderecosProp,
+      addresses: enderecosProp,
     },
     restricoes: v.restricao1 || "SEM RESTRIÇÃO",
     leilao: v.leilao || "NÃO CONSTA",

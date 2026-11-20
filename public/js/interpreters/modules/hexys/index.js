@@ -52,6 +52,7 @@ export function dispatchHexys(responseData) {
   // 2. Individual Dossier (CPF, Voter ID, or explicit Person Document)
   if (
     queryType === "cpf" ||
+    queryType === "cpf_completo" ||
     queryType === "titulo" ||
     (payload.cpf && (payload.name || payload.nome) && !payload.titular && !payload.parentescos)
   ) {
@@ -79,10 +80,28 @@ export function dispatchHexys(responseData) {
   // 5. Telephony with Associated Individuals (Single or Multiple Titulars)
   const personsFromPhone = extractPersonsList(payload, responseData);
   if (queryType === "telefone" || queryType === "celular" || queryType === "telefone_puxar") {
-    if (personsFromPhone.length > 0) {
+    // 5.1 Se o payload possui titular identificado com dados pessoais
+    if ((payload.cpf || payload.titularCpf) && (payload.nome || payload.name || payload.titularNome)) {
+      return CpfDossierInterpreter.render(responseData, {
+        ...payload,
+        cpf: payload.cpf || payload.titularCpf,
+        nome: payload.nome || payload.name || payload.titularNome,
+        name: payload.name || payload.nome || payload.titularNome,
+      });
+    }
+
+    // 5.2 Se tiver apenas 1 pessoa na lista associada
+    if (personsFromPhone.length === 1 && (personsFromPhone[0].cpf || personsFromPhone[0].name || personsFromPhone[0].nome)) {
+      const p0 = personsFromPhone[0];
+      return CpfDossierInterpreter.render(responseData, { ...payload, ...p0 });
+    }
+
+    // 5.3 Múltiplos titulares vinculados à linha
+    if (personsFromPhone.length > 1) {
       return PhonePersonsInterpreter.render(responseData, payload);
     }
-    // If no persons found but operator is returned
+
+    // 5.4 Se não encontrou titular, mas retornou dados de operadora
     if (payload.operadora || payload.operator) {
       return PhoneInterpreter.render(responseData, payload);
     }
@@ -145,8 +164,13 @@ export function dispatchHexys(responseData) {
   }
 
   // 11. Individual Dossier Fallback
-  if (payload.name || payload.nome || payload.cpf) {
-    return CpfDossierInterpreter.render(responseData, payload);
+  if (payload.name || payload.nome || payload.cpf || payload.titularNome || payload.titularCpf) {
+    return CpfDossierInterpreter.render(responseData, {
+      ...payload,
+      cpf: payload.cpf || payload.titularCpf,
+      nome: payload.nome || payload.name || payload.titularNome,
+      name: payload.name || payload.nome || payload.titularNome,
+    });
   }
 
   // 12. Generic Object Fallback

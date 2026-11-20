@@ -440,13 +440,14 @@ router.put("/api/admin/carteira", async (req, res) => {
   }
 });
 
-// Limpeza Manual de Cache Expirado (Supabase e Memória)
+// Limpeza Manual de Cache (Supabase, Disco e Memória)
 router.post("/api/admin/cache/limpar", async (req, res) => {
   const adminId = req.user.id;
   const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "0.0.0.0";
+  const moduloId = req.body?.modulo || req.body?.moduloId || null;
 
   try {
-    const resultado = await cacheService.limparCacheExpirado();
+    const resultado = await cacheService.limparTudo(moduloId);
 
     await registrarAuditoria({
       userId: adminId,

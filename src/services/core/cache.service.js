@@ -442,6 +442,72 @@ export class CacheService {
   }
 
   /**
+   * Limpa TODO o cache incondicionalmente (Memória RAM, Disco e Supabase)
+   * Usado para garantir que dados novos venham frescos da API após ação no painel admin
+   * @param {string} [moduloId] - Se fornecido, limpa apenas o módulo especificado
+   * @returns {Promise<{ success: boolean, removidosDb: number, removidosMemoria: number }>}
+   */
+  async limparTudo(moduloId = null) {
+    let removidosMemoria = 0;
+    let removidosDb = 0;
+
+    // 1. Limpa na Memória RAM
+    if (moduloId) {
+      const prefix = `${String(moduloId).toLowerCase()}:`;
+      for (const key of this.memoryCache.keys()) {
+        if (key.startsWith(prefix)) {
+          this.memoryCache.delete(key);
+          removidosMemoria++;
+        }
+      }
+    } else {
+      removidosMemoria = this.memoryCache.size;
+      this.memoryCache.clear();
+    }
+
+    // 2. Limpa no Supabase api_cache
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      try {
+        let query = supabaseAdmin.from("api_cache").delete();
+        if (moduloId) {
+          query = query.ilike("cache_key", `${String(moduloId).toLowerCase()}:%`);
+        } else {
+          // Deleta todas as linhas
+          query = query.gte("created_at", "1970-01-01T00:00:00Z");
+        }
+        const { data, error } = await query.select("id");
+        if (!error && Array.isArray(data)) {
+          removidosDb = data.length;
+        }
+      } catch (err) {
+        console.warn("[CACHE PURGE DB ERROR]:", err.message);
+      }
+    }
+
+    // 3. Limpa arquivos em disco (/tmp ou data/cache)
+    try {
+      if (fs.existsSync(this.diskCacheDir)) {
+        const files = fs.readdirSync(this.diskCacheDir);
+        for (const file of files) {
+          if (file.endsWith(".json")) {
+            fs.unlinkSync(path.join(this.diskCacheDir, file));
+          }
+        }
+      }
+    } catch (diskErr) {
+      console.warn("[CACHE PURGE DISK ERROR]:", diskErr.message);
+    }
+
+    console.log(`[CACHE PURGE ALL] Cache completamente limpo: ${removidosMemoria} memória | ${removidosDb} Supabase.`);
+    return {
+      success: true,
+      removidosDb,
+      removidosMemoria,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
    * Inicializa agendamento automático periódico de limpeza de cache a cada 24 horas
    */
   iniciarLimpezaAutomatica() {

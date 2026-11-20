@@ -19,10 +19,8 @@ lerna-debug.log*
 # Supabase
 supabase
 
-# Aquivos de planejanmento
-prompt.md
-osint.md
-bugs.md
+# Arquivos de planejanmento
+planejamento/
 
 # caches do sistemas
 /data/
