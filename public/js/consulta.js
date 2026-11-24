@@ -830,7 +830,7 @@ class ConsultaController {
         }
 
         let termoEnvio = termo;
-        const param2Val = param2Input && param2Input.value ? param2Input.value.trim() : null;
+        let param2Val = param2Input && param2Input.value ? param2Input.value.trim() : null;
 
         if (this.currentTipo === "desmascarador") {
           let nomeEnvio = termo;
