@@ -29,6 +29,9 @@ export const RecordsTableInterpreter = {
       `;
     }
 
+    const queryType = String(responseData?.tipo || responseData?.type || "").toLowerCase().trim();
+    const isNomeSimilar = queryType === "nome_similar";
+
     return `
       <div class="card" style="margin-bottom: var(--space-4);">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
@@ -39,7 +42,7 @@ export const RecordsTableInterpreter = {
           <input 
             type="text" 
             id="inputFiltroResultados" 
-            placeholder="Filtrar por nome, CPF, cidade..." 
+            placeholder="${isNomeSimilar ? 'Filtrar por nome, CPF, estado...' : 'Filtrar por nome, CPF, cidade...'}" 
             style="padding: 6px 14px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); font-size: 0.8125rem; outline: none; min-width: 220px;"
           >
         </div>
@@ -51,9 +54,15 @@ export const RecordsTableInterpreter = {
                 <th style="width: 40px;">#</th>
                 <th>Nome Completo</th>
                 <th style="width: 170px;">CPF</th>
-                <th>Nascimento</th>
-                <th>Mãe</th>
-                <th>Localização / Endereço</th>
+                ${
+                  isNomeSimilar
+                    ? `<th>Local de Emissão Estimado (9º Dígito)</th>`
+                    : `
+                    <th>Nascimento</th>
+                    <th>Mãe</th>
+                    <th>Localização / Endereço</th>
+                  `
+                }
                 <th style="text-align: right; width: 120px;">Ação</th>
               </tr>
             </thead>
@@ -63,6 +72,9 @@ export const RecordsTableInterpreter = {
                   const nome = item.name || item.nome || "Não informado";
                   const rawCpf = String(item.cpf || "").replace(/\D/g, "");
                   const formattedCpf = Formatters.cpf(item.cpf);
+                  const regiaoInfo = Formatters.cpfRegion(rawCpf);
+                  const regiao = item.localEmissao || regiaoInfo.estados;
+                  const regiaoDesc = item.regiaoFiscalDesc || regiaoInfo.descricao;
                   const nasc = item.birth_date || item.nascimento || "N/I";
                   const mae = item.mother_name || item.nomeMae || item.nome_mae || "N/I";
                   const end = item.endereco || item.address;
@@ -72,8 +84,12 @@ export const RecordsTableInterpreter = {
                         .join(", ")
                     : item.cidade || item.city || "Brasil";
 
+                  const searchData = isNomeSimilar
+                    ? `${nome.toLowerCase()} ${rawCpf} ${String(regiao).toLowerCase()}`
+                    : `${nome.toLowerCase()} ${rawCpf} ${String(loc).toLowerCase()}`;
+
                   return `
-                  <tr class="linha-resultado-item" data-search="${nome.toLowerCase()} ${rawCpf} ${String(loc).toLowerCase()}">
+                  <tr class="linha-resultado-item" data-search="${escapeHtml(searchData)}">
                     <td style="color: var(--color-text-dim); font-size: 0.75rem;">${idx + 1}</td>
                     <td style="font-weight: 700; color: var(--color-text);">${escapeHtml(nome)}</td>
                     <td>
@@ -84,9 +100,22 @@ export const RecordsTableInterpreter = {
                         </button>
                       </div>
                     </td>
-                    <td style="color: var(--color-text-muted); font-size: 0.8125rem;">${escapeHtml(nasc)}</td>
-                    <td style="color: var(--color-text-muted); font-size: 0.8125rem;">${escapeHtml(mae)}</td>
-                    <td style="color: var(--color-text-muted); font-size: 0.8125rem;">${escapeHtml(loc)}</td>
+                    ${
+                      isNomeSimilar
+                        ? `
+                        <td>
+                          <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #C4B5FD; border: 1px solid rgba(139, 92, 246, 0.3); font-weight: 600; padding: 4px 10px; font-size: 0.8125rem;" title="${escapeHtml(regiaoDesc)}">
+                            <i data-lucide="map-pin" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px; color: #A78BFA;"></i>
+                            ${escapeHtml(regiao)}
+                          </span>
+                        </td>
+                      `
+                        : `
+                        <td style="color: var(--color-text-muted); font-size: 0.8125rem;">${escapeHtml(nasc)}</td>
+                        <td style="color: var(--color-text-muted); font-size: 0.8125rem;">${escapeHtml(mae)}</td>
+                        <td style="color: var(--color-text-muted); font-size: 0.8125rem;">${escapeHtml(loc)}</td>
+                      `
+                    }
                     <td style="text-align: right;">
                       <button type="button" class="btn btn-primary btn-sm btn-puxar-cpf-item" data-cpf="${rawCpf}">
                         <i data-lucide="search" style="width: 12px; height: 12px;"></i> Investigar

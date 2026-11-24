@@ -49,6 +49,24 @@ export function dispatchHexys(responseData) {
     return PhotoInterpreter.render(responseData, payload);
   }
 
+  // 1.5 Desmascarador de Dados / PIX
+  if (queryType === "desmascarador") {
+    if (payload?.isNotFound || (!payload.cpf && !payload.nome && !payload.name)) {
+      return `
+        <div class="card" style="text-align: center; padding: var(--space-8); border-top: 4px solid #8B5CF6;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(139, 92, 246, 0.12); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+            <i data-lucide="eye-off" style="width: 32px; height: 32px; color: #A78BFA;"></i>
+          </div>
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF; margin-bottom: 6px;">Nenhum Cadastro Localizado</h3>
+          <p style="color: var(--color-text-muted); font-size: 0.875rem; max-width: 500px; margin: 0 auto;">
+            Não foi localizado nenhum titular correspondente à combinação dos 6 dígitos centrais do CPF com o nome informado na base oficial.
+          </p>
+        </div>
+      `;
+    }
+    return CpfDossierInterpreter.render(responseData, payload);
+  }
+
   // 2. Individual Dossier (CPF, Voter ID, or explicit Person Document)
   if (
     queryType === "cpf" ||
@@ -146,6 +164,92 @@ export function dispatchHexys(responseData) {
     (!payload.name && !payload.cpf && (payload.cep || payload.logradouro) && (payload.cidade || payload.bairro || payload.uf))
   ) {
     return CepInterpreter.render(responseData, payload);
+  }
+
+  // 9.5 Leaked Passwords & Credential Breaches query
+  if (queryType === "senha") {
+    const list = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.vazamentos)
+        ? payload.vazamentos
+        : Array.isArray(payload?.senhas)
+          ? payload.senhas
+          : Array.isArray(payload?.resultado)
+            ? payload.resultado
+            : [];
+
+    const validPasswords = list.filter((item) => {
+      if (!item) return false;
+      const p = String(item.senha || item.SENHA || "").trim();
+      const e = String(item.email || item.EMAIL || "").trim();
+      return p !== "" || e !== "";
+    });
+
+    if (validPasswords.length === 0) {
+      return `
+        <div class="card" style="text-align: center; padding: var(--space-8); border-top: 4px solid #10B981;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(16, 185, 129, 0.12); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+            <i data-lucide="shield-check" style="width: 32px; height: 32px; color: #10B981;"></i>
+          </div>
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: #FFFFFF; margin-bottom: 6px;">Nenhum Vazamento de Senha Localizado</h3>
+          <p style="color: var(--color-text-muted); font-size: 0.875rem; max-width: 500px; margin: 0 auto;">
+            O alvo pesquisado foi auditado contra os repositórios públicos e corporativos de vazamentos monitorados e <strong>não possui senhas em texto claro expostas</strong>.
+          </p>
+          <div style="margin-top: 16px;">
+            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); font-weight: 600; padding: 4px 10px;">
+              Segurança Preservada
+            </span>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="card" style="margin-bottom: var(--space-4); border-top: 4px solid #EF4444;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="shield-alert" style="color: #EF4444; width: 20px; height: 20px;"></i>
+            <h3 class="card-title" style="color: var(--color-text); margin: 0;">
+              Credenciais &amp; Senhas Expostas (${validPasswords.length})
+            </h3>
+          </div>
+          <span class="badge badge-danger">Alerta de Vazamento</span>
+        </div>
+        <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: 10px;">
+          ${validPasswords
+            .map((item, idx) => {
+              const pass = item.senha || item.SENHA || "";
+              const mail = item.email || item.EMAIL || null;
+              return `
+              <div style="background: var(--color-surface-2); padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid rgba(239, 68, 68, 0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--color-text-dim);">#${idx + 1}</span>
+                  ${
+                    mail
+                      ? `<div style="font-size: 0.875rem; color: var(--color-text); font-weight: 500;">
+                          <i data-lucide="mail" style="width: 14px; height: 14px; color: #38BDF8; vertical-align: middle; margin-right: 4px;"></i>
+                          ${escapeHtml(mail)}
+                        </div>`
+                      : ""
+                  }
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 0.75rem; color: #F87171; text-transform: uppercase; font-family: var(--font-mono); font-weight: 700;">Senha:</span>
+                    <span style="font-family: var(--font-mono); font-size: 0.9375rem; font-weight: 700; color: #FCA5A5; background: rgba(239, 68, 68, 0.15); padding: 3px 8px; border-radius: 4px;">
+                      ${escapeHtml(pass)}
+                    </span>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm btn-copiar-texto" data-copy="${escapeHtml(pass)}" title="Copiar Senha" style="border: 1px solid rgba(239, 68, 68, 0.3); color: #FCA5A5;">
+                  <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
+                  <span>Copiar</span>
+                </button>
+              </div>
+            `;
+            })
+            .join("")}
+        </div>
+      </div>
+    `;
   }
 
   // 10. Arrays / Tabular lists (Name homonyms, CEP street addresses, neighbors)

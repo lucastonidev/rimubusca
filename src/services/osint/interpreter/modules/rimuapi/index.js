@@ -19,6 +19,32 @@ import {
 } from "../hexys/cpf.interpreter.js";
 
 /**
+ * Decodifica a Região Fiscal de emissão do CPF pelo 9º dígito
+ * @param {string|number} cpf
+ * @returns {{ regiao: string, estados: string, descricao: string }}
+ */
+export function obterRegiaoFiscalCpf(cpf) {
+  const clean = String(cpf || "").replace(/\D/g, "");
+  if (clean.length < 9) {
+    return { regiao: "N/I", estados: "Não identificado", descricao: "Dígitos insuficientes" };
+  }
+  const digit = clean.charAt(8);
+  const mapa = {
+    "1": { regiao: "1ª RF", estados: "DF, GO, MT, MS, TO", descricao: "1ª Região Fiscal (DF, GO, MT, MS, TO)" },
+    "2": { regiao: "2ª RF", estados: "AC, AM, AP, PA, RO, RR", descricao: "2ª Região Fiscal (AC, AM, AP, PA, RO, RR)" },
+    "3": { regiao: "3ª RF", estados: "CE, MA, PI", descricao: "3ª Região Fiscal (CE, MA, PI)" },
+    "4": { regiao: "4ª RF", estados: "AL, PB, PE, RN", descricao: "4ª Região Fiscal (AL, PB, PE, RN)" },
+    "5": { regiao: "5ª RF", estados: "BA, SE", descricao: "5ª Região Fiscal (BA, SE)" },
+    "6": { regiao: "6ª RF", estados: "Minas Gerais (MG)", descricao: "6ª Região Fiscal (MG)" },
+    "7": { regiao: "7ª RF", estados: "RJ, ES", descricao: "7ª Região Fiscal (RJ, ES)" },
+    "8": { regiao: "8ª RF", estados: "São Paulo (SP)", descricao: "8ª Região Fiscal (SP)" },
+    "9": { regiao: "9ª RF", estados: "PR, SC", descricao: "9ª Região Fiscal (PR, SC)" },
+    "0": { regiao: "10ª RF", estados: "Rio Grande do Sul (RS)", descricao: "10ª Região Fiscal (RS)" },
+  };
+  return mapa[digit] || { regiao: "N/I", estados: "Não identificado", descricao: "Região não identificada" };
+}
+
+/**
  * Normaliza qualquer registro ou conjunto de registros da RimuAPI
  * @param {string} tipo - Nome do módulo (ex: 'cpf', 'cpf_completo', 'placa_ghost', 'razao_social', etc.)
  * @param {any} rawData - Resposta em dados.response da RimuAPI (array ou objeto)
@@ -78,19 +104,16 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
 
     case "nome_similar": {
       const lista = registros.map((item) => {
-        const cpfRaw = item.CPF || item.cpf || "";
-        const birthInfo = parseBirthDate(item.NASCIMENTO || item.NASC || item.nascimento);
+        const cpfRaw = String(item.CPF || item.cpf || "").replace(/\D/g, "");
+        const regiao = obterRegiaoFiscalCpf(cpfRaw);
         return {
           cpf: formatCpf(cpfRaw),
           cpf_raw: cpfRaw,
           nome: String(item.NOME || item.nome || "").toUpperCase(),
           sexo: (item.SEXO || item.sexo || "NÃO INFORMADO").toUpperCase(),
-          nascimento: birthInfo.birthFormatted || item.NASCIMENTO || item.NASC || "Não informada",
-          data_nascimento: birthInfo.birthFormatted,
-          idade: birthInfo.age,
-          signo: birthInfo.sign,
-          nomeMae: item.NOME_MAE || item.nome_mae || null,
-          nomePai: item.NOME_PAI || item.nome_pai || null,
+          regiaoFiscal: regiao.regiao,
+          localEmissao: regiao.estados,
+          regiaoFiscalDesc: regiao.descricao,
         };
       });
 
@@ -502,19 +525,30 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
     case "oab": {
       const advs = Array.isArray(primeiro.ADVOGADOS)
         ? primeiro.ADVOGADOS
-        : registros.map((r) => r.ADVOGADOS || r).flat();
+        : Array.isArray(primeiro.CNA_ADVOGADOS)
+          ? primeiro.CNA_ADVOGADOS
+          : registros.map((r) => r.ADVOGADOS || r.CNA_ADVOGADOS || r).flat();
 
-      const listaAdv = advs.map((a) => ({
-        nome: (a.NOME || a.nome || "").toUpperCase(),
-        inscricao: a.INSCRICAO || a.inscricao || "",
-        seccional: (a.SECCIONAL || a.seccional || "").toUpperCase(),
-        subsecao: a.SUBSECAO || a.subsecao || "",
-        categoria: a.CATEGORIA || a.categoria || "ADVOGADO(A)",
-        enderecoProfissional: a.ENDERECO_PROFISSIONAL || a.endereco || "N/I",
-        telefoneProfissional: formatPhone(a.TELEFONE_PROFISSIONAL || a.telefone),
-        situacao: (a.SITUACAO || a.situacao || "REGULAR").toUpperCase(),
-        fotoUrl: a.FOTO_URL || a.foto_url || null,
-      }));
+      const fotos = Array.isArray(primeiro.CNA_FOTOS) ? primeiro.CNA_FOTOS : [];
+      const fotoPrincipal = fotos[0]?.FOTO_BASE64
+        ? (fotos[0].FOTO_BASE64.startsWith("data:") ? fotos[0].FOTO_BASE64 : `data:image/jpeg;base64,${fotos[0].FOTO_BASE64}`)
+        : (fotos[0]?.FOTO_URL || null);
+
+      const listaAdv = advs
+        .filter((a) => a && (a.NOME || a.nome || a.INSCRICAO || a.inscricao))
+        .map((a, idx) => ({
+          nome: (a.NOME || a.nome || "").toUpperCase(),
+          nomeSocial: a.NOME_SOCIAL || a.nome_social || null,
+          inscricao: a.INSCRICAO || a.inscricao || "",
+          seccional: (a.UF || a.SECCIONAL || a.seccional || "").toUpperCase(),
+          subsecao: a.SUBSECAO || a.subsecao || "",
+          categoria: a.TIPO || a.CATEGORIA || a.categoria || "ADVOGADO(A)",
+          enderecoProfissional: a.ENDERECO_PROFISSIONAL || a.endereco || "N/I",
+          telefoneProfissional: formatPhone(a.TELEFONE_PROFISSIONAL || a.telefone),
+          situacao: (a.SITUACAO || a.situacao || "REGULAR").toUpperCase(),
+          fotoUrl: a.FOTO_URL || a.foto_url || (idx === 0 ? fotoPrincipal : null),
+          qtdSociedades: a.QTD_SOCIEDADES || "0",
+        }));
 
       return {
         tipo: "oab",
@@ -574,28 +608,88 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
     // 12. VAZADOS & SEGURANÇA (DESMASCARADOR, CLOUD_URL, CLOUD_USUARIO, SENHA, DUMP_CPF)
     // ==========================================================================
     case "desmascarador": {
-      const lista = registros.map((item) => ({
-        cpf: formatCpf(item.CPF || item.cpf),
-        cpf_raw: String(item.CPF || item.cpf || "").replace(/\D/g, ""),
-        nome: (item.NOME || item.nome || "").toUpperCase(),
-        nascimento: item.NASCIMENTO || item.nascimento || "Não informada",
-        nomeMae: item.NOME_MAE || item.nome_mae || "Não informada",
-        chaveInformada: item.CHAVE_INFORMADA || item.chave_informada || "",
-      }));
+      const d = primeiro.DADOS || primeiro.dados || primeiro;
+      const pix = primeiro.CHAVE_PIX_INFORMADA || primeiro.chave_pix_informada || primeiro.chavePix || {};
+      const cpfRaw = String(d.CPF || d.cpf || "").replace(/\D/g, "");
+      const nomeVal = String(d.NOME || d.nome || "").trim().toUpperCase();
+      const birthInfo = parseBirthDate(d.NASCIMENTO || d.nascimento || d.NASC);
+
+      if (!cpfRaw && !nomeVal) {
+        return {
+          tipo: "desmascarador",
+          total: 0,
+          isNotFound: true,
+          resultado: null,
+        };
+      }
+
+      const regiao = obterRegiaoFiscalCpf(cpfRaw);
 
       return {
         tipo: "desmascarador",
+        cpf: formatCpf(cpfRaw),
+        cpf_raw: cpfRaw,
+        nome: nomeVal,
+        name: nomeVal,
+        nascimento: birthInfo.birthFormatted || d.NASCIMENTO || d.nascimento || "Não informada",
+        data_nascimento: birthInfo.birthFormatted,
+        idade: birthInfo.age,
+        signo: birthInfo.sign,
+        sexo: (d.SEXO || d.sexo || "NÃO INFORMADO").toUpperCase(),
+        nomeMae: d.MAE || d.NOME_MAE || d.nomeMae || d.mae || null,
+        nomePai: d.PAI || d.NOME_PAI || d.nomePai || d.pai || null,
+        regiaoFiscal: regiao.regiao,
+        localEmissao: regiao.estados,
+        chavePix: pix.CHAVE_PIX || pix.chave || null,
+        banco: pix.BANCO || pix.banco || null,
+        agencia: pix.AGENCIA || pix.agencia || null,
+        conta: pix.CONTA || pix.conta || null,
+        tipoConta: pix.TIPO_CONTA || pix.tipoConta || null,
+        statusPix: pix.STATUS || pix.status || null,
+        participante: pix.PARTICIPANTE || pix.participante || null,
+        isList: false,
+        resultado: {
+          cpf: formatCpf(cpfRaw),
+          nome: nomeVal,
+          nascimento: birthInfo.birthFormatted || d.NASCIMENTO || d.nascimento || "Não informada",
+          sexo: (d.SEXO || d.sexo || "NÃO INFORMADO").toUpperCase(),
+          nomeMae: d.MAE || d.NOME_MAE || d.nomeMae || null,
+          nomePai: d.PAI || d.NOME_PAI || d.nomePai || null,
+          banco: pix.BANCO || pix.banco || null,
+          chavePix: pix.CHAVE_PIX || pix.chave || null,
+        },
+      };
+    }
+
+    case "senha": {
+      const senhasValidas = registros
+        .filter((r) => {
+          if (!r || typeof r !== "object") return false;
+          const pass = String(r.SENHA || r.senha || "").trim();
+          const email = String(r.EMAIL || r.email || "").trim();
+          return pass !== "" || email !== "";
+        })
+        .map((r, idx) => ({
+          id: idx + 1,
+          email: r.EMAIL || r.email || null,
+          senha: r.SENHA || r.senha || "",
+          origem: r.ORIGEM || r.origem || "Vazamento Público",
+          data: r.DATA || r.data || null,
+        }));
+
+      return {
+        tipo: "senha",
         isList: true,
-        total: lista.length,
-        desmascarados: lista,
-        resultado: lista,
-        ...(lista.length === 1 ? lista[0] : {}),
+        total: senhasValidas.length,
+        vazamentos: senhasValidas,
+        senhas: senhasValidas,
+        registros: senhasValidas,
+        resultado: senhasValidas,
       };
     }
 
     case "cloud_url":
     case "cloud_usuario":
-    case "senha":
     case "dump_cpf":
     case "dump_email":
     case "dump_telefone": {

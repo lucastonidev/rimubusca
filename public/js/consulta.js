@@ -495,13 +495,15 @@ class ConsultaController {
       },
       oab: {
         nome: "Cadastro Nacional OAB / CNA",
-        label: "Informe a Inscrição OAB + UF (Ex: 18442 ES) ou Nome:",
-        placeholder: "Ex: 18442 ES ou Nome do Advogado",
+        label: "Número de Inscrição da OAB:",
+        placeholder: "Ex: 18442",
         mask: null,
-        paramHint: "Inscrição OAB + UF ou Nome",
+        paramHint: "Número da OAB + Seccional (UF)",
         badge: "OAB",
         badgeColor: "#D97706",
-        desc: "Cadastro Nacional dos Advogados (CNA / OAB) com situação, seccional e contatos.",
+        desc: "Cadastro Nacional dos Advogados (CNA / OAB) por número de inscrição e seccional (UF).",
+        param2Label: "Estado (UF)",
+        param2Placeholder: "UF (ex: ES)",
       },
 
       // 7. Família (4)
@@ -549,15 +551,15 @@ class ConsultaController {
       // 8. Vazados & Segurança (5)
       desmascarador: {
         nome: "Desmascarador de PIX / CPF",
-        label: "Informe os 6 Dígitos Centrais do CPF:",
-        placeholder: "Ex: 123456 ou ***.123.456-**",
-        mask: "desmascarador",
-        paramHint: "6 dígitos centrais do CPF",
-        param2Label: "Nome Completo do Titular (conforme comprovante PIX):",
-        param2Placeholder: "Ex: CARLOS EDUARDO DA SILVA",
-        badge: "PIX/*",
+        label: "Nome Completo do Titular (conforme comprovante PIX):",
+        placeholder: "Ex: CARLOS EDUARDO DA SILVA",
+        mask: null,
+        paramHint: "Nome Completo + 6 dígitos centrais do CPF",
+        param2Label: "6 Dígitos Centrais do CPF:",
+        param2Placeholder: "***.123.456-**",
+        badge: "PIX",
         badgeColor: "#8B5CF6",
-        desc: "Localização do CPF completo e dossiê a partir dos 6 dígitos centrais exibidos no PIX e do Nome Completo do favorecido.",
+        desc: "Localização do CPF completo e dossiê a partir do Nome Completo do favorecido e dos 6 dígitos centrais exibidos no PIX.",
       },
       cloud_url: {
         nome: "Vazamentos por Domínio / URL",
@@ -691,13 +693,21 @@ class ConsultaController {
       param2Input.title = cfg.param2Label;
       param2Input.value = "";
       if (this.currentTipo === "desmascarador") {
-        param2Input.style.width = "280px";
+        param2Input.style.width = "210px";
+        param2Input.dataset.mask = "desmascarador";
+      } else if (this.currentTipo === "oab") {
+        param2Input.style.width = "110px";
+        param2Input.dataset.mask = "uf";
       } else {
         param2Input.style.width = "140px";
+        param2Input.dataset.mask = "";
       }
     } else if (param2Container) {
       param2Container.style.display = "none";
-      if (param2Input) param2Input.value = "";
+      if (param2Input) {
+        param2Input.value = "";
+        param2Input.dataset.mask = "";
+      }
     }
 
     // Validação de Interdição e Manutenção (via dados do Supabase)
@@ -752,53 +762,60 @@ class ConsultaController {
   // 2. MÁSCARAS DE ENTRADA DINÂMICAS
   bindForm() {
     const input = document.getElementById("consultaInput");
+    const param2Input = document.getElementById("consultaInputParam2");
     const form = document.getElementById("consultaForm");
     const submitBtn = document.getElementById("btnSubmitConsulta");
 
-    if (input) {
-      input.addEventListener("input", (e) => {
-        const mask = input.dataset.mask;
-
-        if (mask === "cpf") {
-          let v = e.target.value.replace(/\D/g, "").slice(0, 11);
-          if (v.length > 9) v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
-          else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
-          else if (v.length > 3) v = v.replace(/^(\d{3})(\d{1,3})/, "$1.$2");
-          e.target.value = v;
-        } else if (mask === "telefone") {
-          let v = e.target.value.replace(/\D/g, "").slice(0, 11);
-          if (v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-          else if (v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
-          else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
-          e.target.value = v;
-        } else if (mask === "cep") {
-          let v = e.target.value.replace(/\D/g, "").slice(0, 8);
-          if (v.length > 5) v = v.replace(/^(\d{5})(\d{1,3})/, "$1-$2");
-          e.target.value = v;
-        } else if (mask === "cnpj") {
-          let v = e.target.value.replace(/\D/g, "").slice(0, 14);
-          if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, "$1.$2.$3/$4-$5");
-          else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{1,4})/, "$1.$2.$3/$4");
-          else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{1,3})/, "$1.$2.$3");
-          else if (v.length > 2) v = v.replace(/^(\d{2})(\d{1,3})/, "$1.$2");
-          e.target.value = v;
-        } else if (mask === "placa") {
-          e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
-        } else if (mask === "titulo") {
-          e.target.value = e.target.value.replace(/\D/g, "").slice(0, 12);
-        } else if (mask === "desmascarador") {
-          const raw = e.target.value.replace(/\D/g, "").slice(0, 6);
-          if (raw.length === 6) {
-            e.target.value = `***.${raw.slice(0, 3)}.${raw.slice(3, 6)}-**`;
-          } else if (raw.length > 3) {
-            e.target.value = `***.${raw.slice(0, 3)}.${raw.slice(3)}`;
-          } else if (raw.length > 0) {
-            e.target.value = `***.${raw}`;
-          } else {
-            e.target.value = "";
-          }
+    const applyMask = (target, mask) => {
+      if (!mask) return;
+      if (mask === "cpf") {
+        let v = target.value.replace(/\D/g, "").slice(0, 11);
+        if (v.length > 9) v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})/, "$1.$2.$3-$4");
+        else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
+        else if (v.length > 3) v = v.replace(/^(\d{3})(\d{1,3})/, "$1.$2");
+        target.value = v;
+      } else if (mask === "telefone") {
+        let v = target.value.replace(/\D/g, "").slice(0, 11);
+        if (v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+        else if (v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
+        else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+        target.value = v;
+      } else if (mask === "cep") {
+        let v = target.value.replace(/\D/g, "").slice(0, 8);
+        if (v.length > 5) v = v.replace(/^(\d{5})(\d{1,3})/, "$1-$2");
+        target.value = v;
+      } else if (mask === "cnpj") {
+        let v = target.value.replace(/\D/g, "").slice(0, 14);
+        if (v.length > 12) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{1,2})/, "$1.$2.$3/$4-$5");
+        else if (v.length > 8) v = v.replace(/^(\d{2})(\d{3})(\d{3})(\d{1,4})/, "$1.$2.$3/$4");
+        else if (v.length > 5) v = v.replace(/^(\d{2})(\d{3})(\d{1,3})/, "$1.$2.$3");
+        else if (v.length > 2) v = v.replace(/^(\d{2})(\d{1,3})/, "$1.$2");
+        target.value = v;
+      } else if (mask === "placa") {
+        target.value = target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
+      } else if (mask === "titulo") {
+        target.value = target.value.replace(/\D/g, "").slice(0, 12);
+      } else if (mask === "desmascarador") {
+        const raw = target.value.replace(/\D/g, "").slice(0, 6);
+        if (raw.length === 6) {
+          target.value = `***.${raw.slice(0, 3)}.${raw.slice(3, 6)}-**`;
+        } else if (raw.length > 3) {
+          target.value = `***.${raw.slice(0, 3)}.${raw.slice(3)}`;
+        } else if (raw.length > 0) {
+          target.value = `***.${raw}`;
+        } else {
+          target.value = "";
         }
-      });
+      } else if (mask === "uf") {
+        target.value = target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
+      }
+    };
+
+    if (input) {
+      input.addEventListener("input", (e) => applyMask(e.target, input.dataset.mask));
+    }
+    if (param2Input) {
+      param2Input.addEventListener("input", (e) => applyMask(e.target, param2Input.dataset.mask));
     }
 
     if (form && submitBtn) {
@@ -813,21 +830,62 @@ class ConsultaController {
         }
 
         let termoEnvio = termo;
-        const param2Input = document.getElementById("consultaInputParam2");
         const param2Val = param2Input && param2Input.value ? param2Input.value.trim() : null;
 
         if (this.currentTipo === "desmascarador") {
-          termoEnvio = termo.replace(/\D/g, "");
-          if (termoEnvio.length !== 6) {
-            window.toast?.error("Informe os 6 dígitos centrais do CPF (ex: 123456 ou ***.123.456-**).");
+          let nomeEnvio = termo;
+          let cpfEnvio = param2Val || "";
+
+          // Suporta se o usuário digitou o CPF no input principal e o Nome no segundo
+          if (/^\d{6}$/.test(termo.replace(/\D/g, ""))) {
+            cpfEnvio = termo.replace(/\D/g, "");
+            nomeEnvio = param2Val || "";
+          } else {
+            cpfEnvio = cpfEnvio.replace(/\D/g, "");
+          }
+
+          if (!nomeEnvio || nomeEnvio.trim().length < 3) {
+            window.toast?.error("Informe o Nome Completo do Titular (conforme comprovante PIX).");
             input.focus();
             return;
           }
-          if (!param2Val) {
-            window.toast?.error("Informe o Nome Completo do Titular (conforme comprovante PIX).");
+
+          if (cpfEnvio.length !== 6) {
+            window.toast?.error("Informe os 6 dígitos centrais do CPF no campo secundário (ex: ***.123.456-**).");
             if (param2Input) param2Input.focus();
             return;
           }
+
+          termoEnvio = cpfEnvio;
+          param2Val = nomeEnvio.trim();
+        } else if (this.currentTipo === "oab") {
+          let numOab = termo;
+          let ufOab = param2Val || "";
+
+          if (!ufOab && /\s+|\/|-/.test(numOab)) {
+            const parts = numOab.split(/[\s\/\-]+/).filter(Boolean);
+            const ufPart = parts.find((p) => /^[a-zA-Z]{2}$/.test(p));
+            const numPart = parts.find((p) => /^\d+$/.test(p));
+            if (ufPart && numPart) {
+              numOab = numPart;
+              ufOab = ufPart.toUpperCase();
+            }
+          }
+
+          if (!numOab) {
+            window.toast?.error("Informe o Número de Inscrição da OAB.");
+            input.focus();
+            return;
+          }
+
+          if (!ufOab) {
+            window.toast?.error("Informe o Estado (UF da seccional, ex: ES, SP, RJ).");
+            if (param2Input) param2Input.focus();
+            return;
+          }
+
+          termoEnvio = numOab;
+          param2Val = ufOab.toUpperCase();
         }
 
         this.currentComplianceData = null;
@@ -883,10 +941,15 @@ class ConsultaController {
     demoBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
         const input = document.getElementById("consultaInput");
+        const param2Input = document.getElementById("consultaInputParam2");
         const form = document.getElementById("consultaForm");
         if (input && btn.dataset.val) {
           input.value = btn.dataset.val;
           input.dispatchEvent(new Event("input"));
+          if (param2Input && btn.dataset.param2) {
+            param2Input.value = btn.dataset.param2;
+            param2Input.dispatchEvent(new Event("input"));
+          }
           if (form) form.dispatchEvent(new Event("submit"));
         }
       });
@@ -1627,6 +1690,9 @@ class ConsultaController {
       `;
     }
 
+    const queryType = String(res?.tipo || "").toLowerCase().trim();
+    const isNomeSimilar = queryType === "nome_similar";
+
     return `
       <div class="card" style="margin-bottom: var(--space-4);">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
@@ -1637,7 +1703,7 @@ class ConsultaController {
           <input 
             type="text" 
             id="inputFiltroResultados" 
-            placeholder="Filtrar por nome, CPF, cidade..." 
+            placeholder="${isNomeSimilar ? 'Filtrar por nome, CPF, estado...' : 'Filtrar por nome, CPF, cidade...'}" 
             style="padding: 6px 14px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); font-size: 0.8125rem; outline: none; min-width: 220px;"
           >
         </div>
@@ -1649,9 +1715,15 @@ class ConsultaController {
                 <th style="width: 40px;">#</th>
                 <th>Nome Completo</th>
                 <th style="width: 170px;">CPF</th>
-                <th>Nascimento</th>
-                <th>Mãe</th>
-                <th>Localização / Endereço</th>
+                ${
+                  isNomeSimilar
+                    ? `<th>Local de Emissão Estimado (9º Dígito)</th>`
+                    : `
+                    <th>Nascimento</th>
+                    <th>Mãe</th>
+                    <th>Localização / Endereço</th>
+                  `
+                }
                 <th style="text-align: right; width: 120px;">Ação</th>
               </tr>
             </thead>
@@ -1661,6 +1733,7 @@ class ConsultaController {
                   const nome = item.name || item.nome || "Não informado";
                   const rawCpf = String(item.cpf || "").replace(/\D/g, "");
                   const cpfFmt = this.formatCpf(item.cpf);
+                  const regiao = item.localEmissao || this.obterRegiaoFiscalCpf(rawCpf);
                   const nasc = item.birth_date || item.nascimento || "N/I";
                   const mae = item.mother_name || item.nomeMae || item.nome_mae || "N/I";
                   const end = item.endereco || item.address;
@@ -1670,8 +1743,12 @@ class ConsultaController {
                         .join(", ")
                     : item.cidade || item.city || "Brasil";
 
+                  const searchData = isNomeSimilar
+                    ? `${nome.toLowerCase()} ${rawCpf} ${String(regiao).toLowerCase()}`
+                    : `${nome.toLowerCase()} ${rawCpf} ${String(loc).toLowerCase()}`;
+
                   return `
-                  <tr class="linha-resultado-item" data-search="${nome.toLowerCase()} ${rawCpf} ${String(loc).toLowerCase()}">
+                  <tr class="linha-resultado-item" data-search="${this.escapeHtml(searchData)}">
                     <td style="color: var(--color-text-dim); font-size: 0.75rem;">${idx + 1}</td>
                     <td style="font-weight: 700; color: var(--color-text);">${this.escapeHtml(nome)}</td>
                     <td>
@@ -1682,9 +1759,22 @@ class ConsultaController {
                         </button>
                       </div>
                     </td>
-                    <td style="font-size: 0.825rem;">${this.escapeHtml(String(nasc).split(" ")[0])}</td>
-                    <td style="font-size: 0.825rem; color: var(--color-text-muted);">${this.escapeHtml(mae)}</td>
-                    <td style="font-size: 0.8rem; color: var(--color-text-dim);">${this.escapeHtml(loc)}</td>
+                    ${
+                      isNomeSimilar
+                        ? `
+                        <td>
+                          <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #C4B5FD; border: 1px solid rgba(139, 92, 246, 0.3); font-weight: 600; padding: 4px 10px; font-size: 0.8125rem;">
+                            <i data-lucide="map-pin" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px; color: #A78BFA;"></i>
+                            ${this.escapeHtml(regiao)}
+                          </span>
+                        </td>
+                      `
+                        : `
+                        <td style="font-size: 0.825rem;">${this.escapeHtml(String(nasc).split(" ")[0])}</td>
+                        <td style="font-size: 0.825rem; color: var(--color-text-muted);">${this.escapeHtml(mae)}</td>
+                        <td style="font-size: 0.8rem; color: var(--color-text-dim);">${this.escapeHtml(loc)}</td>
+                      `
+                    }
                     <td style="text-align: right;">
                       ${
                         rawCpf
@@ -1706,6 +1796,26 @@ class ConsultaController {
         </div>
       </div>
     `;
+  }
+
+  obterRegiaoFiscalCpf(cpf) {
+    const clean = String(cpf || "").replace(/\D/g, "");
+    if (clean.length < 9) return "Não identificado";
+    const digit = clean.charAt(8);
+    const mapa = {
+      "1": "DF, GO, MT, MS, TO",
+      "2": "AC, AM, AP, PA, RO, RR",
+      "3": "CE, MA, PI",
+      "4": "AL, PB, PE, RN",
+      "5": "BA, SE",
+      "6": "Minas Gerais (MG)",
+      "7": "RJ, ES",
+      "8": "São Paulo (SP)",
+      "9": "PR, SC",
+      "0": "Rio Grande do Sul (RS)",
+    };
+    return mapa[digit] || "Região não identificada";
+  }
   }
 
   // RENDER: DOSSIÊ COMPLETO DE PESSOA (CPF & DADOS CADASTRAIS HEXYS)

@@ -375,8 +375,8 @@ export const rimuApi = {
   empregos: (cpf) =>
     consultarRimuApi({ tipo: "empregos", chave: String(cpf).replace(/\D/g, "") }),
 
-  oab: (oab) =>
-    consultarRimuApi({ tipo: "oab", chave: String(oab).trim() }),
+  oab: (oab, uf = null) =>
+    consultarRimuApi({ tipo: "oab", chave: String(oab).trim(), param2: uf ? String(uf).trim().toUpperCase() : null }),
 
   // ============================================================================
   // 7. CATEGORIA: FAMÍLIA (4 Módulos)

@@ -233,6 +233,31 @@ export const CpfDossierInterpreter = {
     const totalSources = data.data_coverage?.total_sources || 16;
 
     return `
+      ${
+        queryType === "desmascarador"
+          ? `
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 12px 18px; margin-bottom: var(--space-4); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+              <i data-lucide="check-circle" style="width: 20px; height: 20px; color: #10B981;"></i>
+            </div>
+            <div>
+              <div style="font-size: 0.9375rem; font-weight: 700; color: #6EE7B7;">
+                Chave PIX Desmascarada com Sucesso
+              </div>
+              <div style="font-size: 0.8125rem; color: #E2E8F0; margin-top: 2px;">
+                Identidade completa revelada a partir do nome do favorecido e dos 6 dígitos centrais.
+                ${data.banco ? ` • <strong>Banco:</strong> ${escapeHtml(data.banco)}` : ""}
+                ${data.chavePix ? ` • <strong>Chave:</strong> <code>${escapeHtml(data.chavePix)}</code>` : ""}
+              </div>
+            </div>
+          </div>
+          <span class="badge badge-success" style="font-weight: 700;">PIX VALIDADO</span>
+        </div>
+      `
+          : ""
+      }
+
       <!-- ============================================================== -->
       <!-- CARTÃO PRINCIPAL (HERO) COM AVATAR BIOMÉTRICO                  -->
       <!-- ============================================================== -->

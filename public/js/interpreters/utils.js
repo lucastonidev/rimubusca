@@ -25,6 +25,32 @@ export const Formatters = {
   },
 
   /**
+   * Obtém a Região Fiscal e estados de emissão do CPF pelo 9º dígito
+   * @param {string|number} value
+   * @returns {{ regiao: string, estados: string, descricao: string }}
+   */
+  cpfRegion(value) {
+    const clean = String(value || "").replace(/\D/g, "");
+    if (clean.length < 9) {
+      return { regiao: "N/I", estados: "Não identificado", descricao: "Dígitos insuficientes" };
+    }
+    const digit = clean.charAt(8);
+    const map = {
+      "1": { regiao: "1ª RF", estados: "DF, GO, MT, MS, TO", descricao: "1ª Região Fiscal (DF, GO, MT, MS, TO)" },
+      "2": { regiao: "2ª RF", estados: "AC, AM, AP, PA, RO, RR", descricao: "2ª Região Fiscal (AC, AM, AP, PA, RO, RR)" },
+      "3": { regiao: "3ª RF", estados: "CE, MA, PI", descricao: "3ª Região Fiscal (CE, MA, PI)" },
+      "4": { regiao: "4ª RF", estados: "AL, PB, PE, RN", descricao: "4ª Região Fiscal (AL, PB, PE, RN)" },
+      "5": { regiao: "5ª RF", estados: "BA, SE", descricao: "5ª Região Fiscal (BA, SE)" },
+      "6": { regiao: "6ª RF", estados: "Minas Gerais (MG)", descricao: "6ª Região Fiscal (MG)" },
+      "7": { regiao: "7ª RF", estados: "RJ, ES", descricao: "7ª Região Fiscal (RJ, ES)" },
+      "8": { regiao: "8ª RF", estados: "São Paulo (SP)", descricao: "8ª Região Fiscal (SP)" },
+      "9": { regiao: "9ª RF", estados: "PR, SC", descricao: "9ª Região Fiscal (PR, SC)" },
+      "0": { regiao: "10ª RF", estados: "Rio Grande do Sul (RS)", descricao: "10ª Região Fiscal (RS)" },
+    };
+    return map[digit] || { regiao: "N/I", estados: "Não identificado", descricao: "Região não identificada" };
+  },
+
+  /**
    * Formats a raw CNPJ into 00.000.000/0000-00
    * @param {string|number} value
    * @returns {string}

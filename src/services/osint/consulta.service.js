@@ -235,9 +235,25 @@ export async function puxarDados({
             rimuResult = await rimuApi.empregos(cleanTerm);
             break;
 
-          case "oab":
-            rimuResult = await rimuApi.oab(cleanTerm);
+          case "oab": {
+            let numOab = String(cleanTerm || "").trim();
+            let ufOab = String(param2 || uf || "").trim().toUpperCase();
+
+            // Se o usuário digitou tudo no primeiro campo (ex: "18442 ES" ou "18442/ES" ou "18442-ES")
+            if (!ufOab && /\s+|\/|-/.test(numOab)) {
+              const parts = numOab.split(/[\s\/\-]+/).filter(Boolean);
+              const ufPart = parts.find((p) => /^[a-zA-Z]{2}$/.test(p));
+              const numPart = parts.find((p) => /^\d+$/.test(p));
+              if (ufPart && numPart) {
+                numOab = numPart;
+                ufOab = ufPart.toUpperCase();
+              }
+            }
+
+            const chaveOab = ufOab ? `${numOab} ${ufOab}` : numOab;
+            rimuResult = await rimuApi.oab(chaveOab, ufOab);
             break;
+          }
 
           case "mae":
             rimuResult = await rimuApi.mae(cleanTerm);
@@ -257,8 +273,23 @@ export async function puxarDados({
             break;
 
           case "desmascarador": {
-            const cpfParcial = String(cleanTerm).replace(/\D/g, "");
-            const nomeCompleto = param2 ? String(param2).trim() : "";
+            let cpfParcial = "";
+            let nomeCompleto = "";
+            const t1 = String(cleanTerm || "").trim();
+            const t2 = String(param2 || "").trim();
+
+            // Suporta tanto Nome no input 1 e 6 dígitos no input 2 quanto o inverso
+            if (/^\d{6}$/.test(t1.replace(/\D/g, ""))) {
+              cpfParcial = t1.replace(/\D/g, "");
+              nomeCompleto = t2;
+            } else if (/^\d{6}$/.test(t2.replace(/\D/g, ""))) {
+              cpfParcial = t2.replace(/\D/g, "");
+              nomeCompleto = t1;
+            } else {
+              cpfParcial = t1.replace(/\D/g, "");
+              nomeCompleto = t2;
+            }
+
             rimuResult = await rimuApi.desmascarador(cpfParcial, nomeCompleto);
             break;
           }

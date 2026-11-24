@@ -737,7 +737,7 @@
               <span class="rimu-mod-badge" style="background: rgba(245, 158, 11, 0.15); color: #FBBF24;">CTPS</span>
             </button>
 
-            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'oab' ? 'active' : '' %>" data-tipo="oab" data-categoria="empresa" data-nome="Cadastro Nacional OAB / CNA" data-badge="Advogados" data-badge-color="#D97706" data-desc="Cadastro Nacional dos Advogados (CNA / OAB) com situação, seccional e contatos.">
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'oab' ? 'active' : '' %>" data-tipo="oab" data-categoria="empresa" data-nome="Cadastro Nacional OAB / CNA" data-badge="Advogados" data-badge-color="#D97706" data-desc="Cadastro Nacional dos Advogados (CNA / OAB) por número de inscrição e seccional (UF).">
               <i data-lucide="scale" style="width: 14px; height: 14px;"></i>
               <span>OAB Advogados</span>
               <span class="rimu-mod-badge" style="background: rgba(217, 119, 6, 0.15); color: #FBBF24;">OAB</span>
@@ -769,7 +769,7 @@
             </button>
 
             <!-- 8. VAZADOS & SEGURANÇA (5) -->
-            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'desmascarador' ? 'active' : '' %>" data-tipo="desmascarador" data-categoria="vazados" data-nome="Desmascarador de Dados / PIX" data-badge="Desofuscar" data-badge-color="#8B5CF6" data-desc="Revela termos ofuscados ou mascarados (chaves PIX com asteriscos, CPFs parciais).">
+            <button type="button" class="rimu-mod-chip <%= tipoAtivo === 'desmascarador' ? 'active' : '' %>" data-tipo="desmascarador" data-categoria="vazados" data-nome="Desmascarador de Dados / PIX" data-badge="Desofuscar" data-badge-color="#8B5CF6" data-desc="Revela dados completos de titulares de contas PIX cruzando o nome com os 6 dígitos centrais do CPF.">
               <i data-lucide="eye" style="width: 14px; height: 14px; color: #C4B5FD;"></i>
               <span>Desmascarador</span>
               <span class="rimu-mod-badge" style="background: rgba(139, 92, 246, 0.25); color: #E9D5FF;">PIX/*</span>
@@ -973,8 +973,8 @@
               </button>
 
               <!-- OAB Demo -->
-              <button type="button" class="demo-consulta-btn" data-tipo="oab" data-val="18442 ES">
-                <span>🧪 Exemplo OAB (18442 ES)</span>
+              <button type="button" class="demo-consulta-btn" data-tipo="oab" data-val="18442" data-param2="ES">
+                <span>🧪 Exemplo OAB (18442 - ES)</span>
               </button>
 
               <!-- Mãe Demo -->
@@ -998,8 +998,8 @@
               </button>
 
               <!-- Desmascarador Demo -->
-              <button type="button" class="demo-consulta-btn" data-tipo="desmascarador" data-val="carl***@gmail.com">
-                <span>🧪 Exemplo Desmascarador PIX</span>
+              <button type="button" class="demo-consulta-btn" data-tipo="desmascarador" data-val="BRUNA ALVES LEITE" data-param2="772308">
+                <span>🧪 Exemplo PIX (BRUNA ALVES LEITE - ***.772.308-**)</span>
               </button>
 
               <!-- Cloud URL Demo -->
