@@ -1816,7 +1816,6 @@ class ConsultaController {
     };
     return mapa[digit] || "Região não identificada";
   }
-  }
 
   // RENDER: DOSSIÊ COMPLETO DE PESSOA (CPF & DADOS CADASTRAIS HEXYS)
   renderDossiePessoa(dados, res) {
