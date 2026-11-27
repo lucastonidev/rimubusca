@@ -1,0 +1,122 @@
+/* ==============================================================================
+   RIMUBUSCA DESIGN SYSTEM - COMPONENTS / BADGES.CSS
+   Selos, Tags, Badges de Status e Região Fiscal Centralizados
+   ============================================================================== */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  line-height: 1;
+}
+
+.badge-purple,
+.badge-cyan,
+.badge-violet {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #C4B5FD;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.badge-red,
+.badge-danger {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #FCA5A5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-dark {
+  background-color: #151520;
+  color: #94A3B8;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.badge-success,
+.badge-emerald {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.badge-warning,
+.badge-amber {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.badge-error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.badge-blue {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60A5FA;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge-pink {
+  background-color: rgba(236, 72, 153, 0.15);
+  color: #F472B6;
+  border: 1px solid rgba(236, 72, 153, 0.3);
+}
+
+.badge-indigo {
+  background-color: rgba(99, 102, 241, 0.15);
+  color: #A5B4FC;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+/* Badge de Região Fiscal pelo 9º Dígito do CPF */
+.badge-regiao-fiscal {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(139, 92, 246, 0.15);
+  color: #C4B5FD;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  padding: 5px 10px;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+}
+
+.badge-regiao-fiscal i,
+.badge-regiao-fiscal svg {
+  width: 12px;
+  height: 12px;
+  color: #A78BFA;
+  flex-shrink: 0;
+}
+
+.badge-regiao-sigla {
+  color: #A78BFA;
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+/* Variações de Badges para Módulos e Chips */
+.badge-tint-emerald { background: rgba(16, 185, 129, 0.15); color: #10B981; }
+.badge-tint-emerald-soft { background: rgba(16, 185, 129, 0.15); color: #34D399; }
+.badge-tint-purple { background: rgba(139, 92, 246, 0.2); color: #C4B5FD; }
+.badge-tint-purple-strong { background: rgba(139, 92, 246, 0.25); color: #E9D5FF; }
+.badge-tint-violet { background: rgba(168, 85, 247, 0.15); color: #C084FC; }
+.badge-tint-blue { background: rgba(59, 130, 246, 0.15); color: #60A5FA; }
+.badge-tint-sky { background: rgba(14, 165, 233, 0.15); color: #38BDF8; }
+.badge-tint-indigo { background: rgba(99, 102, 241, 0.15); color: #818CF8; }
+.badge-tint-cyan { background: rgba(6, 182, 212, 0.15); color: #22D3EE; }
+.badge-tint-teal { background: rgba(20, 184, 166, 0.15); color: #2DD4BF; }
+.badge-tint-amber { background: rgba(245, 158, 11, 0.15); color: #FBBF24; }
+.badge-tint-pink { background: rgba(236, 72, 153, 0.15); color: #F472B6; }
+.badge-tint-rose { background: rgba(244, 63, 94, 0.15); color: #FB7185; }
+.badge-tint-red { background: rgba(239, 68, 68, 0.15); color: #F87171; }
+.badge-tint-red-soft { background: rgba(220, 38, 38, 0.15); color: #FCA5A5; }
+.badge-tint-slate { background: rgba(107, 114, 128, 0.2); color: #9CA3AF; }

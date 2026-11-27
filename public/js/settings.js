@@ -9,7 +9,12 @@
  * ==============================================================================
  */
 
-class RimuSettingsManager {
+(function (global) {
+  if (global.RimuSettingsManager && global.rimuSettings) {
+    return;
+  }
+
+  class RimuSettingsManager {
   static STORAGE_KEY = 'rimubuscas_settings';
 
   static DEFAULTS = {
@@ -201,20 +206,19 @@ class RimuSettingsManager {
   }
 }
 
-const rimuSettings = new RimuSettingsManager();
+  const rimuSettings = new RimuSettingsManager();
 
-if (typeof window !== 'undefined') {
-  window.RimuSettingsManager = RimuSettingsManager;
-  window.rimuSettings = rimuSettings;
-  window.RimuSettings = rimuSettings;
-}
+  if (typeof window !== 'undefined') {
+    window.RimuSettingsManager = RimuSettingsManager;
+    window.rimuSettings = rimuSettings;
+    window.RimuSettings = rimuSettings;
+  }
 
-if (typeof globalThis !== 'undefined') {
-  globalThis.RimuSettingsManager = RimuSettingsManager;
-  globalThis.rimuSettings = rimuSettings;
-  globalThis.RimuSettings = rimuSettings;
-}
+  global.RimuSettingsManager = RimuSettingsManager;
+  global.rimuSettings = rimuSettings;
+  global.RimuSettings = rimuSettings;
 
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RimuSettingsManager, rimuSettings };
-}
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { RimuSettingsManager, rimuSettings };
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));

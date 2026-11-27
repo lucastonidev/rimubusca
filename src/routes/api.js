@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import { requireAuth } from "../middlewares/requireAuth.js";
 import { supabaseAdmin } from "../config/supabase.js";
 import { registrarAuditoria } from "../services/core/auditoria.service.js";
@@ -131,10 +132,32 @@ api.get(["/hubapi/status", "/api/hubapi/status"], requireAuth, obterStatusCartei
 api.post(["/hubapi/consultar", "/api/hubapi/consultar"], requireAuth, executarConsultaHubController);
 api.post(["/hubapi/recarregar", "/api/hubapi/recarregar"], requireAuth, recarregarSaldoController);
 
+const zeroyImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10 MB máximo antes da otimização
+    files: 1,
+  },
+});
+
+function uploadZeroyImagemMiddleware(req, res, next) {
+  if (!req.is("multipart/form-data")) {
+    return next();
+  }
+  return zeroyImageUpload.single("imagem")(req, res, (err) => {
+    if (!err) return next();
+    const msg =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "A imagem enviada excede o limite máximo de 10 MB."
+        : err.message || "Falha ao processar upload da imagem.";
+    return res.status(400).json({ success: false, error: msg });
+  });
+}
+
 // Zeroy API - Central de Consultas Veiculares & Cadastrais
 api.get(["/zeroy/modulos", "/api/zeroy/modulos"], requireAuth, listarModulosZeroyController);
 api.get(["/zeroy/modulos/:id", "/api/zeroy/modulos/:id"], requireAuth, obterModuloZeroyController);
-api.post(["/zeroy/consultar", "/api/zeroy/consultar"], requireAuth, consultarZeroyController);
+api.post(["/zeroy/consultar", "/api/zeroy/consultar"], requireAuth, uploadZeroyImagemMiddleware, consultarZeroyController);
 
 /**
  * ==============================================================================

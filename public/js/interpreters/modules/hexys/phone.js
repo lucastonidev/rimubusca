@@ -8,6 +8,44 @@
 
 import { Formatters, escapeHtml } from "../../utils.js";
 
+function cleanPhoneField(val) {
+  if (val === null || val === undefined) return "";
+  const s = String(val).trim();
+  const up = s.replace(/[()]/g, "").trim().toUpperCase();
+  if (
+    up === "" ||
+    up === "SEM RESULTADO" ||
+    up === "N/I" ||
+    up === "N/A" ||
+    up === "NULL" ||
+    up === "NONE" ||
+    up === "NAO INFORMADO" ||
+    up === "NÃO INFORMADO" ||
+    up === "NAO INFORMADA" ||
+    up === "NÃO INFORMADA" ||
+    up === "OPERADORA DESCONHECIDA" ||
+    up === "OPERADORA NÃO INFORMADA"
+  ) {
+    return "";
+  }
+  return s;
+}
+
+export function renderPhoneNotFoundCard(formattedPhone, description) {
+  const numLabel = formattedPhone && formattedPhone !== "N/I" ? `para <strong>${escapeHtml(formattedPhone)}</strong>` : "para o número informado";
+  return `
+    <div class="card osint-empty-card osint-empty-card--purple">
+      <div class="osint-empty-icon osint-empty-icon--warning">
+        <i data-lucide="phone-off" class="icon-xl"></i>
+      </div>
+      <h3 class="osint-empty-title">Telefone Não Encontrado</h3>
+      <p class="osint-empty-desc">
+        ${description ? escapeHtml(description) : `Não foram localizados registros de titularidade, operadora ou vínculos ${numLabel} nas bases consultadas.`}
+      </p>
+    </div>
+  `;
+}
+
 export const PhoneInterpreter = {
   /**
    * Renders carrier and telephony lookup details from Hexys API payload
@@ -17,14 +55,28 @@ export const PhoneInterpreter = {
    */
   render(responseData, dataPayload) {
     const data = dataPayload || {};
-    const rawNumber = String(data.telefone || responseData?.termo || "");
+    const rawNumber = String(data.numeroConsultado || data.telefone || responseData?.termo || "");
     const formattedPhone = Formatters.phone(data.ddd, rawNumber);
-    const operadora = data.operadora || data.operator || "Operadora desconhecida";
+    const operadoraVal = cleanPhoneField(data.operadora || data.operator || data.telefones?.[0]?.operadora);
+    const hasValidPhones = Array.isArray(data.telefones) && data.telefones.length > 0;
+    const titularVal = cleanPhoneField(data.titularNome || data.titular || data.nome || data.name);
+    const cpfVal = cleanPhoneField(data.titularCpf || data.cpf);
+
+    if (
+      responseData?.notFound ||
+      data.notFound ||
+      data.isNotFound ||
+      (!operadoraVal && !hasValidPhones && !titularVal && !cpfVal)
+    ) {
+      return renderPhoneNotFoundCard(formattedPhone, data.mensagem);
+    }
+
+    const operadora = operadoraVal || "Operadora não informada";
     const portabilidade = data.portabilidade ? "Sim (Linha Portada)" : "Não (Linha Original)";
     const confianca = data.confianca || data.confidence || "Alta (Base Anatel)";
-    const tipoLinha = data.tipo || data.tipo_linha || data.line_type || "Móvel / Celular";
-    const estado = data.estado || data.state || data.uf || "Brasil";
-    const ddd = data.ddd || (rawNumber.length >= 10 ? rawNumber.replace(/\D/g, "").slice(0, 2) : "N/I");
+    const tipoLinha = data.tipo_linha || data.line_type || (data.tipo && data.tipo !== "telefone" ? data.tipo : null) || "Móvel / Celular";
+    const estado = cleanPhoneField(data.estado || data.state || data.uf) || "Brasil";
+    const ddd = data.ddd || (rawNumber.replace(/\D/g, "").length >= 10 ? rawNumber.replace(/\D/g, "").slice(0, 2) : "N/I");
 
     // Dynamic brand color by telecom operator
     const opLower = operadora.toLowerCase();

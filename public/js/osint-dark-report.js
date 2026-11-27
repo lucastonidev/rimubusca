@@ -175,8 +175,9 @@
   function formatAddressLine(addr) {
     if (!addr) return "Endereço não cadastrado";
     if (typeof addr === "string") return addr.trim() || "Endereço não cadastrado";
+    if (addr.endereco && typeof addr.endereco === "object") return formatAddressLine(addr.endereco);
     if (addr.endereco_completo) return String(addr.endereco_completo);
-    const street = addr.street || addr.logradouro || addr.endereco || "";
+    const street = addr.street || addr.logradouro || (typeof addr.endereco === "string" ? addr.endereco : "") || "";
     const number = addr.number || addr.numero || "";
     const comp = addr.complement || addr.complemento || "";
     const bairro = addr.neighborhood || addr.bairro || "";
@@ -998,6 +999,25 @@
     const records = Array.isArray(raw) ? raw : [raw || {}];
     const r = records[0] || {};
 
+    if (payload?.notFound || payload?.dados?.notFound || r?.notFound || r?.isNotFound) {
+      return buildReportShell({
+        systemBadge,
+        title: "DOSSIÊ DE INTELIGÊNCIA TELEFÔNICA & OPERADORA",
+        moduleLabel,
+        termo,
+        fonteLabel: sourceLabel,
+        kpis: [
+          { label: "LINHA TELEFÔNICA", value: termo || "N/I", color: "#34D399", small: true },
+          { label: "STATUS", value: "NÃO ENCONTRADO", color: "#F59E0B", small: true },
+        ],
+        bodyHtml: renderDarkCard(
+          "Resultado da Consulta",
+          `<div style="color:#CBD5E1;font-size:0.9rem;">Nenhum dado cadastral, titular ou operadora foi localizado para este número de telefone nas bases consultadas.</div>`,
+          "#F59E0B"
+        ),
+      });
+    }
+
     const cleanTerm = digitsOnly(termo);
     const ddd = pick(r, ["ddd"]) || (cleanTerm.length >= 10 ? cleanTerm.slice(0, 2) : "");
     const numeroRaw = pick(r, ["numero", "telefone", "fone"]) || (cleanTerm.length >= 10 ? cleanTerm.slice(2) : cleanTerm);
@@ -1057,47 +1077,62 @@
     });
   }
 
-  function renderCepReport({ termo, payload, moduleLabel = "CEP / ENDEREÇO", sourceLabel = "DNE / Correios / IBGE", systemBadge = "RIMUBUSCA OSINT" }) {
+  function renderCepReport({ termo, payload, moduleLabel = "CEP / ENDEREÇO", sourceLabel = "DNE / Correios", systemBadge = "RIMUBUSCA OSINT" }) {
     const raw = unwrapPayload(payload);
     const isArr = Array.isArray(raw);
-    const base = isArr ? raw[0] || {} : raw || {};
-    const residents = isArr
+    const baseSrc = isArr ? raw[0]?.endereco || raw[0]?.ENDERECO || raw[0] || {} : raw || {};
+    const base = baseSrc.ENDERECO || baseSrc.endereco || baseSrc;
+    const rawResidents = isArr
       ? raw
-      : Array.isArray(base.moradores)
-        ? base.moradores
-        : Array.isArray(base.residentes)
-          ? base.residentes
-          : Array.isArray(base.pessoas)
-            ? base.pessoas
-            : Array.isArray(base.registros)
-              ? base.registros
+      : Array.isArray(raw?.moradores)
+        ? raw.moradores
+        : Array.isArray(raw?.residentes)
+          ? raw.residentes
+          : Array.isArray(raw?.pessoas)
+            ? raw.pessoas
+            : Array.isArray(raw?.registros)
+              ? raw.registros
               : [];
 
-    const cepFmt = formatCep(pick(base, ["cep"], termo));
-    const logradouro = pick(base, ["logradouro", "endereco", "street"], "Não informado");
-    const bairro = pick(base, ["bairro", "neighborhood"], "Não informado");
-    const cidade = pick(base, ["cidade", "municipio", "localidade", "city"], "Não informada");
-    const uf = pick(base, ["uf", "estado", "state"], "N/I");
-    const ddd = pick(base, ["ddd"], "N/I");
-    let ibge = pick(base, ["codigoIbge", "ibge"], "N/I");
-    if (typeof ibge === "object" && ibge !== null) {
-      ibge = ibge.codigo || ibge.id || ibge.codigo_ibge || "N/I";
-    } else if (String(ibge) === "[object Object]") {
-      ibge = "N/I";
-    }
+    const cleanField = (v) => {
+      if (v === null || v === undefined) return "";
+      const s = String(v).trim();
+      const norm = s.replace(/[()]/g, "").trim().toUpperCase();
+      if (["", "SEM RESULTADO", "N/I", "N/", "N/A", "NULL", "NONE", "UNDEFINED", "NAO INFORMADO", "NÃO INFORMADO", "NAO INFORMADA", "NÃO INFORMADA", "-"].includes(norm)) {
+        return "";
+      }
+      return s;
+    };
+
+    const residents = rawResidents.map((r) => {
+      const d = r?.DADOS || r?.dados || r || {};
+      const endObj = r?.ENDERECO || r?.endereco || r?.ENDERECOS?.[0] || r?.enderecos?.[0] || {};
+      const nome = cleanField(d.NOME || d.nome || r?.nome || r?.morador || r?.name) || "N/I";
+      const cpf = formatCpf(d.CPF || d.cpf || r?.cpf || r?.CPF);
+      const numero = cleanField(r?.numero ?? r?.LOGR_NUMERO ?? endObj.LOGR_NUMERO ?? endObj.NUMERO ?? endObj.numero ?? d.LOGR_NUMERO) || "S/N";
+      const complemento = cleanField(r?.complemento ?? r?.LOGR_COMPLEMENTO ?? endObj.LOGR_COMPLEMENTO ?? endObj.COMPLEMENTO ?? endObj.complemento) || "-";
+      return { NOME: nome, CPF: cpf, NUMERO: numero, COMPLEMENTO: complemento };
+    });
+
+    const cepFmt = formatCep(pick(base, ["cep", "CEP", "cepLimpo"], termo));
+    const logradouro = cleanField([cleanField(base.LOGR_TIPO || base.tipoLogradouro), cleanField(base.LOGR_NOME || base.logradouro || base.endereco || base.street)].filter(Boolean).join(" ")) || "Não informado";
+    const bairro = cleanField(base.bairro || base.BAIRRO || base.neighborhood) || "Não informado";
+    const cidade = cleanField(base.cidade || base.CIDADE || base.municipio || base.localidade || base.city) || "Não informada";
+    const rawUf = cleanField(base.uf || base.UF || base.estado || base.state).toUpperCase().replace(/[^A-Z]/g, "");
+    const uf = rawUf.length === 2 && rawUf !== "NI" && rawUf !== "NA" ? rawUf : "";
     const estimativa = pick(base, ["totalResidentesEstimados", "residentes_estimados", "total"]);
+
+    const fields = [
+      { label: "CEP", value: cepFmt, color: "#34D399", mono: true },
+      { label: "LOGRADOURO", value: logradouro, color: "#F8FAFC" },
+      { label: "BAIRRO", value: bairro },
+      { label: "MUNICÍPIO", value: cidade, color: "#38BDF8" },
+      estimativa !== null ? { label: "RESIDENTES ESTIMADOS", value: estimativa, color: "#A78BFA", mono: true } : null,
+    ];
 
     const geoCard = renderDarkCard(
       "Geolocalização & Logradouro Oficial",
-      renderFieldGrid([
-        { label: "CEP", value: cepFmt, color: "#34D399", mono: true },
-        { label: "LOGRADOURO", value: logradouro, color: "#F8FAFC" },
-        { label: "BAIRRO", value: bairro },
-        { label: "CIDADE / UF", value: `${cidade} - ${uf}`, color: "#38BDF8" },
-        { label: "DDD REGIONAL", value: ddd, mono: true },
-        { label: "CÓDIGO IBGE", value: ibge, mono: true },
-        estimativa !== null ? { label: "RESIDENTES ESTIMADOS", value: estimativa, color: "#A78BFA", mono: true } : null,
-      ]),
+      renderFieldGrid(fields),
       "#10B981"
     );
 
@@ -1113,8 +1148,7 @@
       fonteLabel: sourceLabel,
       kpis: [
         { label: "CEP CONSULTADO", value: cepFmt, color: "#34D399", small: true },
-        { label: "CIDADE / UF", value: `${cidade}/${uf}`, color: "#38BDF8", small: true },
-        { label: "DDD / IBGE", value: `${ddd} / ${ibge}`, color: "#A78BFA", small: true },
+        { label: "MUNICÍPIO", value: uf ? `${cidade} (${uf})` : cidade, color: "#38BDF8", small: true },
         { label: "RESIDENTES", value: residents.length || estimativa || 0, color: "#FBBF24" },
       ],
       bodyHtml: geoCard + residentsCard,
@@ -1296,14 +1330,19 @@
     const nomeFantasia = data.nomeFantasia || data.nome_fantasia || "Não informado";
     const situacao = String(data.situacaoCadastral || data.situacao_cadastral || data.situacao || "ATIVA").toUpperCase();
     const isAtiva = situacao.includes("ATIVA");
-    const abertura = formatDate(data.dataAbertura || data.data_inicio_atividade || data.dataInicio);
+    const abertura = formatDate(data.dataAbertura || data.dataInicioAtividade || data.data_inicio_atividade || data.dataInicio);
     const capital = formatCurrency(data.capitalSocial ?? data.capital_social);
     const porte = data.porte || "Não informado";
     const natureza = data.naturezaJuridica || data.natureza_juridica || "Não informada";
     const fonte = data.fonte || sourceLabel;
 
-    const cnaeCod = data.cnaePrincipal?.codigo || data.cnae_fiscal || data.cnae || "N/A";
-    const cnaeDesc = data.cnaePrincipal?.descricao || data.cnae_fiscal_descricao || "";
+    const cnaeIsStr = typeof data.cnaePrincipal === "string";
+    const cnaeCod = cnaeIsStr
+      ? data.cnaePrincipal
+      : (data.cnaePrincipal?.codigo || data.cnaePrincipal?.CODIGO || data.cnae_fiscal || data.cnae || "N/A");
+    const cnaeDesc = cnaeIsStr
+      ? ""
+      : (data.cnaePrincipal?.descricao || data.cnaePrincipal?.DESCRICAO || data.cnae_fiscal_descricao || "");
     const cnaesSec = Array.isArray(data.cnaesSecundarios) ? data.cnaesSecundarios : Array.isArray(data.cnaes_secundarios) ? data.cnaes_secundarios : [];
     const socios = Array.isArray(data.sociosQSA) ? data.sociosQSA : Array.isArray(data.qsa) ? data.qsa : Array.isArray(data.socios) ? data.socios : Array.isArray(data.quadro_societario) ? data.quadro_societario : [];
 
@@ -1391,42 +1430,333 @@
 
   function renderNameHomonymsReport({ termo, payload, moduleLabel = "HOMÔNIMOS / NOME", sourceLabel = "Zeroy Name Search", systemBadge = "ZEROY OSINT ENGINE" }) {
     const raw = unwrapPayload(payload);
-    const records = Array.isArray(raw)
+    const rawRecords = Array.isArray(raw)
       ? raw
-      : Array.isArray(raw?.resultados)
-        ? raw.resultados
-        : Array.isArray(raw?.registros)
-          ? raw.registros
-          : Array.isArray(raw?.pessoas)
-            ? raw.pessoas
-            : raw && typeof raw === "object"
-              ? [raw]
-              : [];
+      : Array.isArray(raw?.filhos)
+        ? raw.filhos
+        : Array.isArray(raw?.resultado)
+          ? raw.resultado
+          : Array.isArray(raw?.resultados)
+            ? raw.resultados
+            : Array.isArray(raw?.registros)
+              ? raw.registros
+              : Array.isArray(raw?.pessoas)
+                ? raw.pessoas
+                : raw && typeof raw === "object"
+                  ? [raw]
+                  : [];
 
-    const rows = records.map((reg, idx) => ({
-      ORDEM: `#${idx + 1}`,
-      MATCH: reg.score !== undefined && reg.score !== null ? `${reg.score}%` : "ALTO",
-      NOME_COMPLETO: reg.nome || reg.name || "Não informado",
-      CPF: formatCpf(reg.cpf),
-      NASCIMENTO: formatDate(reg.nascimento || reg.data_nascimento),
-      SEXO: reg.sexo || reg.gender || "N/I",
-      FILIACAO_MAE: reg.nomeMae || reg.nome_mae || reg.mae || "N/I",
-    }));
+    const isInvalidText = (v) => {
+      const s = String(v ?? "").trim().toUpperCase();
+      return !s || ["NÃO INFORMADO", "NAO INFORMADO", "NOME NÃO INFORMADO", "NOME NAO INFORMADO", "N/I", "N/A", "NULL", "UNDEFINED"].includes(s);
+    };
 
-    const uniqueCpfs = new Set(records.map((r) => digitsOnly(r.cpf)).filter((c) => c.length === 11)).size;
+    const records = rawRecords.filter((item) => {
+      if (!item || typeof item !== "object") return false;
+      const nomeVal = item.nome || item.name || item.NOME || "";
+      const cpfVal = digitsOnly(item.cpf_raw || item.cpf || item.CPF || "");
+      return !isInvalidText(nomeVal) || cpfVal.length >= 11;
+    });
+
+    const queryType = String(payload?.tipo || raw?.tipo || "").toLowerCase().trim();
+    const isNomeSimilar =
+      String(moduleLabel || "").toLowerCase().includes("similar") ||
+      queryType === "nome_similar";
+    const isFiliacao =
+      queryType === "mae" ||
+      queryType === "pai" ||
+      String(moduleLabel || "").toLowerCase().includes("mãe") ||
+      String(moduleLabel || "").toLowerCase().includes("mae") ||
+      /\bpai\b/i.test(String(moduleLabel || ""));
+
+    if (payload?.notFound || payload?.isNotFound || raw?.notFound || raw?.isNotFound || records.length === 0) {
+      return buildReportShell({
+        systemBadge,
+        title: isFiliacao ? "DOSSIÊ DE VÍNCULOS DE FILIAÇÃO" : "CONSULTA NOMINAL OSINT",
+        moduleLabel,
+        termo,
+        fonteLabel: sourceLabel,
+        kpis: [
+          { label: "REGISTROS LOCALIZADOS", value: 0, color: "#94A3B8" },
+          { label: "STATUS", value: "SEM REGISTROS", color: "#F59E0B", small: true },
+        ],
+        bodyHtml: renderDarkCard(
+          "Resultado da Pesquisa",
+          `<div style="color:#CBD5E1;">${isFiliacao ? "Nenhum filho vinculado encontrado para a filiação consultada." : "Nenhum registro localizado para o termo informado."}</div>`,
+          "#8B5CF6"
+        ),
+      });
+    }
+
+    const resolveCpfRegion = (cpfVal) => {
+      if (root.RimuInterpreters?.Formatters?.cpfRegion) {
+        return root.RimuInterpreters.Formatters.cpfRegion(cpfVal);
+      }
+      const clean = digitsOnly(cpfVal);
+      if (clean.length < 9) return { regiao: "N/I", estados: "Não identificado" };
+      const mapa = {
+        "1": { regiao: "1ª RF", estados: "DF, GO, MT, MS, TO" },
+        "2": { regiao: "2ª RF", estados: "AC, AM, AP, PA, RO, RR" },
+        "3": { regiao: "3ª RF", estados: "CE, MA, PI" },
+        "4": { regiao: "4ª RF", estados: "AL, PB, PE, RN" },
+        "5": { regiao: "5ª RF", estados: "BA, SE" },
+        "6": { regiao: "6ª RF", estados: "Minas Gerais (MG)" },
+        "7": { regiao: "7ª RF", estados: "RJ, ES" },
+        "8": { regiao: "8ª RF", estados: "São Paulo (SP)" },
+        "9": { regiao: "9ª RF", estados: "PR, SC" },
+        "0": { regiao: "10ª RF", estados: "Rio Grande do Sul (RS)" },
+      };
+      return mapa[clean.charAt(8)] || { regiao: "N/I", estados: "Não identificado" };
+    };
+
+    const isNomeCompletoSimples =
+      !isNomeSimilar &&
+      !isFiliacao &&
+      records.length === 1 &&
+      !records[0]?.nomeMae &&
+      !records[0]?.nome_mae &&
+      !records[0]?.mae &&
+      !records[0]?.score;
+
+    if (isNomeCompletoSimples) {
+      const reg = records[0] || {};
+      const cpfVal = reg.cpf || reg.CPF || "";
+      const regInfo = resolveCpfRegion(cpfVal);
+      const nome = reg.nome || reg.name || reg.NOME || "Não informado";
+      const birth = formatDate(reg.data_nascimento || reg.nascimento || reg.birth_date);
+      const sexo = reg.sexo || reg.gender || "";
+      const fields = [
+        { label: "NOME COMPLETO", value: nome, color: "#F8FAFC" },
+        { label: "CPF", value: formatCpf(cpfVal), color: "#34D399", mono: true },
+        birth && birth !== "N/I"
+          ? { label: "DATA DE NASCIMENTO", value: reg.idade ? `${birth} (${reg.idade} anos)` : birth, mono: true }
+          : null,
+        sexo && !["NÃO INFORMADO", "NAO INFORMADO", "N/I"].includes(String(sexo).toUpperCase())
+          ? { label: "SEXO", value: sexo }
+          : null,
+        regInfo.regiao && regInfo.regiao !== "N/I"
+          ? { label: "EMISSÃO ESTIMADA (9º DÍGITO)", value: `${regInfo.regiao} • ${regInfo.estados}`, color: "#A78BFA" }
+          : null,
+      ];
+
+      return buildReportShell({
+        systemBadge,
+        title: "DOSSIÊ NOMINAL SIMPLIFICADO (NOME COMPLETO)",
+        moduleLabel: "NOME COMPLETO",
+        termo,
+        fonteLabel: sourceLabel,
+        kpis: [
+          { label: "TITULAR", value: nome, color: "#F8FAFC", small: true },
+          { label: "CPF", value: formatCpf(cpfVal), color: "#34D399", small: true },
+          { label: "REGIÃO FISCAL", value: regInfo.regiao || "N/I", color: "#A78BFA", small: true },
+        ],
+        bodyHtml: renderDarkCard("Identificação Nominal Localizada", renderFieldGrid(fields, "220px"), "#8B5CF6"),
+      });
+    }
+
+    const rows = records.map((reg, idx) => {
+      const cpfVal = reg.cpf_raw || reg.cpf || reg.CPF || "";
+      if (isNomeSimilar) {
+        const regInfo = resolveCpfRegion(cpfVal);
+        return {
+          ORDEM: `#${idx + 1}`,
+          NOME_COMPLETO: reg.nome || reg.name || reg.NOME || "Não informado",
+          CPF: formatCpf(cpfVal),
+          REGIAO_FISCAL: reg.regiaoFiscal || regInfo.regiao,
+          EMISSAO_ESTIMADA_9_DIGITO: reg.localEmissao || regInfo.estados,
+        };
+      }
+      if (isFiliacao) {
+        const regInfo = resolveCpfRegion(cpfVal);
+        const birth = formatDate(reg.data_nascimento || reg.nascimento || reg.birth_date);
+        return {
+          ORDEM: `#${idx + 1}`,
+          NOME_COMPLETO: reg.nome || reg.name || reg.NOME || "Não informado",
+          CPF: formatCpf(cpfVal),
+          NASCIMENTO: reg.idade && birth !== "N/I" ? `${birth} (${reg.idade} anos)` : birth,
+          REGIAO_FISCAL: reg.regiaoFiscal || regInfo.regiao,
+          EMISSAO_ESTIMADA_9_DIGITO: reg.localEmissao || regInfo.estados,
+        };
+      }
+      return {
+        ORDEM: `#${idx + 1}`,
+        MATCH: reg.score !== undefined && reg.score !== null ? `${reg.score}%` : "ALTO",
+        NOME_COMPLETO: reg.nome || reg.name || "Não informado",
+        CPF: formatCpf(cpfVal),
+        NASCIMENTO: formatDate(reg.nascimento || reg.data_nascimento),
+        SEXO: reg.sexo || reg.gender || "N/I",
+        FILIACAO_MAE: reg.nomeMae || reg.nome_mae || reg.mae || "N/I",
+      };
+    });
+
+    const uniqueCpfs = new Set(records.map((r) => digitsOnly(r.cpf_raw || r.cpf || r.CPF)).filter((c) => c.length === 11)).size;
+    const regionsCount = new Set(
+      records.map((r) => r.regiaoFiscal || resolveCpfRegion(r.cpf_raw || r.cpf || r.CPF).regiao).filter((x) => x && x !== "N/I")
+    ).size;
 
     return buildReportShell({
       systemBadge,
-      title: "DOSSIÊ DE HOMÔNIMOS & IDENTIDADES CORRELATAS",
+      title: isNomeSimilar
+        ? "DOSSIÊ DE NOMES SIMILARES & ORIGEM FISCAL DO CPF"
+        : isFiliacao
+          ? "DOSSIÊ DE VÍNCULOS DE FILIAÇÃO & ORIGEM DO CPF"
+          : "DOSSIÊ DE HOMÔNIMOS & IDENTIDADES CORRELATAS",
+      moduleLabel,
+      termo,
+      fonteLabel: sourceLabel,
+      kpis: isNomeSimilar || isFiliacao
+        ? [
+            { label: isFiliacao ? "FILHOS IDENTIFICADOS" : "REGISTROS LOCALIZADOS", value: records.length, color: "#34D399" },
+            { label: "CPFS IDENTIFICADOS", value: uniqueCpfs, color: "#38BDF8" },
+            { label: "REGIÕES FISCAIS (9º DÍGITO)", value: regionsCount, color: "#A78BFA" },
+          ]
+        : [
+            { label: "REGISTROS LOCALIZADOS", value: records.length, color: "#34D399" },
+            { label: "CPFS ÚNICOS", value: uniqueCpfs, color: "#38BDF8" },
+            { label: "CRITÉRIO DE BUSCA", value: String(moduleLabel).toUpperCase(), color: "#A78BFA", small: true },
+          ],
+      bodyHtml: renderDarkCard(
+        isNomeSimilar
+          ? `Registros Localizados com Estimativa pelo 9º Dígito (${records.length})`
+          : isFiliacao
+            ? `Filhos Localizados com Nascimento e Origem Fiscal (${records.length})`
+            : `Lista de Candidatos / Homônimos (${records.length})`,
+        renderDarkTable(rows),
+        "#10B981"
+      ),
+    });
+  }
+
+  function renderOabReport({ termo, payload, moduleLabel = "OAB / CNA", sourceLabel = "Cadastro Nacional dos Advogados (OAB)", systemBadge = "RIMUBUSCA OSINT" }) {
+    const raw = unwrapPayload(payload) || {};
+    const oabCandidates = [
+      raw.data?.response,
+      raw.data?.conteudo,
+      raw.response,
+      raw.conteudo,
+      raw.data,
+      raw,
+    ].filter((c) => c && typeof c === "object");
+    const root =
+      oabCandidates.find((c) => Array.isArray(c.advogados) && c.advogados.length > 0) ||
+      oabCandidates.find((c) => Array.isArray(c.CNA_ADVOGADOS) && c.CNA_ADVOGADOS.length > 0) ||
+      oabCandidates[0] ||
+      raw;
+    const advs = Array.isArray(root.advogados)
+      ? root.advogados
+      : Array.isArray(root.CNA_ADVOGADOS)
+        ? root.CNA_ADVOGADOS
+        : Array.isArray(root.resultado)
+          ? root.resultado
+          : (root.NOME || root.nome || root.INSCRICAO || root.inscricao)
+            ? [root]
+            : [];
+    const fotos = Array.isArray(root.CNA_FOTOS) ? root.CNA_FOTOS : [];
+    const sociedades = Array.isArray(root.sociedades)
+      ? root.sociedades
+      : Array.isArray(root.CNA_SOCIEDADES)
+        ? root.CNA_SOCIEDADES
+        : [];
+
+    const first = advs[0] || {};
+    const insc = pick(first, ["inscricao", "INSCRICAO"], termo || "N/I");
+    const uf = pick(first, ["uf", "seccional", "UF", "SECCIONAL"], "N/I");
+    const nome = pick(first, ["nome", "NOME"], "Não informado");
+    const rawSocialVal = first.nomeSocial ?? first.NOME_SOCIAL ?? first.nome_social ?? "";
+    const rawSocial = String(rawSocialVal).trim();
+    const nomeSocial = rawSocial && rawSocial.toUpperCase() !== "SEM RESULTADO" && rawSocial.toUpperCase() !== "N/I" ? rawSocial : null;
+    const categoria = pick(first, ["tipo", "categoria", "TIPO", "CATEGORIA"], "ADVOGADO(A)");
+    const situacao = pick(first, ["situacao", "SITUACAO"], "");
+    const qtdSoc = String(first.qtdSociedades ?? first.QTD_SOCIEDADES ?? sociedades.length ?? "0");
+    const allowRaw = first.allowEmail ?? first.ALLOW_EMAIL;
+    const allowEmailText = allowRaw === true || String(allowRaw) === "1" ? "Habilitado" : allowRaw === false || String(allowRaw) === "0" ? "Não autorizado" : null;
+    const carteirinhaUrl = resolveImageSrc(first.carteirinha || first.fotoUrl || first.FOTO_BASE64 || fotos[0]?.FOTO_BASE64 || fotos[0]?.FOTO_URL || "");
+
+    const advGrid = renderFieldGrid([
+      { label: "ADVOGADO(A)", value: nome, color: "#F8FAFC" },
+      nomeSocial ? { label: "NOME SOCIAL", value: nomeSocial } : null,
+      { label: "INSCRIÇÃO OAB", value: insc, color: "#FBBF24", mono: true },
+      { label: "SECCIONAL (UF)", value: uf, color: "#38BDF8", mono: true },
+      { label: "TIPO / CATEGORIA", value: categoria },
+      situacao ? { label: "SITUAÇÃO", value: situacao, color: "#34D399" } : null,
+      allowEmailText ? { label: "COMUNICAÇÃO POR E-MAIL", value: allowEmailText } : null,
+      { label: "SOCIEDADES VINCULADAS", value: qtdSoc, color: "#A78BFA", mono: true },
+    ], "210px");
+
+    const carteirinhaCard = carteirinhaUrl
+      ? renderDarkCard(
+          "Carteira de Identificação do Advogado (OAB)",
+          `<div style="display:flex;justify-content:center;padding:8px;">
+             <img src="${escapeHtml(carteirinhaUrl)}" alt="Carteira OAB" style="width:100%;max-width:540px;height:auto;object-fit:contain;border-radius:8px;border:1px solid #8B5CF6;" />
+           </div>`,
+          "#8B5CF6"
+        )
+      : "";
+
+    const socCard = sociedades.length > 0
+      ? renderDarkCard(`Sociedades Vinculadas (${sociedades.length})`, renderDarkTable(sociedades), "#8B5CF6")
+      : "";
+
+    return buildReportShell({
+      systemBadge,
+      title: "DOSSIÊ PROFISSIONAL CNA / OAB",
+      moduleLabel,
+      termo: uf && uf !== "N/I" ? `${insc}/${uf}` : termo,
+      fonteLabel: sourceLabel,
+      kpis: [
+        { label: "INSCRIÇÃO", value: insc, color: "#FBBF24", small: true },
+        { label: "SECCIONAL", value: uf, color: "#38BDF8", small: true },
+        { label: "TIPO", value: categoria, color: "#34D399", small: true },
+        { label: "SOCIEDADES", value: qtdSoc, color: "#A78BFA" },
+      ],
+      bodyHtml: renderDarkCard("Registro Profissional CNA / OAB", advGrid, "#F59E0B") + carteirinhaCard + socCard,
+    });
+  }
+
+  function renderLeaksReport({ termo, payload, moduleLabel = "CLOUD URL / LOGS", sourceLabel = "Vazamentos & Credenciais", systemBadge = "RIMUBUSCA OSINT" }) {
+    const raw = unwrapPayload(payload) || {};
+    const list = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw.registros)
+        ? raw.registros
+        : Array.isArray(raw.vazamentos)
+          ? raw.vazamentos
+          : Array.isArray(raw.senhas)
+            ? raw.senhas
+            : Array.isArray(raw.resultado)
+              ? raw.resultado
+              : [];
+
+    const rows = list.slice(0, 500).map((item) => {
+      const row = {};
+      const u = item?.url || item?.URL;
+      const usr = item?.usuario || item?.USUARIO || item?.user;
+      const mail = item?.email || item?.EMAIL;
+      const pass = item?.senha || item?.SENHA;
+      const nm = item?.nome || item?.NOME;
+      const doc = item?.cpf || item?.CPF;
+      if (u) row.URL = u;
+      if (usr) row.USUARIO = usr;
+      if (mail) row.EMAIL = mail;
+      if (pass) row.SENHA = pass;
+      if (nm) row.NOME = nm;
+      if (doc) row.CPF = doc;
+      return row;
+    }).filter((r) => Object.keys(r).length > 0);
+
+    return buildReportShell({
+      systemBadge,
+      title: "RELATÓRIO DE CREDENCIAIS & VAZAMENTOS",
       moduleLabel,
       termo,
       fonteLabel: sourceLabel,
       kpis: [
-        { label: "REGISTROS LOCALIZADOS", value: records.length, color: "#34D399" },
-        { label: "CPFS ÚNICOS", value: uniqueCpfs, color: "#38BDF8" },
-        { label: "CRITÉRIO DE BUSCA", value: String(moduleLabel).toUpperCase(), color: "#A78BFA", small: true },
+        { label: "REGISTROS LOCALIZADOS", value: list.length, color: "#F87171" },
+        { label: "EXIBIDOS NO RELATÓRIO", value: rows.length, color: "#38BDF8" },
       ],
-      bodyHtml: renderDarkCard(`Lista de Candidatos / Homônimos (${records.length})`, renderDarkTable(rows), "#10B981"),
+      bodyHtml: rows.length > 0
+        ? renderDarkCard(`Credenciais / Logs Expostos (${list.length})`, renderDarkTable(rows), "#EF4444")
+        : renderDarkCard("Monitoramento", `<div style="color:#34D399;">Nenhum registro de vazamento localizado para este alvo.</div>`, "#10B981"),
     });
   }
 
@@ -2038,11 +2368,94 @@
     });
   }
 
+  function renderFacialRecognitionReport({ termo, payload, moduleLabel = "RECONHECIMENTO FACIAL", sourceLabel = "Zeroy Biometria Facial", systemBadge = "ZEROY OSINT ENGINE" }) {
+    const raw = unwrapPayload(payload);
+    const matches = Array.isArray(raw?.matches) ? raw.matches : [];
+    const otim = raw?.otimizacao || null;
+
+    if (raw?.notFound || matches.length === 0) {
+      return buildReportShell({
+        systemBadge,
+        title: "RELATÓRIO DE RECONHECIMENTO FACIAL NACIONAL",
+        moduleLabel,
+        termo,
+        fonteLabel: sourceLabel,
+        kpis: [
+          { label: "CORRESPONDÊNCIAS", value: 0, color: "#94A3B8" },
+          { label: "STATUS", value: "SEM MATCH", color: "#F59E0B", small: true },
+        ],
+        bodyHtml: renderDarkCard(
+          "Resultado Biométrico",
+          `<div style="color:#CBD5E1;">Nenhuma correspondência facial localizada acima do limite mínimo de similaridade.</div>`,
+          "#EC4899"
+        ),
+      });
+    }
+
+    const matchCardsHtml = matches
+      .map((m, idx) => {
+        const det = m.detalhes && typeof m.detalhes === "object" ? m.detalhes : {};
+        const imgSrc = resolveImageSrc(m.foto || m.base64 || m.imagem);
+        const imgHtml = imgSrc
+          ? `<img src="${imgSrc}" alt="Match #${idx + 1}" style="width:110px;height:135px;object-fit:cover;border-radius:8px;border:2px solid #EC4899;" />`
+          : `<div style="width:110px;height:135px;border:1px dashed #334155;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#64748B;font-size:11px;">Sem Foto</div>`;
+
+        const fields = renderFieldGrid([
+          { label: "CPF", value: formatCpf(m.cpf), color: "#34D399", mono: true },
+          { label: "SIMILARIDADE", value: m.similaridade || "N/I", color: "#F472B6" },
+          { label: "UF BASE", value: m.estado || "N/I" },
+          { label: "NASCIMENTO", value: formatDate(det.nascimento), mono: true },
+          { label: "MÃE", value: det.mae || "Não informada" },
+          { label: "SEXO", value: det.sexo || "N/I" },
+          { label: "TELEFONES", value: Array.isArray(det.telefones) && det.telefones.length ? det.telefones.join(", ") : "N/I", full: true, mono: true },
+        ], "180px");
+
+        return `<div style="display:flex;gap:16px;flex-wrap:wrap;padding:12px;background:#080B11;border:1px solid #1E2538;border-radius:8px;margin-bottom:12px;">
+          ${imgHtml}
+          <div style="flex:1;min-width:220px;">${fields}</div>
+        </div>`;
+      })
+      .join("");
+
+    return buildReportShell({
+      systemBadge,
+      title: "RELATÓRIO DE RECONHECIMENTO FACIAL NACIONAL",
+      moduleLabel,
+      termo,
+      fonteLabel: sourceLabel,
+      kpis: [
+        { label: "CORRESPONDÊNCIAS", value: matches.length, color: "#F472B6" },
+        { label: "TOP SIMILARIDADE", value: matches[0]?.similaridade || "N/I", color: "#34D399", small: true },
+        { label: "OTIMIZAÇÃO SERVIDOR", value: otim?.optimizedBytes ? `${Math.round(otim.optimizedBytes / 1024)} KB` : "JPEG", color: "#38BDF8", small: true },
+      ],
+      bodyHtml: renderDarkCard(`Candidatos Biométricos Localizados (${matches.length})`, matchCardsHtml, "#EC4899"),
+    });
+  }
+
   function generateZeroyReport({ moduloId = "cpf-zeroy", moduloNome = "", parametro = "", path = "", termo = "", rawResponse = {} }) {
     const id = String(moduloId || "cpf-zeroy").toLowerCase().trim();
     const label = moduloNome ? moduloNome.replace(/^Módulo\s+/i, "") : id.toUpperCase();
     const payload = unwrapPayload(rawResponse);
     const metaSource = path ? `Zeroy API (${path})` : "Zeroy Intelligence Engine";
+
+    if (rawResponse?.notFound || payload?.notFound || payload?.isNotFound) {
+      if (id === "reconnc") {
+        return renderFacialRecognitionReport({ termo, payload, moduleLabel: label, sourceLabel: metaSource, systemBadge: "ZEROY OSINT ENGINE" });
+      }
+      return buildReportShell({
+        systemBadge: "ZEROY OSINT ENGINE",
+        title: `RELATÓRIO OSINT — ${label.toUpperCase()}`,
+        moduleLabel: label,
+        termo,
+        fonteLabel: metaSource,
+        kpis: [{ label: "STATUS", value: "SEM REGISTROS", color: "#F59E0B", small: true }],
+        bodyHtml: renderDarkCard("Resultado da Consulta", `<div style="color:#CBD5E1;">Nenhum registro localizado na Zeroy API para o parâmetro informado.</div>`, "#8B5CF6"),
+      });
+    }
+
+    if (id === "reconnc" || (!Array.isArray(payload) && Array.isArray(payload?.matches))) {
+      return renderFacialRecognitionReport({ termo, payload, moduleLabel: label, sourceLabel: metaSource, systemBadge: "ZEROY OSINT ENGINE" });
+    }
 
     if (id === "cnpj" || (!Array.isArray(payload) && (payload?.razaoSocial || payload?.qsa || payload?.sociosQSA))) {
       return renderCompanyReport({ termo, payload, sourceLabel: metaSource, systemBadge: "ZEROY OSINT ENGINE" });
@@ -2692,6 +3105,59 @@
     return true;
   }
 
+  function renderEmploymentReport({ termo = "", payload = {}, tipo = "funcionarios", sourceLabel = "RimuAPI Intelligence Engine", systemBadge = "RIMUBUSCA OSINT" } = {}) {
+    const raw = unwrapPayload(payload) || {};
+    const t = String(tipo || raw.tipo || "funcionarios").toLowerCase().trim();
+    const isFunc = t === "funcionarios";
+    const items = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw[t])
+        ? raw[t]
+        : Array.isArray(raw.funcionarios)
+          ? raw.funcionarios
+          : Array.isArray(raw.empregos)
+            ? raw.empregos
+            : Array.isArray(raw.resultado)
+              ? raw.resultado
+              : [];
+
+    const alvo = isFunc
+      ? (raw.razaoSocial || raw.empresa?.razaoSocial || formatCnpj(raw.cnpj_raw || raw.cnpj || termo))
+      : (raw.nome || raw.titular?.nome || formatCpf(raw.cpf_raw || raw.cpf || termo));
+
+    const kpis = [
+      { label: "MODULO", value: isFunc ? "FUNCIONÁRIOS (CNPJ)" : "HISTÓRICO CTPS", color: "#A78BFA", small: true },
+      { label: "VÍNCULOS", value: items.length, color: items.length > 0 ? "#34D399" : "#F59E0B" },
+      { label: isFunc ? "CNPJ" : "CPF", value: isFunc ? formatCnpj(raw.cnpj_raw || raw.cnpj || termo) : formatCpf(raw.cpf_raw || raw.cpf || termo), mono: true, small: true, color: "#38BDF8" },
+    ];
+
+    const rows = items.map((item) => ({
+      NOME: item.nome || item.NOME || "-",
+      CPF: formatCpf(item.cpf_raw || item.cpf || item.CPF),
+      RAZAO_SOCIAL: item.razaoSocial || item.RAZAO_SOCIAL || "-",
+      CNPJ: formatCnpj(item.cnpj_raw || item.cnpj || item.CNPJ),
+      SITUACAO: item.situacao || item.SITUACAO || "-",
+      ADMISSAO: item.dataAdmissao || item.DATA_ADMISSAO || "-",
+      DESLIGAMENTO: item.dataDesligamento || item.DATA_DESLIGAMENTO || "Sem desligamento",
+      ENTREGA: item.dataEntrega || item.DATA_ENTREGA || "-",
+    }));
+
+    const bodyHtml = items.length > 0
+      ? renderDarkCard(isFunc ? `Funcionários Localizados (${items.length})` : `Vínculos Empregatícios (${items.length})`, renderDarkTable(rows), "#8B5CF6")
+      : renderDarkCard("Resultado da Consulta", `<div style="color:#94A3B8;">Nenhum vínculo trabalhista localizado na base oficial.</div>`, "#F59E0B");
+
+    return buildReportShell({
+      systemBadge,
+      title: isFunc ? "DOSSIÊ DE FUNCIONÁRIOS POR CNPJ" : "DOSSIÊ DE HISTÓRICO TRABALHISTA (CTPS)",
+      moduleLabel: isFunc ? "FUNCIONÁRIOS" : "EMPREGOS CTPS",
+      termo: alvo,
+      fonteLabel: sourceLabel,
+      protocolPrefix: isFunc ? "FUNC" : "CTPS",
+      kpis,
+      bodyHtml,
+    });
+  }
+
   root.OsintDarkReport = {
     escapeHtml,
     digitsOnly,
@@ -2721,6 +3187,9 @@
     renderVehicleReport,
     renderCompanyReport,
     renderNameHomonymsReport,
+    renderOabReport,
+    renderEmploymentReport,
+    renderLeaksReport,
     renderPixFinancialReport,
     renderHealthReport,
     renderCivilRegistryReport,

@@ -33,12 +33,11 @@ class ConsultaController {
       if (mod.manutencao) {
         const chip = document.querySelector(`.rimu-mod-chip[data-tipo="${mod.tipo}"]`);
         if (chip) {
-          chip.style.opacity = "0.75";
+          chip.classList.add("is-maintenance");
           const badge = chip.querySelector(".rimu-mod-badge");
           if (badge) {
             badge.textContent = "Manutenção";
-            badge.style.background = "rgba(239, 68, 68, 0.25)";
-            badge.style.color = "#EF4444";
+            badge.classList.add("is-maintenance");
           }
         }
       }
@@ -455,23 +454,23 @@ class ConsultaController {
       },
       socios: {
         nome: "Quadro Societário (QSA)",
-        label: "Informe o CPF ou CNPJ para Quadro Societário (QSA):",
-        placeholder: "CPF ou CNPJ (apenas números)",
-        mask: null,
-        paramHint: "CPF ou CNPJ do Sócio",
+        label: "Informe o CNPJ da Empresa (14 dígitos) para Quadro Societário (QSA):",
+        placeholder: "00.000.000/0000-00",
+        mask: "cnpj",
+        paramHint: "CNPJ da Empresa (14 dígitos)",
         badge: "QSA",
         badgeColor: "#8B5CF6",
-        desc: "Empresas nas quais o CPF ou CNPJ figura como sócio ou administrador.",
+        desc: "Consulta o Quadro de Sócios e Administradores (QSA) de uma empresa a partir do CNPJ.",
       },
       socios2: {
         nome: "Sócios Avançado (Cotas)",
-        label: "Informe o CPF ou CNPJ para Participações Societárias Avançadas:",
-        placeholder: "CPF ou CNPJ",
-        mask: null,
-        paramHint: "CPF ou CNPJ do Sócio",
+        label: "Informe o CNPJ da Empresa (14 dígitos) para Participações Societárias Avançadas:",
+        placeholder: "00.000.000/0000-00",
+        mask: "cnpj",
+        paramHint: "CNPJ da Empresa (14 dígitos)",
         badge: "Cotas",
         badgeColor: "#A855F7",
-        desc: "Quadro societário avançado com participações cruzadas e percentual de capital.",
+        desc: "Quadro societário avançado com participações cruzadas e percentual de capital pelo CNPJ da empresa.",
       },
       funcionarios: {
         nome: "Funcionários por CNPJ",
@@ -692,14 +691,13 @@ class ConsultaController {
       param2Input.placeholder = cfg.param2Placeholder || cfg.param2Label;
       param2Input.title = cfg.param2Label;
       param2Input.value = "";
+      param2Input.classList.toggle("input-osint-compact--pix", this.currentTipo === "desmascarador");
+      param2Input.classList.toggle("input-osint-compact--uf", this.currentTipo === "oab");
       if (this.currentTipo === "desmascarador") {
-        param2Input.style.width = "210px";
         param2Input.dataset.mask = "desmascarador";
       } else if (this.currentTipo === "oab") {
-        param2Input.style.width = "110px";
         param2Input.dataset.mask = "uf";
       } else {
-        param2Input.style.width = "140px";
         param2Input.dataset.mask = "";
       }
     } else if (param2Container) {
@@ -707,6 +705,7 @@ class ConsultaController {
       if (param2Input) {
         param2Input.value = "";
         param2Input.dataset.mask = "";
+        param2Input.classList.remove("input-osint-compact--pix", "input-osint-compact--uf");
       }
     }
 
@@ -731,8 +730,6 @@ class ConsultaController {
       }
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.style.opacity = "0.5";
-        submitBtn.style.cursor = "not-allowed";
         submitBtn.title = "Módulo indisponível no momento";
       }
     } else {
@@ -741,8 +738,6 @@ class ConsultaController {
       }
       if (submitBtn) {
         submitBtn.disabled = false;
-        submitBtn.style.opacity = "1";
-        submitBtn.style.cursor = "pointer";
         submitBtn.title = "";
       }
     }
@@ -766,6 +761,18 @@ class ConsultaController {
     const form = document.getElementById("consultaForm");
     const submitBtn = document.getElementById("btnSubmitConsulta");
 
+    const normalizePhoneDigitsBr = (val) => {
+      const raw = String(val || "").trim();
+      let d = raw.replace(/\D/g, "");
+      if ((raw.startsWith("+55") || (d.length >= 12 && d.length <= 13)) && d.startsWith("55")) {
+        d = d.slice(2);
+      }
+      if (d.startsWith("0") && d.length >= 11) {
+        d = d.slice(1);
+      }
+      return d.slice(0, 11);
+    };
+
     const applyMask = (target, mask) => {
       if (!mask) return;
       if (mask === "cpf") {
@@ -775,7 +782,7 @@ class ConsultaController {
         else if (v.length > 3) v = v.replace(/^(\d{3})(\d{1,3})/, "$1.$2");
         target.value = v;
       } else if (mask === "telefone") {
-        let v = target.value.replace(/\D/g, "").slice(0, 11);
+        let v = normalizePhoneDigitsBr(target.value);
         if (v.length > 10) v = v.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
         else if (v.length > 6) v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
         else if (v.length > 2) v = v.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
@@ -886,6 +893,27 @@ class ConsultaController {
 
           termoEnvio = numOab;
           param2Val = ufOab.toUpperCase();
+        } else if (["telefone", "celular", "telefone_puxar", "operadora"].includes(this.currentTipo)) {
+          const cleanTel = normalizePhoneDigitsBr(termo);
+          if (cleanTel.length >= 10) {
+            termoEnvio = cleanTel;
+          }
+        } else if (["cnpj", "cnpj2", "socios", "socios2", "funcionarios"].includes(this.currentTipo)) {
+          const cleanCnpjInput = termo.replace(/\D/g, "");
+          if (cleanCnpjInput.length !== 14) {
+            window.toast?.error("Informe um CNPJ válido com 14 dígitos (00.000.000/0000-00).");
+            input.focus();
+            return;
+          }
+          termoEnvio = cleanCnpjInput;
+        } else if (this.currentTipo === "empregos") {
+          const cleanCpfInput = termo.replace(/\D/g, "");
+          if (cleanCpfInput.length !== 11) {
+            window.toast?.error("Informe um CPF válido com 11 dígitos (000.000.000-00).");
+            input.focus();
+            return;
+          }
+          termoEnvio = cleanCpfInput;
         }
 
         this.currentComplianceData = null;
@@ -919,9 +947,13 @@ class ConsultaController {
             this.currentData = res.data;
             this.renderResults(res.data);
             this.showState("results");
-            window.toast?.success(
-              `Dados da consulta (${this.currentTipo.toUpperCase()}) obtidos com sucesso!`
-            );
+            if (res.data.notFound || res.data.dados?.notFound || res.data.dados?.isNotFound) {
+              window.toast?.info("Nenhum dado localizado para o termo pesquisado.");
+            } else {
+              window.toast?.success(
+                `Dados da consulta (${this.currentTipo.toUpperCase()}) obtidos com sucesso!`
+              );
+            }
           } else {
             throw new Error(res.error || "Nenhum dado encontrado para o termo pesquisado.");
           }
@@ -1033,6 +1065,21 @@ class ConsultaController {
       if (tipoLower === "foto") {
         html += this.renderFotoResult(dados, res);
       }
+      // 4.1.5 OAB / CNA ADVOGADOS
+      else if (
+        (tipoLower === "oab" || dados.CNA_ADVOGADOS || Array.isArray(dados.advogados)) &&
+        window.RimuInterpreters?.HexysOab?.render
+      ) {
+        html += window.RimuInterpreters.HexysOab.render(res, dados);
+      }
+      // 4.1.6 NOME COMPLETO SIMPLIFICADO (Sem Documentos Civis / Score / Renda vazios)
+      else if (
+        tipoLower === "nome" &&
+        !(dados.rg || dados.tituloEleitor || dados.cnh || dados.score || dados.rendaPresumida || dados.telefones?.length || dados.enderecos?.length) &&
+        window.RimuInterpreters?.HexysNameProfile?.render
+      ) {
+        html += window.RimuInterpreters.HexysNameProfile.render(res, dados);
+      }
       // 4.2 VEÍCULO / PLACA
       else if (
         tipoLower === "placa" ||
@@ -1041,32 +1088,64 @@ class ConsultaController {
       ) {
         html += this.renderPlacaResult(dados, res);
       }
-      // 4.3 OPERADORA DE TELEFONIA
+      // 4.3 OPERADORA DE TELEFONIA / TELEFONE NÃO ENCONTRADO
       else if (
+        ((tipoLower === "telefone" || tipoLower === "celular" || tipoLower === "telefone_puxar") &&
+          (res.notFound || dados.notFound || dados.isNotFound || (!dados.name && !dados.nome && !dados.cpf))) ||
         tipoLower === "operadora" ||
         (!dados.name && !dados.cpf && dados.operadora && dados.confianca)
       ) {
         html += this.renderOperadoraResult(dados, res);
       }
+      // 4.3.5 FILIAÇÃO (MÃE E PAI)
+      else if (tipoLower === "mae" || tipoLower === "pai") {
+        const filhos = Array.isArray(dados)
+          ? dados
+          : Array.isArray(dados.filhos)
+            ? dados.filhos
+            : Array.isArray(dados.resultado)
+              ? dados.resultado
+              : (dados.nome || dados.cpf)
+                ? [dados]
+                : [];
+        html += this.renderTabelaRegistros(filhos, res);
+      }
       // 4.4 DOSSIÊ COMPLETO DE PESSOA (CPF, TÍTULO, FICHA, NOME ÚNICO)
       else if (
         tipoLower === "cpf" ||
         tipoLower === "titulo" ||
-        (dados.cpf && (dados.name || dados.nome) && !dados.titular && !dados.parentescos)
+        (!["email", "email_puxar", "mae", "pai", "arvore_familiar", "parentes", "parentesco", "cnpj", "empresa", "nome_similar"].includes(tipoLower) &&
+          String(dados.cpf_raw || dados.cpf || "").replace(/\D/g, "").length >= 11 &&
+          (dados.name || dados.nome) &&
+          !["NÃO INFORMADO", "NAO INFORMADO", "NOME NÃO INFORMADO", "N/I"].includes(String(dados.name || dados.nome).trim().toUpperCase()) &&
+          !dados.titular &&
+          !dados.parentescos)
       ) {
         html += this.renderDossiePessoa(dados, res);
       }
-      // 4.5 PARENTES / ÁRVORE GENEALÓGICA (Apenas consultas de parentesco)
+      // 4.5 PARENTES / ÁRVORE GENEALÓGICA (Apenas consultas de parentesco e árvore externa)
       else if (
         tipoLower === "parentes" ||
         tipoLower === "parentesco" ||
-        (!dados.name && !dados.cpf && (dados.parentescos || (dados.titular && Array.isArray(dados.parentes))))
+        tipoLower === "arvore_familiar" ||
+        (!dados.name && !dados.cpf && (dados.parentescos || dados.url || dados.link || (dados.titular && Array.isArray(dados.parentes))))
       ) {
         html += this.renderParentesResult(dados, res);
+      }
+      // 4.5.5 FUNCIONÁRIOS POR CNPJ / HISTÓRICO TRABALHISTA (EMPREGOS)
+      else if (
+        (tipoLower === "funcionarios" || tipoLower === "empregos") &&
+        window.RimuInterpreters?.HexysEmployment?.render
+      ) {
+        html += window.RimuInterpreters.HexysEmployment.render(res, dados);
       }
       // 4.6 EMPRESA / CNPJ / QUADRO SOCIETÁRIO (QSA)
       else if (
         tipoLower === "cnpj" ||
+        tipoLower === "cnpj2" ||
+        tipoLower === "razao_social" ||
+        tipoLower === "socios" ||
+        tipoLower === "socios2" ||
         tipoLower === "empresa" ||
         (!dados.name && !dados.cpf && (dados.razaoSocial || dados.razao_social || dados.sociosQSA || dados.qsa || (dados.cnpj && dados.capitalSocial)))
       ) {
@@ -1075,6 +1154,7 @@ class ConsultaController {
       // 4.7 CEP & ENDEREÇOS GEOGRÁFICOS
       else if (
         tipoLower === "cep" ||
+        tipoLower === "cep_avancado" ||
         tipoLower === "endereco" ||
         tipoLower === "logradouro" ||
         (!dados.name && !dados.cpf && (dados.cep || dados.logradouro) && (dados.cidade || dados.bairro || dados.uf))
@@ -1089,17 +1169,25 @@ class ConsultaController {
       ) {
         html += this.renderEmailResult(dados, res);
       }
-      // 4.7 LISTAS / ARRAYS (Nome, CEP, Telefone, Vizinhos)
+      // 4.7 LISTAS / ARRAYS (Logs, Vazamentos, Nome, CEP, Telefone, Vizinhos)
       else if (
+        ["cloud_url", "cloud_usuario", "dump_cpf", "dump_email", "dump_telefone"].includes(tipoLower) &&
+        window.RimuInterpreters?.HexysLeaks?.render
+      ) {
+        html += window.RimuInterpreters.HexysLeaks.render(res, dados);
+      } else if (
         Array.isArray(dados) ||
+        Array.isArray(dados.filhos) ||
         Array.isArray(dados.resultado) ||
         Array.isArray(dados.resultados)
       ) {
         const items = Array.isArray(dados)
           ? dados
-          : Array.isArray(dados.resultado)
-            ? dados.resultado
-            : dados.resultados;
+          : Array.isArray(dados.filhos)
+            ? dados.filhos
+            : Array.isArray(dados.resultado)
+              ? dados.resultado
+              : dados.resultados;
 
         html += this.renderTabelaRegistros(items, res);
       }
@@ -1133,50 +1221,50 @@ class ConsultaController {
     const fotoSrc = dados.fotoBase64 || dados.base64 || dados.foto_url || dados.foto;
 
     return `
-      <div class="card" style="margin-bottom: var(--space-4); border-top: 4px solid #8B5CF6;">
-        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <h3 class="card-title" style="color: #A78BFA; display: flex; align-items: center; gap: 8px;">
-            <i data-lucide="camera" style="width: 20px; height: 20px;"></i>
+      <div class="card osint-section-card osint-section-card--purple">
+        <div class="card-header">
+          <h3 class="card-title">
+            <i data-lucide="camera" class="icon-lg icon-purple"></i>
             <span>Biometria Facial & Espelho Fotográfico</span>
           </h3>
-          <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #C4B5FD;">Registro Oficial</span>
+          <span class="badge badge-purple">Registro Oficial</span>
         </div>
 
-        <div style="display: flex; gap: var(--space-6); flex-wrap: wrap; align-items: flex-start; padding-top: var(--space-4);">
-          <div style="text-align: center; flex-shrink: 0;">
+        <div class="osint-foto-layout">
+          <div class="osint-foto-col">
             ${
               fotoSrc
                 ? `
-              <div style="position: relative; display: inline-block;">
-                <img src="${fotoSrc}" alt="Foto Facial" style="width: 200px; height: 250px; object-fit: cover; border-radius: var(--radius-md); border: 2px solid #8B5CF6; box-shadow: 0 4px 20px rgba(139, 92, 246, 0.35);">
+              <div class="osint-foto-frame-wrap">
+                <img src="${fotoSrc}" alt="Foto Facial" class="osint-foto-img">
               </div>
-              <div style="margin-top: 10px;">
-                <a href="${fotoSrc}" download="foto-facial-${res.termo}.jpg" class="btn btn-outline btn-sm" style="font-size: 0.75rem;">
-                  <i data-lucide="download" style="width: 14px; height: 14px;"></i> Baixar Imagem
+              <div class="mt-3">
+                <a href="${fotoSrc}" download="foto-facial-${res.termo}.jpg" class="btn btn-outline btn-sm">
+                  <i data-lucide="download" class="icon-sm"></i> Baixar Imagem
                 </a>
               </div>
             `
                 : `
-              <div style="width: 200px; height: 250px; background: var(--color-surface-2); border-radius: var(--radius-md); border: 2px dashed var(--color-border); display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--color-text-dim);">
-                <i data-lucide="camera-off" style="width: 36px; height: 36px; margin-bottom: 8px;"></i>
-                <span style="font-size: 0.85rem;">Foto não localizada</span>
+              <div class="osint-foto-empty">
+                <i data-lucide="camera-off" class="icon-xl"></i>
+                <span>Foto não localizada</span>
               </div>
             `
             }
           </div>
 
-          <div style="flex: 1; min-width: 260px;">
-            <h4 style="font-size: 1.15rem; font-weight: 700; color: var(--color-text); margin-bottom: 12px;">
-              Documento Consultado: <span style="font-family: var(--font-mono); color: #6EE7B7;">${this.formatCpf(res.termo)}</span>
+          <div class="osint-foto-meta">
+            <h4 class="osint-foto-heading">
+              Documento Consultado: <span class="osint-kv-value--mint">${this.formatCpf(res.termo)}</span>
             </h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 0.875rem;">
-              <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md);">
-                <span style="color: var(--color-text-muted); font-size: 0.75rem; display: block;">Status da Foto</span>
-                <strong style="color: ${fotoSrc ? "#10B981" : "#F59E0B"};">${fotoSrc ? "Disponível na Base RimuAPI" : "Não encontrada"}</strong>
+            <div class="osint-kv-grid">
+              <div class="osint-kv-item">
+                <span class="osint-kv-label">Status da Foto</span>
+                <strong class="osint-kv-value ${fotoSrc ? "osint-kv-value--success" : "osint-kv-value--amber"}">${fotoSrc ? "Disponível na Base RimuAPI" : "Não encontrada"}</strong>
               </div>
-              <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md);">
-                <span style="color: var(--color-text-muted); font-size: 0.75rem; display: block;">Formato Retornado</span>
-                <strong style="color: var(--color-text);">${dados.contentType || "Imagem JPEG/PNG"}</strong>
+              <div class="osint-kv-item">
+                <span class="osint-kv-label">Formato Retornado</span>
+                <strong class="osint-kv-value">${dados.contentType || "Imagem JPEG/PNG"}</strong>
               </div>
             </div>
           </div>
@@ -1253,6 +1341,23 @@ class ConsultaController {
 
   // RENDER: OPERADORA & PORTABILIDADE
   renderOperadoraResult(dados, res) {
+    if (res?.notFound || dados?.notFound || dados?.isNotFound || (!dados?.operadora && !dados?.telefones?.length && !dados?.nome && !dados?.name && !dados?.cpf)) {
+      if (window.RimuInterpreters?.HexysPhone?.render) {
+        return window.RimuInterpreters.HexysPhone.render(res, dados);
+      }
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--warning">
+            <i data-lucide="phone-off" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">Telefone Não Encontrado</h3>
+          <p class="osint-empty-desc">
+            Não foram localizados dados cadastrais, titular ou operadora para o número informado nas bases consultadas.
+          </p>
+        </div>
+      `;
+    }
+
     const phone = dados.telefone_formatado || dados.telefone || res.termo;
     const operadora = dados.operadora || "Não informada";
     const tipo = dados.tipo || "Móvel";
@@ -1301,12 +1406,52 @@ class ConsultaController {
       }
     }
 
+    const queryType = String(res?.tipo || dados?.tipo || "").toLowerCase().trim();
+    const externalUrl = String(dados?.url || dados?.link || res?.url || res?.link || "").trim();
+    if (queryType === "arvore_familiar" || /^https?:\/\//i.test(externalUrl)) {
+      if (res?.notFound || dados?.notFound || !/^https?:\/\//i.test(externalUrl)) {
+        return `
+          <div class="card osint-empty-card osint-empty-card--purple">
+            <div class="osint-empty-icon osint-empty-icon--purple">
+              <i data-lucide="git-merge" class="icon-xl"></i>
+            </div>
+            <h3 class="osint-empty-title">Árvore Genealógica Não Localizada</h3>
+            <p class="osint-empty-desc">Não foi possível localizar ou gerar a árvore genealógica para o documento informado.</p>
+          </div>
+        `;
+      }
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--purple">
+            <i data-lucide="git-merge" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">Árvore Genealógica Pronta para Visualização</h3>
+          <p class="osint-empty-desc" style="margin-bottom: var(--space-5);">Clique no botão abaixo para abrir a árvore em uma nova aba.</p>
+          <a href="${this.escapeHtml(externalUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+            <i data-lucide="external-link" class="icon-xs"></i> Abrir Árvore Genealógica
+          </a>
+        </div>
+      `;
+    }
+
     const titular = dados.titular || dados.target || res?.termo || "Titular";
     const parentescos = Array.isArray(dados.parentescos)
       ? dados.parentescos
       : Array.isArray(dados.parentes)
         ? dados.parentes
         : [];
+
+    if (res?.notFound || dados?.notFound || parentescos.length === 0) {
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--purple">
+            <i data-lucide="users" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">Nenhum Vínculo Familiar Localizado</h3>
+          <p class="osint-empty-desc">Não encontramos parentes registrados para o documento consultado.</p>
+        </div>
+      `;
+    }
 
     return `
       <div class="card" style="margin-bottom: var(--space-4); border-top: 4px solid #8B5CF6;">
@@ -1369,7 +1514,29 @@ class ConsultaController {
     }
 
     const email = dados.email || res?.termo || "E-mail";
-    const persons = Array.isArray(dados.pessoas_vinculadas) ? dados.pessoas_vinculadas : [];
+    const personsRaw = Array.isArray(dados.pessoas_vinculadas) ? dados.pessoas_vinculadas : [];
+    const persons = personsRaw.filter((p) => {
+      if (!p || typeof p !== "object") return false;
+      const n = String(p.nome || p.name || "").trim().toUpperCase();
+      const c = String(p.cpf_raw || p.cpf || "").replace(/\D/g, "");
+      return (n && !["NÃO INFORMADO", "NAO INFORMADO", "NOME NÃO INFORMADO", "N/I", "N/A"].includes(n)) || c.length >= 6;
+    });
+    const empresas = Array.isArray(dados.empresas_vinculadas) ? dados.empresas_vinculadas : [];
+    const vazamentos = Array.isArray(dados.seguranca?.vazamentos) ? dados.seguranca.vazamentos : [];
+    const hasGoogle = Boolean(dados.perfil_google?.gaia_id || dados.perfil_google?.foto || dados.foto);
+    if (res?.notFound || dados?.notFound || (!hasGoogle && persons.length === 0 && empresas.length === 0 && vazamentos.length === 0)) {
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--purple">
+            <i data-lucide="mail-x" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">Nenhum Dado Localizado para Este E-mail</h3>
+          <p class="osint-empty-desc">
+            Não encontramos titulares vinculados, perfil digital ou registros associados ao e-mail <strong>${this.escapeHtml(email)}</strong>.
+          </p>
+        </div>
+      `;
+    }
     return `
       <div class="card" style="margin-bottom: var(--space-4); border-top: 4px solid #06B6D4;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
@@ -1434,21 +1601,28 @@ class ConsultaController {
 
     let cnaePrincipalText = "Não informado";
     if (data.cnaePrincipal && typeof data.cnaePrincipal === "object") {
-      cnaePrincipalText = `${data.cnaePrincipal.codigo || ""} - ${data.cnaePrincipal.descricao || ""}`;
+      cnaePrincipalText = `${data.cnaePrincipal.codigo || data.cnaePrincipal.CODIGO || ""} - ${data.cnaePrincipal.descricao || data.cnaePrincipal.DESCRICAO || ""}`;
     } else if (data.cnaePrincipal) {
       cnaePrincipalText = String(data.cnaePrincipal);
     } else if (data.cnae_fiscal) {
       cnaePrincipalText = `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao || ""}`;
     }
 
-    const fullAddress = data.endereco || [
-      [data.descricao_tipo_de_logradouro, data.logradouro].filter(Boolean).join(" "),
-      data.numero ? `nº ${data.numero}` : null,
-      data.complemento ? `(${data.complemento})` : null,
-      data.bairro ? `- ${data.bairro}` : null,
-      data.municipio ? `${data.municipio}/${data.uf || ""}` : null,
-      data.cep ? `CEP ${data.cep}` : null,
-    ].filter(Boolean).join(", ") || "Endereço não cadastrado";
+    let fullAddress = "";
+    if (typeof data.endereco === "string") {
+      fullAddress = data.endereco.trim();
+    } else {
+      const addrSrc = data.endereco && typeof data.endereco === "object" ? data.endereco : data;
+      fullAddress = [
+        [addrSrc.descricao_tipo_de_logradouro || addrSrc.tipoLogradouro, addrSrc.logradouro || addrSrc.rua || (typeof addrSrc.endereco === "string" ? addrSrc.endereco : "")].filter(Boolean).join(" "),
+        addrSrc.numero && addrSrc.numero !== "S/N" ? `nº ${addrSrc.numero}` : addrSrc.numero === "S/N" ? "S/N" : null,
+        addrSrc.complemento ? `(${addrSrc.complemento})` : null,
+        addrSrc.bairro ? `- ${addrSrc.bairro}` : null,
+        (addrSrc.municipio || addrSrc.cidade) ? `${addrSrc.municipio || addrSrc.cidade}/${addrSrc.uf || ""}` : null,
+        addrSrc.cep ? `CEP ${addrSrc.cep}` : null,
+      ].filter(Boolean).join(", ");
+    }
+    fullAddress = fullAddress || "Endereço não cadastrado";
 
     const legalNature = data.naturezaJuridica || data.natureza_juridica || "Não informada";
     const companySize = data.porte || data.porteEmpresa || "DEMAIS";
@@ -1680,61 +1854,86 @@ class ConsultaController {
 
   // RENDER: TABELA DE REGISTROS (Nome, CEP, Telefone, Vizinhos)
   renderTabelaRegistros(items, res) {
-    if (!items || items.length === 0) {
+    const queryType = String(res?.tipo || "").toLowerCase().trim();
+    const isNomeSimilar = queryType === "nome_similar";
+    const isFiliacao = queryType === "mae" || queryType === "pai";
+
+    const invalidText = (v) => {
+      const s = String(v ?? "").trim().toUpperCase();
+      return !s || ["NÃO INFORMADO", "NAO INFORMADO", "NÃO INFORMADA", "NAO INFORMADA", "NOME NÃO INFORMADO", "N/I", "N/A", "NULL", "UNDEFINED"].includes(s);
+    };
+    const filteredItems = (Array.isArray(items) ? items : []).filter((item) => {
+      if (!item || typeof item !== "object") return false;
+      const nomeVal = item.name || item.nome || item.NOME || "";
+      const cpfVal = String(item.cpf_raw || item.cpf || item.CPF || "").replace(/\D/g, "");
+      return !invalidText(nomeVal) || cpfVal.length >= 11;
+    });
+
+    if (res?.notFound || filteredItems.length === 0) {
       return `
-        <div class="card" style="text-align: center; padding: var(--space-8);">
-          <i data-lucide="user-x" style="width: 32px; height: 32px; color: #F59E0B; margin-bottom: 8px;"></i>
-          <h3 style="font-size: 1.1rem; font-weight: 600;">Nenhum registro localizado</h3>
-          <p style="color: var(--color-text-muted); font-size: 0.85rem;">Não encontramos registros para o termo informado.</p>
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--purple">
+            <i data-lucide="user-x" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">${isFiliacao ? "Nenhum Filho Localizado" : "Nenhum registro localizado"}</h3>
+          <p class="osint-empty-desc">
+            ${isFiliacao ? "Não encontramos filhos vinculados para o nome pesquisado na base oficial." : "Não encontramos registros para o termo informado."}
+          </p>
         </div>
       `;
     }
 
-    const queryType = String(res?.tipo || "").toLowerCase().trim();
-    const isNomeSimilar = queryType === "nome_similar";
-
     return `
-      <div class="card" style="margin-bottom: var(--space-4);">
-        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <i data-lucide="list-filter" style="color: var(--color-primary); width: 20px; height: 20px;"></i>
-            <h3 class="card-title" style="color: var(--color-text);">Resultados Localizados (${items.length})</h3>
+      <div class="card osint-section-card">
+        <div class="card-header">
+          <div class="osint-chip-row">
+            <i data-lucide="list-filter" class="icon-lg icon-purple"></i>
+            <h3 class="card-title">${isFiliacao ? `Filhos Identificados (${filteredItems.length})` : `Resultados Localizados (${filteredItems.length})`}</h3>
           </div>
           <input 
             type="text" 
             id="inputFiltroResultados" 
-            placeholder="${isNomeSimilar ? 'Filtrar por nome, CPF, estado...' : 'Filtrar por nome, CPF, cidade...'}" 
-            style="padding: 6px 14px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); font-size: 0.8125rem; outline: none; min-width: 220px;"
+            class="input-filter-inline"
+            placeholder="${isNomeSimilar || isFiliacao ? 'Filtrar por nome, CPF, estado...' : 'Filtrar por nome, CPF, cidade...'}"
           >
         </div>
 
-        <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
+        <div class="table-responsive osint-table-scroll">
           <table class="osint-table" id="tabelaResultadosPuxar">
             <thead>
               <tr>
-                <th style="width: 40px;">#</th>
+                <th class="osint-th-index">#</th>
                 <th>Nome Completo</th>
-                <th style="width: 170px;">CPF</th>
+                <th class="osint-th-cpf">CPF</th>
                 ${
                   isNomeSimilar
                     ? `<th>Local de Emissão Estimado (9º Dígito)</th>`
-                    : `
-                    <th>Nascimento</th>
-                    <th>Mãe</th>
-                    <th>Localização / Endereço</th>
-                  `
+                    : isFiliacao
+                      ? `
+                        <th>Nascimento</th>
+                        <th>Local de Emissão Estimado (9º Dígito)</th>
+                      `
+                      : `
+                        <th>Nascimento</th>
+                        <th>Mãe</th>
+                        <th>Localização / Endereço</th>
+                      `
                 }
-                <th style="text-align: right; width: 120px;">Ação</th>
+                <th class="osint-th-action">Ação</th>
               </tr>
             </thead>
             <tbody>
-              ${items
+              ${filteredItems
                 .map((item, idx) => {
-                  const nome = item.name || item.nome || "Não informado";
-                  const rawCpf = String(item.cpf || "").replace(/\D/g, "");
-                  const cpfFmt = this.formatCpf(item.cpf);
-                  const regiao = item.localEmissao || this.obterRegiaoFiscalCpf(rawCpf);
-                  const nasc = item.birth_date || item.nascimento || "N/I";
+                  const nome = !invalidText(item.name || item.nome || item.NOME) ? String(item.name || item.nome || item.NOME).trim() : "Não informado";
+                  const cpfVal = item.cpf_raw || item.cpf || item.CPF || "";
+                  const rawCpf = String(cpfVal).replace(/\D/g, "");
+                  const cpfFmt = this.formatCpf(cpfVal);
+                  const regiaoInfo = this.obterRegiaoFiscalInfo(cpfVal);
+                  const regiaoSigla = item.regiaoFiscal || regiaoInfo.regiao;
+                  const regiao = item.localEmissao || regiaoInfo.estados;
+                  const regiaoDesc = item.regiaoFiscalDesc || regiaoInfo.descricao;
+                  const nasc = item.birth_date || item.data_nascimento || item.nascimento || "N/I";
                   const mae = item.mother_name || item.nomeMae || item.nome_mae || "N/I";
                   const end = item.endereco || item.address;
                   const loc = end
@@ -1743,45 +1942,59 @@ class ConsultaController {
                         .join(", ")
                     : item.cidade || item.city || "Brasil";
 
-                  const searchData = isNomeSimilar
-                    ? `${nome.toLowerCase()} ${rawCpf} ${String(regiao).toLowerCase()}`
-                    : `${nome.toLowerCase()} ${rawCpf} ${String(loc).toLowerCase()}`;
+                  const searchData = isNomeSimilar || isFiliacao
+                    ? `${nome.toLowerCase()} ${rawCpf} ${cpfFmt} ${String(regiaoSigla).toLowerCase()} ${String(regiao).toLowerCase()}`
+                    : `${nome.toLowerCase()} ${rawCpf} ${cpfFmt} ${String(loc).toLowerCase()}`;
 
                   return `
                   <tr class="linha-resultado-item" data-search="${this.escapeHtml(searchData)}">
-                    <td style="color: var(--color-text-dim); font-size: 0.75rem;">${idx + 1}</td>
-                    <td style="font-weight: 700; color: var(--color-text);">${this.escapeHtml(nome)}</td>
+                    <td class="osint-td-index">${idx + 1}</td>
+                    <td class="osint-td-name">${this.escapeHtml(nome)}</td>
                     <td>
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-family: var(--font-mono); color: #6EE7B7; font-weight: 600;">${cpfFmt}</span>
-                        <button type="button" class="btn btn-ghost btn-sm btn-copiar-cpf" data-cpf="${rawCpf}" title="Copiar CPF">
-                          <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
-                        </button>
+                      <div class="osint-td-cpf-wrap">
+                        <span class="osint-td-cpf-val">${cpfFmt}</span>
+                        ${
+                          rawCpf
+                            ? `<button type="button" class="btn btn-ghost btn-copy-inline btn-copiar-cpf" data-cpf="${rawCpf}" title="Copiar CPF">
+                                 <i data-lucide="copy" class="icon-xs"></i>
+                               </button>`
+                            : ""
+                        }
                       </div>
                     </td>
                     ${
                       isNomeSimilar
                         ? `
                         <td>
-                          <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #C4B5FD; border: 1px solid rgba(139, 92, 246, 0.3); font-weight: 600; padding: 4px 10px; font-size: 0.8125rem;">
-                            <i data-lucide="map-pin" style="width: 12px; height: 12px; vertical-align: middle; margin-right: 4px; color: #A78BFA;"></i>
-                            ${this.escapeHtml(regiao)}
+                          <span class="badge badge-regiao-fiscal" title="${this.escapeHtml(regiaoDesc)}">
+                            <i data-lucide="map-pin"></i>
+                            ${regiaoSigla && regiaoSigla !== "N/I" ? `<span class="badge-regiao-sigla">${this.escapeHtml(regiaoSigla)} &bull;</span>` : ""}${this.escapeHtml(regiao)}
                           </span>
                         </td>
                       `
-                        : `
-                        <td style="font-size: 0.825rem;">${this.escapeHtml(String(nasc).split(" ")[0])}</td>
-                        <td style="font-size: 0.825rem; color: var(--color-text-muted);">${this.escapeHtml(mae)}</td>
-                        <td style="font-size: 0.8rem; color: var(--color-text-dim);">${this.escapeHtml(loc)}</td>
-                      `
-                    }
-                    <td style="text-align: right;">
-                      ${
-                        rawCpf
+                        : isFiliacao
                           ? `
-                        <button type="button" class="btn btn-outline btn-sm btn-puxar-cpf" data-cpf="${rawCpf}" title="Puxar Dossiê deste CPF">
-                          <i data-lucide="arrow-up-right" style="width: 12px; height: 12px;"></i>
-                          <span>Puxar</span>
+                            <td class="osint-td-meta">${this.escapeHtml(String(nasc).split(" ")[0])}</td>
+                            <td>
+                              <span class="badge badge-regiao-fiscal" title="${this.escapeHtml(regiaoDesc)}">
+                                <i data-lucide="map-pin"></i>
+                                ${regiaoSigla && regiaoSigla !== "N/I" ? `<span class="badge-regiao-sigla">${this.escapeHtml(regiaoSigla)} &bull;</span>` : ""}${this.escapeHtml(regiao)}
+                              </span>
+                            </td>
+                          `
+                          : `
+                            <td class="osint-td-meta">${this.escapeHtml(String(nasc).split(" ")[0])}</td>
+                            <td class="osint-td-meta">${this.escapeHtml(mae)}</td>
+                            <td class="osint-td-dim">${this.escapeHtml(loc)}</td>
+                          `
+                    }
+                    <td class="osint-td-right">
+                      ${
+                        rawCpf.length >= 11
+                          ? `
+                        <button type="button" class="btn btn-primary btn-sm btn-puxar-cpf-item" data-cpf="${rawCpf}" title="Investigar dossiê deste CPF">
+                          <i data-lucide="search" class="icon-xs"></i>
+                          <span>Investigar CPF</span>
                         </button>
                       `
                           : ""
@@ -1798,23 +2011,33 @@ class ConsultaController {
     `;
   }
 
-  obterRegiaoFiscalCpf(cpf) {
-    const clean = String(cpf || "").replace(/\D/g, "");
-    if (clean.length < 9) return "Não identificado";
-    const digit = clean.charAt(8);
+  obterRegiaoFiscalInfo(cpf) {
+    if (window.RimuInterpreters?.Formatters?.cpfRegion) {
+      return window.RimuInterpreters.Formatters.cpfRegion(cpf);
+    }
+    const rawStr = String(cpf || "");
+    const clean = rawStr.replace(/\D/g, "");
+    let digit = "";
+    if (clean.length >= 9) digit = clean.charAt(8);
+    else if (clean.length === 6 && /\*{2,3}/.test(rawStr)) digit = clean.charAt(5);
+    if (!digit) return { regiao: "N/I", estados: "Não identificado", descricao: "Dígitos insuficientes" };
     const mapa = {
-      "1": "DF, GO, MT, MS, TO",
-      "2": "AC, AM, AP, PA, RO, RR",
-      "3": "CE, MA, PI",
-      "4": "AL, PB, PE, RN",
-      "5": "BA, SE",
-      "6": "Minas Gerais (MG)",
-      "7": "RJ, ES",
-      "8": "São Paulo (SP)",
-      "9": "PR, SC",
-      "0": "Rio Grande do Sul (RS)",
+      "1": { regiao: "1ª RF", estados: "DF, GO, MT, MS, TO", descricao: "1ª Região Fiscal (DF, GO, MT, MS, TO)" },
+      "2": { regiao: "2ª RF", estados: "AC, AM, AP, PA, RO, RR", descricao: "2ª Região Fiscal (AC, AM, AP, PA, RO, RR)" },
+      "3": { regiao: "3ª RF", estados: "CE, MA, PI", descricao: "3ª Região Fiscal (CE, MA, PI)" },
+      "4": { regiao: "4ª RF", estados: "AL, PB, PE, RN", descricao: "4ª Região Fiscal (AL, PB, PE, RN)" },
+      "5": { regiao: "5ª RF", estados: "BA, SE", descricao: "5ª Região Fiscal (BA, SE)" },
+      "6": { regiao: "6ª RF", estados: "Minas Gerais (MG)", descricao: "6ª Região Fiscal (MG)" },
+      "7": { regiao: "7ª RF", estados: "RJ, ES", descricao: "7ª Região Fiscal (RJ, ES)" },
+      "8": { regiao: "8ª RF", estados: "São Paulo (SP)", descricao: "8ª Região Fiscal (SP)" },
+      "9": { regiao: "9ª RF", estados: "PR, SC", descricao: "9ª Região Fiscal (PR, SC)" },
+      "0": { regiao: "10ª RF", estados: "Rio Grande do Sul (RS)", descricao: "10ª Região Fiscal (RS)" },
     };
-    return mapa[digit] || "Região não identificada";
+    return mapa[digit] || { regiao: "N/I", estados: "Não identificado", descricao: "Região não identificada" };
+  }
+
+  obterRegiaoFiscalCpf(cpf) {
+    return this.obterRegiaoFiscalInfo(cpf).estados;
   }
 
   // RENDER: DOSSIÊ COMPLETO DE PESSOA (CPF & DADOS CADASTRAIS HEXYS)
@@ -1960,16 +2183,31 @@ class ConsultaController {
         : [];
 
     // Vazamentos / Breaches (inclusive senhas vazadas da base CPF)
-    const vazamentos = Array.isArray(dados.vazamentos) && dados.vazamentos.length > 0
-      ? dados.vazamentos
-      : (dados.raw && Array.isArray(dados.raw.SENHA_CPF))
-        ? dados.raw.SENHA_CPF.map((s) => ({
-            cpf: dados.cpf,
-            senha: s.SENHA || s.senha,
-            fonte: "Vazamento Público de Credenciais",
-            titulo: "Senha Comprometida",
-          }))
-        : [];
+    const senhasFromRaw = dados.raw && Array.isArray(dados.raw.SENHA_CPF)
+      ? dados.raw.SENHA_CPF.map((s) => ({
+          cpf: dados.cpf,
+          senha: s.SENHA || s.senha,
+          data: s.DT_INCLUSAO || null,
+        }))
+      : [];
+    const rawVazamentos = [
+      ...(Array.isArray(dados.senhasVazadas) ? dados.senhasVazadas : []),
+      ...(Array.isArray(dados.vazamentos) ? dados.vazamentos : []),
+      ...senhasFromRaw,
+    ];
+    const vazamentosSeen = new Set();
+    const vazamentos = rawVazamentos.filter((vz) => {
+      if (!vz || typeof vz !== "object") return false;
+      const senha = String(vz.senha || vz.SENHA || "").trim();
+      const titulo = String(vz.titulo || vz.nome || vz.name || "").trim();
+      const validFonte = vz.fonte && vz.fonte !== "Vazamento Público de Credenciais" ? String(vz.fonte).trim() : "";
+      const hasValidTitulo = titulo && titulo !== "Senha Comprometida" && titulo !== "Vazamento Público";
+      if (!senha && !hasValidTitulo && !validFonte) return false;
+      const key = `${senha}|${titulo}|${validFonte}`;
+      if (vazamentosSeen.has(key)) return false;
+      vazamentosSeen.add(key);
+      return true;
+    });
     const totalVazamentos = dados.total_vazamentos || vazamentos.length || 0;
     const alvosVazamentos = dados.alvos_verificados_vazamentos || 0;
 
@@ -1991,31 +2229,30 @@ class ConsultaController {
 
     return `
       <!-- CARTÃO PRINCIPAL (HERO) -->
-      <div class="card" style="margin-bottom: var(--space-4); border-top: 4px solid #8B5CF6;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+      <div class="card osint-section-card osint-section-card--purple">
+        <div class="osint-person-top">
           
-          <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+          <div class="osint-person-hero">
             <!-- Avatar / Foto Biometria Facial -->
-            <div style="position: relative; flex-shrink: 0;">
+            <div class="osint-avatar-wrap">
               ${
                 fotoSrc
                   ? `
-                <div style="position: relative; width: 100px; height: 120px; border-radius: var(--radius-md); overflow: hidden; border: 2px solid #8B5CF6; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);">
+                <div class="osint-avatar-frame">
                   <img 
                     src="${fotoSrc}" 
                     alt="Biometria Facial" 
-                    style="width: 100%; height: 100%; object-fit: cover;"
                     onerror="this.parentElement.style.display='none'"
                   >
-                  <a href="${fotoSrc}" target="_blank" title="Visualizar Imagem em Alta Resolução" style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.7); color: #FFF; border-radius: 4px; padding: 2px 4px; font-size: 0.65rem; display: flex; align-items: center;">
-                    <i data-lucide="maximize-2" style="width: 11px; height: 11px;"></i>
+                  <a href="${fotoSrc}" target="_blank" title="Visualizar Imagem em Alta Resolução" class="osint-avatar-zoom">
+                    <i data-lucide="maximize-2" class="icon-xs"></i>
                   </a>
                 </div>
               `
                   : `
-                <div style="width: 80px; height: 95px; background: var(--color-surface-2); border-radius: var(--radius-md); border: 1px dashed var(--color-border); display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--color-text-dim);">
-                  <i data-lucide="user" style="width: 32px; height: 32px;"></i>
-                  <span style="font-size: 0.65rem; margin-top: 4px;">Sem Foto</span>
+                <div class="osint-avatar-empty">
+                  <i data-lucide="user" class="icon-xl"></i>
+                  <span class="osint-avatar-empty-label">Sem Foto</span>
                 </div>
               `
               }
@@ -2023,119 +2260,119 @@ class ConsultaController {
 
             <!-- Dados Identificadores -->
             <div>
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #C4B5FD; font-weight: 700;">
-                <i data-lucide="id-card" style="width: 12px; height: 12px;"></i> PESSOA FÍSICA
-              </span>
-              <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-weight: 700;">
-                ${status}
-              </span>
-              ${ufCpf ? `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">UF Origem: ${ufCpf}</span>` : ""}
-              <span class="badge badge-dark" style="font-size: 0.72rem;">✓ ${totalFontes} Fontes Consultadas</span>
-              ${
-                alvosVazamentos > 0
-                  ? `<span class="badge" style="background: ${totalVazamentos === 0 ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)"}; color: ${totalVazamentos === 0 ? "#10B981" : "#EF4444"}; font-size: 0.72rem;">
-                      <i data-lucide="${totalVazamentos === 0 ? "shield-check" : "shield-alert"}" style="width: 11px; height: 11px;"></i>
-                      ${totalVazamentos === 0 ? `Seguro (${alvosVazamentos} alvos auditados)` : `${totalVazamentos} vazamentos`}
-                    </span>`
-                  : ""
-              }
-            </div>
+              <div class="osint-chip-row">
+                <span class="badge badge-purple">
+                  <i data-lucide="id-card" class="icon-xs"></i> PESSOA FÍSICA
+                </span>
+                <span class="badge badge-emerald">
+                  ${status}
+                </span>
+                ${ufCpf ? `<span class="badge badge-blue">UF Origem: ${ufCpf}</span>` : ""}
+                <span class="badge badge-dark">✓ ${totalFontes} Fontes Consultadas</span>
+                ${
+                  alvosVazamentos > 0
+                    ? `<span class="badge ${totalVazamentos === 0 ? "badge-emerald" : "badge-red"}">
+                        <i data-lucide="${totalVazamentos === 0 ? "shield-check" : "shield-alert"}" class="icon-xs"></i>
+                        ${totalVazamentos === 0 ? `Seguro (${alvosVazamentos} alvos auditados)` : `${totalVazamentos} vazamentos`}
+                      </span>`
+                    : ""
+                }
+              </div>
 
-            <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--color-text); margin-top: 8px; margin-bottom: 2px;">
-              ${this.escapeHtml(nome)}
-            </h2>
+              <h2 class="osint-person-name mt-3">
+                ${this.escapeHtml(nome)}
+              </h2>
 
-            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-              <span style="font-family: var(--font-mono); font-size: 1.05rem; font-weight: 700; color: #6EE7B7;">${cpfFmt}</span>
-              <button type="button" class="btn btn-ghost btn-sm btn-copiar-cpf" data-cpf="${rawCpf}" title="Copiar CPF">
-                <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
-              </button>
-            </div>
+              <div class="osint-cpf-row">
+                <span class="osint-cpf-code">${cpfFmt}</span>
+                <button type="button" class="btn btn-ghost btn-copy-inline btn-copiar-cpf" data-cpf="${rawCpf}" title="Copiar CPF">
+                  <i data-lucide="copy" class="icon-xs"></i>
+                </button>
+              </div>
 
-            <!-- AÇÕES RÁPIDAS NO HEADER -->
-            <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
-              <button type="button" class="btn btn-outline btn-sm btn-puxar-foto" data-cpf="${rawCpf}" title="Consultar Biometria Facial na RimuAPI">
-                <i data-lucide="camera" style="width: 13px; height: 13px;"></i> Biometria Facial
-              </button>
-              <button type="button" class="btn btn-outline btn-sm btn-puxar-vizinhos" data-cpf="${rawCpf}" title="Mapear Vizinhos no Logradouro">
-                <i data-lucide="home" style="width: 13px; height: 13px;"></i> Mapear Vizinhos
-              </button>
+              <!-- AÇÕES RÁPIDAS NO HEADER -->
+              <div class="osint-person-actions">
+                <button type="button" class="btn btn-outline btn-sm btn-puxar-foto" data-cpf="${rawCpf}" title="Consultar Biometria Facial na RimuAPI">
+                  <i data-lucide="camera" class="icon-sm"></i> Biometria Facial
+                </button>
+                <button type="button" class="btn btn-outline btn-sm btn-puxar-vizinhos" data-cpf="${rawCpf}" title="Mapear Vizinhos no Logradouro">
+                  <i data-lucide="home" class="icon-sm"></i> Mapear Vizinhos
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <div style="background: var(--color-surface-2); padding: 8px 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--color-border); min-width: 110px;">
-              <span style="font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase;">Score de Crédito</span>
-              <div style="font-size: 1.25rem; font-weight: 800; color: #60A5FA;">${scoreVal}</div>
-              ${csb8Range ? `<span style="font-size: 0.65rem; color: #34D399; font-weight: 700;">CSB8: ${csb8Range}</span>` : ""}
+          <div class="osint-score-row">
+            <div class="osint-score-widget">
+              <span class="osint-score-label">Score de Crédito</span>
+              <div class="osint-score-val osint-score-val--blue">${scoreVal}</div>
+              ${csb8Range ? `<span class="osint-score-note osint-score-note--emerald">CSB8: ${csb8Range}</span>` : ""}
             </div>
-            <div style="background: var(--color-surface-2); padding: 8px 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--color-border); min-width: 130px;">
-              <span style="font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase;">Renda Estimada</span>
-              <div style="font-size: 1.15rem; font-weight: 800; color: #10B981;">${incomeFmt}</div>
-              ${poderAquisitivoVal ? `<span style="font-size: 0.68rem; color: #60A5FA; display: block; font-weight: 600;" title="Poder Aquisitivo Serasa">Poder Aq.: ${poderAquisitivoVal}</span>` : poderAquisitivo ? `<span style="font-size: 0.65rem; color: var(--color-text-dim); display: block;">${poderAquisitivo}</span>` : ""}
+            <div class="osint-score-widget">
+              <span class="osint-score-label">Renda Estimada</span>
+              <div class="osint-score-val osint-score-val--emerald">${incomeFmt}</div>
+              ${poderAquisitivoVal ? `<span class="osint-score-note osint-score-note--blue" title="Poder Aquisitivo Serasa">Poder Aq.: ${poderAquisitivoVal}</span>` : poderAquisitivo ? `<span class="osint-score-note osint-score-note--dim">${poderAquisitivo}</span>` : ""}
             </div>
           </div>
         </div>
 
         <!-- GRID DADOS BÁSICOS -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: var(--space-5); font-size: 0.875rem;">
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Data de Nascimento</span>
-            <div style="font-weight: 700; color: var(--color-text); margin-top: 2px;">
+        <div class="osint-kv-grid mt-5">
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Data de Nascimento</span>
+            <div class="osint-kv-value">
               ${this.escapeHtml(String(nasc).split(" ")[0])}
             </div>
           </div>
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Sexo</span>
-            <div style="font-weight: 700; color: var(--color-text); margin-top: 2px;">${gender}</div>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Sexo</span>
+            <div class="osint-kv-value">${gender}</div>
           </div>
           ${
             naturalidade
-              ? `<div>
-                  <span style="color: var(--color-text-muted); font-size: 0.75rem;">Naturalidade</span>
-                  <div style="font-weight: 700; color: var(--color-text); margin-top: 2px;">${this.escapeHtml(naturalidade)}</div>
+              ? `<div class="osint-kv-item">
+                  <span class="osint-kv-label">Naturalidade</span>
+                  <div class="osint-kv-value">${this.escapeHtml(naturalidade)}</div>
                 </div>`
               : ""
           }
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Nome da Mãe</span>
-            <div style="font-weight: 700; color: var(--color-text); margin-top: 2px;">${this.escapeHtml(mae)}</div>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Nome da Mãe</span>
+            <div class="osint-kv-value">${this.escapeHtml(mae)}</div>
           </div>
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Nome do Pai</span>
-            <div style="font-weight: 700; color: var(--color-text); margin-top: 2px;">${this.escapeHtml(pai)}</div>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Nome do Pai</span>
+            <div class="osint-kv-value">${this.escapeHtml(pai)}</div>
           </div>
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Registro Geral (RG)</span>
-            <div style="font-family: var(--font-mono); font-weight: 700; color: var(--color-text); margin-top: 2px;">${this.escapeHtml(rg)}</div>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Registro Geral (RG)</span>
+            <div class="osint-kv-value osint-kv-value--mono">${this.escapeHtml(rg)}</div>
           </div>
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Título de Eleitor</span>
-            <div style="font-family: var(--font-mono); font-weight: 700; color: var(--color-text); margin-top: 2px;">${this.escapeHtml(voterId)}</div>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Título de Eleitor</span>
+            <div class="osint-kv-value osint-kv-value--mono">${this.escapeHtml(voterId)}</div>
           </div>
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Registro CNH</span>
-            <div style="font-family: var(--font-mono); font-weight: 700; color: #F59E0B; margin-top: 2px;">
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Registro CNH</span>
+            <div class="osint-kv-value osint-kv-value--mono osint-kv-value--amber">
               ${this.escapeHtml(cnh)}
-              ${cnhUf ? `<span class="badge badge-dark" style="font-size: 0.65rem; padding: 1px 4px; margin-left: 2px;">${cnhUf}</span>` : ""}
-              ${cnh1st ? `<small style="font-size: 0.7rem; color: var(--color-text-dim); margin-left: 4px;">(1ª: ${cnh1st})</small>` : ""}
+              ${cnhUf ? `<span class="badge badge-dark osint-kv-note">${cnhUf}</span>` : ""}
+              ${cnh1st ? `<small class="osint-kv-note">(1ª: ${cnh1st})</small>` : ""}
             </div>
           </div>
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Cartão SUS (CNS)</span>
-            <div style="font-family: var(--font-mono); font-weight: 700; color: #34D399; margin-top: 2px;">${cns || "Não informado"}</div>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Cartão SUS (CNS)</span>
+            <div class="osint-kv-value osint-kv-value--mint">${cns || "Não informado"}</div>
           </div>
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Ocupação / CBO</span>
-            <div style="font-weight: 700; color: var(--color-text); margin-top: 2px;">
-              ${this.escapeHtml(occupation)} ${cbo ? `<span style="font-family: var(--font-mono); color: var(--color-text-dim); font-size: 0.75rem;">(${cbo})</span>` : ""}
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Ocupação / CBO</span>
+            <div class="osint-kv-value">
+              ${this.escapeHtml(occupation)} ${cbo ? `<span class="osint-kv-note">(${cbo})</span>` : ""}
             </div>
           </div>
-          <div>
-            <span style="color: var(--color-text-muted); font-size: 0.75rem;">Mosaico / Classe</span>
-            <div style="font-weight: 700; color: var(--color-text); margin-top: 2px;">
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Mosaico / Classe</span>
+            <div class="osint-kv-value">
               ${mosaic}${socialClass ? ` &bull; ${socialClass}` : ""}
             </div>
           </div>
@@ -3118,17 +3355,23 @@ class ConsultaController {
           <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 8px;">
             ${vazamentos
               .map((vz) => {
-                const titulo = vz.titulo || vz.fonte || "Vazamento Público";
+                const rawTitulo = String(vz.titulo || vz.nome || vz.name || "").trim();
+                const validFonte = vz.fonte && vz.fonte !== "Vazamento Público de Credenciais" ? String(vz.fonte).trim() : "";
+                const titulo = (rawTitulo && rawTitulo !== "Vazamento Público") ? rawTitulo : (validFonte || "Credencial Exposta");
                 const alvo = vz.alvo || vz.email || vz.cpf || "";
                 const senha = vz.senha || "";
                 return `
                 <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                   <div>
                     <strong style="color: #EF4444; font-size: 0.9rem;">${this.escapeHtml(titulo)}</strong>
-                    <div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">
-                      Alvo: <span style="font-family: var(--font-mono); color: var(--color-text);">${this.escapeHtml(alvo)}</span>
-                      ${vz.data ? ` &bull; Data: ${vz.data}` : ""}
-                    </div>
+                    ${
+                      alvo || (vz.data && vz.data !== "Data não registrada")
+                        ? `<div style="font-size: 0.8rem; color: var(--color-text-muted); margin-top: 2px;">
+                            ${alvo ? `Alvo: <span style="font-family: var(--font-mono); color: var(--color-text);">${this.escapeHtml(alvo)}</span>` : ""}
+                            ${vz.data && vz.data !== "Data não registrada" ? `${alvo ? " &bull; " : ""}Data: ${this.escapeHtml(vz.data)}` : ""}
+                          </div>`
+                        : ""
+                    }
                   </div>
                   ${
                     senha
@@ -3209,8 +3452,8 @@ class ConsultaController {
       });
     });
 
-    // 5.2 Copiar Texto Genérico
-    container.querySelectorAll(".btn-copiar-texto, .btn-copiar-generico").forEach((btn) => {
+    // 5.2 Copiar Texto Genérico e Botões Action Copy (CNPJ, Endereço, Hash, etc.)
+    container.querySelectorAll(".btn-copiar-texto, .btn-copiar-generico, .btn-action-copy").forEach((btn) => {
       btn.addEventListener("click", () => {
         const text = btn.getAttribute("data-copy");
         if (text && window.copyToClipboard) {
@@ -3228,10 +3471,16 @@ class ConsultaController {
           const input = document.getElementById("consultaInput");
           const form = document.getElementById("consultaForm");
           if (input) {
-            input.value = cpf;
+            input.value = this.formatCpf(cpf);
             input.dispatchEvent(new Event("input"));
             form?.scrollIntoView({ behavior: "smooth", block: "center" });
-            if (form) form.dispatchEvent(new Event("submit"));
+            if (form) {
+              if (typeof form.requestSubmit === "function") {
+                form.requestSubmit();
+              } else {
+                form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+              }
+            }
           }
         }
       });
@@ -3370,6 +3619,15 @@ class ConsultaController {
       });
     }
 
+    // 5.8.1 Filtros Interativos na Tabela de Residentes por CEP (Nome, CPF, Número e Complemento)
+    window.RimuInterpreters?.bindCepResidentsFilters?.(container);
+
+    // 5.8.2 Filtros Interativos e Paginação de Logs/Vazamentos por URL/Usuário/Dump
+    window.RimuInterpreters?.bindLeaksFilters?.(container);
+
+    // 5.8.3 Filtros Interativos para Quadro de Funcionários e Histórico Trabalhista
+    window.RimuInterpreters?.bindEmploymentFilters?.(container);
+
     // 5.9 Filtro em tempo real de Titulares por Telefone (Nome ou Dígitos do CPF como 886, 1433)
     const inputFiltroTel = container.querySelector("#inputFiltroPessoasTelefone");
     const pillsFiltro = container.querySelectorAll(".btn-filtro-pill");
@@ -3456,24 +3714,6 @@ class ConsultaController {
           }
         } else {
           window.toast?.info("Nenhum CPF visível para copiar.");
-        }
-      });
-    });
-
-    // 5.11 Puxar CPF do item da lista
-    container.querySelectorAll(".btn-puxar-cpf-item").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const cpf = btn.getAttribute("data-cpf");
-        if (cpf) {
-          this.selectTab("cpf");
-          const input = document.getElementById("consultaInput");
-          const form = document.getElementById("consultaForm");
-          if (input) {
-            input.value = this.formatCpf(cpf);
-            input.dispatchEvent(new Event("input"));
-            form?.scrollIntoView({ behavior: "smooth", block: "center" });
-            if (form) form.dispatchEvent(new Event("submit"));
-          }
         }
       });
     });
@@ -3576,7 +3816,7 @@ class ConsultaController {
     });
 
       // Ações Rápidas adicionais de Placa, Telefone e CNPJ nos cartões
-    container.querySelectorAll(".btn-puxar-cnpj-item").forEach((btn) => {
+    container.querySelectorAll(".btn-puxar-cnpj-item, .btn-puxar-cnpj").forEach((btn) => {
       btn.addEventListener("click", () => {
         const cnpj = btn.getAttribute("data-cnpj");
         if (cnpj) {
@@ -3596,7 +3836,9 @@ class ConsultaController {
 
   extrairMetadadosCompliance(res, dados) {
     const tipoLower = String(res?.tipo || this.currentTipo || "").toLowerCase().trim();
-    if (!["cpf", "cnpj", "nome", "titulo"].includes(tipoLower)) return null;
+    if (!["cpf", "cpf_completo", "cpf_pro", "cpf_dossie", "desmascarador", "cnpj", "cnpj2", "nome", "titulo"].includes(tipoLower)) {
+      return null;
+    }
 
     let d = dados;
     if (Array.isArray(d)) d = d[0] || {};
@@ -3633,7 +3875,7 @@ class ConsultaController {
       end0.municipio ||
       "";
 
-    const docRaw = String(basic.cnpj_limpo || basic.cnpj || basic.cpf || (["cpf", "cnpj"].includes(tipoLower) ? res.termo : "")).replace(/\D/g, "");
+    const docRaw = String(basic.cnpj_limpo || basic.cnpj || basic.cpf_raw || basic.cpf || (["cpf", "cpf_completo", "cpf_pro", "cpf_dossie", "cnpj", "cnpj2"].includes(tipoLower) ? res.termo : "")).replace(/\D/g, "");
     const tipoEfetivo =
       docRaw.length === 14 ? "cnpj" : docRaw.length === 11 ? "cpf" : tipoLower;
 
@@ -3665,12 +3907,12 @@ class ConsultaController {
     this.currentComplianceData = null;
     box.style.display = "block";
     box.innerHTML = `
-      <div class="card" style="border-left: 4px solid #38BDF8; padding: var(--space-4);">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <div style="width: 20px; height: 20px; border-radius: 50%; border: 2px solid #38BDF8; border-top-color: transparent; animation: spin 0.8s linear infinite;"></div>
+      <div class="card osint-compliance-card osint-compliance-card--sky">
+        <div class="osint-compliance-row">
+          <div class="osint-spinner osint-spinner--sm"></div>
           <div>
-            <strong style="color: var(--color-text); font-size: 0.9rem;">Consultando Bases Públicas de Compliance (CGU, TSE, PNCP &amp; Diários Oficiais)...</strong>
-            <div style="font-size: 0.78rem; color: var(--color-text-muted);">Cruzamento não-bloqueante de sanções administrativas e transparência governamental.</div>
+            <strong class="osint-compliance-title">Consultando Bases Públicas de Compliance (CGU, TSE, PNCP &amp; Diários Oficiais)...</strong>
+            <div class="osint-compliance-sub">Cruzamento não-bloqueante de sanções administrativas e transparência governamental.</div>
           </div>
         </div>
       </div>
@@ -3687,7 +3929,7 @@ class ConsultaController {
       }
     } catch {
       box.innerHTML = `
-        <div class="card" style="border-left: 4px solid #64748B; padding: var(--space-4); font-size: 0.82rem; color: var(--color-text-muted);">
+        <div class="card osint-compliance-card osint-compliance-card--slate">
           Fontes externas de compliance governamental não responderam no momento.
         </div>
       `;
@@ -3716,16 +3958,16 @@ class ConsultaController {
     const contratos = Array.isArray(pncp.resultados) ? pncp.resultados : [];
 
     const hasCrit = sancoes.length > 0;
-    const borderCol = hasCrit ? "#EF4444" : (peps.length > 0 || candidaturas.length > 0) ? "#F59E0B" : "#10B981";
+    const complianceTone = hasCrit ? "red" : (peps.length > 0 || candidaturas.length > 0) ? "amber" : "emerald";
     const statusBadgeClass = hasCrit ? "badge-red" : "badge-purple";
 
     const ufs = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 
     box.innerHTML = `
-      <div class="card" style="border-left: 4px solid ${borderCol};">
-        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
-            <i data-lucide="shield-check" style="color: ${borderCol}; width: 20px; height: 20px;"></i>
+      <div class="card osint-compliance-card--${complianceTone}">
+        <div class="card-header">
+          <div class="card-title">
+            <i data-lucide="shield-check" class="icon-lg icon-${complianceTone}"></i>
             <span>Compliance Público, Sanções (CGU / TSE) &amp; Transparência BR</span>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
@@ -4889,7 +5131,7 @@ class ConsultaController {
       return str;
     };
 
-    const openingDate = formatDateBr(data.dataAbertura || data.data_inicio_atividade);
+    const openingDate = formatDateBr(data.dataAbertura || data.dataInicioAtividade || data.data_inicio_atividade);
     const statusDateRaw = data.dataSituacaoCadastral || data.data_situacao_cadastral || raw.dataSituacaoCadastral || null;
     const statusDate = statusDateRaw ? formatDateBr(statusDateRaw) : null;
     const statusReason = data.motivoSituacaoCadastral || data.descricao_motivo_situacao_cadastral || raw.motivoSituacaoCadastral || null;
@@ -4910,8 +5152,8 @@ class ConsultaController {
     let cnaePrincipalCode = "";
     let cnaePrincipalDesc = "Não especificado";
     if (data.cnaePrincipal && typeof data.cnaePrincipal === "object") {
-      cnaePrincipalCode = data.cnaePrincipal.codigo ? String(data.cnaePrincipal.codigo) : "";
-      cnaePrincipalDesc = data.cnaePrincipal.descricao || "Não especificado";
+      cnaePrincipalCode = (data.cnaePrincipal.codigo || data.cnaePrincipal.CODIGO) ? String(data.cnaePrincipal.codigo || data.cnaePrincipal.CODIGO) : "";
+      cnaePrincipalDesc = data.cnaePrincipal.descricao || data.cnaePrincipal.DESCRICAO || "Não especificado";
     } else if (data.cnaePrincipal) {
       cnaePrincipalDesc = String(data.cnaePrincipal);
     } else if (data.cnae_fiscal) {
@@ -4925,22 +5167,26 @@ class ConsultaController {
       : Array.isArray(data.cnaes_secundarios)
         ? data.cnaes_secundarios
         : [];
-    const cnaesSecundarios = rawSecundarios.filter((c) => c && (c.codigo || c.descricao));
+    const cnaesSecundarios = rawSecundarios.filter((c) => c && (typeof c === "string" || c.codigo || c.CODIGO || c.descricao || c.DESCRICAO));
 
     // Endereço e Contatos
-    const fullAddress =
-      data.endereco ||
-      [
-        [data.descricao_tipo_de_logradouro, data.logradouro].filter(Boolean).join(" "),
-        data.numero ? `nº ${data.numero}` : null,
-        data.complemento ? `(${data.complemento})` : null,
-        data.bairro ? `- ${data.bairro}` : null,
-        data.municipio ? `${data.municipio}/${data.uf || ""}` : null,
-        data.cep ? `CEP ${this.formatCep(data.cep)}` : null,
+    let fullAddress = "";
+    if (typeof data.endereco === "string") {
+      fullAddress = data.endereco.trim();
+    } else {
+      const addrSrc = data.endereco && typeof data.endereco === "object" ? data.endereco : data;
+      fullAddress = [
+        [addrSrc.descricao_tipo_de_logradouro || addrSrc.tipoLogradouro, addrSrc.logradouro || addrSrc.rua || (typeof addrSrc.endereco === "string" ? addrSrc.endereco : "")].filter(Boolean).join(" "),
+        addrSrc.numero && addrSrc.numero !== "S/N" ? `nº ${addrSrc.numero}` : addrSrc.numero === "S/N" ? "S/N" : null,
+        addrSrc.complemento ? `(${addrSrc.complemento})` : null,
+        addrSrc.bairro ? `- ${addrSrc.bairro}` : null,
+        (addrSrc.municipio || addrSrc.cidade) ? `${addrSrc.municipio || addrSrc.cidade}/${addrSrc.uf || ""}` : null,
+        addrSrc.cep ? `CEP ${this.formatCep(addrSrc.cep)}` : null,
       ]
         .filter(Boolean)
-        .join(", ") ||
-      "Endereço não cadastrado";
+        .join(", ");
+    }
+    fullAddress = fullAddress || "Endereço não cadastrado";
 
     const phone1 = data.telefone || data.ddd_telefone_1 || raw.telefone || null;
     const phone2 = data.telefone2 || data.ddd_telefone_2 || raw.telefone2 || null;
@@ -5263,15 +5509,30 @@ class ConsultaController {
     const payload = fullResponse?.dados !== undefined ? fullResponse.dados : (fullResponse?.data !== undefined ? fullResponse.data : fullResponse);
     const tipoLower = String(tipo || fullResponse?.tipo || "").toLowerCase().trim();
 
+    // CHECAGEM SE É CONSULTA TRABALHISTA (FUNCIONÁRIOS / EMPREGOS CTPS)
+    if ((tipoLower === "funcionarios" || tipoLower === "empregos") && window.OsintDarkReport?.renderEmploymentReport) {
+      return window.OsintDarkReport.renderEmploymentReport({
+        termo,
+        payload,
+        tipo: tipoLower,
+        sourceLabel: fullResponse?.fonte || "RimuAPI Intelligence Engine",
+      });
+    }
+
     // CHECAGEM SE É CONSULTA DE CNPJ / PESSOA JURÍDICA
     const isCnpjQuery =
       tipoLower === "cnpj" ||
+      tipoLower === "cnpj2" ||
+      tipoLower === "razao_social" ||
+      tipoLower === "socios" ||
+      tipoLower === "socios2" ||
       tipoLower === "cnpj_puxar" ||
       tipoLower === "empresa" ||
       (!payload?.name && !payload?.cpf && (payload?.razaoSocial || payload?.razao_social || payload?.sociosQSA || payload?.qsa || (payload?.cnpj && (payload?.capitalSocial || payload?.cnaePrincipal || payload?.situacaoCadastral))));
 
     if (isCnpjQuery) {
-      return this.gerarHtmlRelatorioDarkCnpj(termo, fullResponse, payload);
+      const cnpjTarget = Array.isArray(payload?.empresas) ? (payload.empresas[0] || payload) : payload;
+      return this.gerarHtmlRelatorioDarkCnpj(termo, fullResponse, cnpjTarget);
     }
 
     // CHECAGEM SE É CONSULTA DE FOTO BIOMÉTRICA
@@ -5324,7 +5585,7 @@ class ConsultaController {
 
     // CHECAGEM SE É CONSULTA DE CEP / ENDEREÇO GEOGRÁFICO
     const isCepGeoQuery =
-      (tipoLower === "cep" || tipoLower === "endereco" || tipoLower === "logradouro") &&
+      (tipoLower === "cep" || tipoLower === "cep_avancado" || tipoLower === "endereco" || tipoLower === "logradouro") &&
       ((!Array.isArray(payload) && Boolean(payload?.logradouro || payload?.codigoIbge || payload?.totalResidentesEstimados || payload?.cidade)) ||
         (Array.isArray(payload) && payload.length > 0 && !payload[0]?.cpf && !payload[0]?.name && !payload[0]?.nome));
 
@@ -5385,6 +5646,59 @@ class ConsultaController {
 
     if (isEmailQuery) {
       return this.gerarHtmlRelatorioDarkEmail(termo, fullResponse, payload);
+    }
+
+    // CHECAGEM SE É CONSULTA OAB / CNA ADVOGADOS
+    if (
+      (tipoLower === "oab" || Boolean(payload?.CNA_ADVOGADOS) || (Array.isArray(payload?.advogados) && !payload?.cpf)) &&
+      window.OsintDarkReport &&
+      typeof window.OsintDarkReport.renderOabReport === "function"
+    ) {
+      return window.OsintDarkReport.renderOabReport({
+        termo,
+        payload,
+        moduleLabel: "OAB / CNA",
+        sourceLabel: fullResponse?.fonte || "Cadastro Nacional dos Advogados (OAB)",
+        systemBadge: "RIMUBUSCA OSINT",
+      });
+    }
+
+    // CHECAGEM SE É CONSULTA DE LOGS / VAZAMENTOS POR URL, USUÁRIO OU DUMP
+    if (
+      ["cloud_url", "cloud_usuario", "dump_cpf", "dump_email", "dump_telefone", "senha"].includes(tipoLower) &&
+      window.OsintDarkReport &&
+      typeof window.OsintDarkReport.renderLeaksReport === "function"
+    ) {
+      return window.OsintDarkReport.renderLeaksReport({
+        termo,
+        payload,
+        moduleLabel: tipoLower.toUpperCase().replace(/_/g, " "),
+        sourceLabel: fullResponse?.fonte || "Monitoramento de Credenciais & Vazamentos",
+        systemBadge: "RIMUBUSCA OSINT",
+      });
+    }
+
+    // CHECAGEM SE É CONSULTA DE NOME SIMILAR, NOME COMPLETO SIMPLIFICADO OU FILIAÇÃO (MÃE/PAI)
+    const isSimpleNomeQuery =
+      tipoLower === "nome" &&
+      !(payload?.rg || payload?.tituloEleitor || payload?.cnh || payload?.score || payload?.rendaPresumida || payload?.telefones?.length || payload?.enderecos?.length);
+    const isFiliacaoDark = tipoLower === "mae" || tipoLower === "pai";
+
+    if ((tipoLower === "nome_similar" || isSimpleNomeQuery || isFiliacaoDark) && window.OsintDarkReport && typeof window.OsintDarkReport.renderNameHomonymsReport === "function") {
+      return window.OsintDarkReport.renderNameHomonymsReport({
+        termo,
+        payload,
+        moduleLabel:
+          tipoLower === "nome_similar"
+            ? "NOME SIMILAR"
+            : tipoLower === "mae"
+              ? "CONSULTA MÃE"
+              : tipoLower === "pai"
+                ? "CONSULTA PAI"
+                : "NOME COMPLETO",
+        sourceLabel: fullResponse?.fonte || "RimuAPI Intelligence Engine",
+        systemBadge: "RIMUBUSCA OSINT",
+      });
     }
 
     const allPersons = this.extractPersons(fullResponse);

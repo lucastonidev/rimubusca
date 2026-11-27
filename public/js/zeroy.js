@@ -216,7 +216,33 @@
     form: document.getElementById("formZeroyConsulta"),
     tipoInput: document.getElementById("zeroyTipoInput"),
     pathInput: document.getElementById("zeroyPathInput"),
+    textInputRow: document.getElementById("zeroyTextInputRow"),
     termoInput: document.getElementById("zeroyTermoInput"),
+    reconncPanel: document.getElementById("zeroyReconncPanel"),
+    reconncFile: document.getElementById("zeroyReconncFile"),
+    reconncDropzone: document.getElementById("zeroyReconncDropzone"),
+    reconncPrompt: document.getElementById("zeroyReconncPrompt"),
+    reconncPreview: document.getElementById("zeroyReconncPreview"),
+    reconncPreviewImg: document.getElementById("zeroyReconncPreviewImg"),
+    reconncFileName: document.getElementById("zeroyReconncFileName"),
+    reconncFileMeta: document.getElementById("zeroyReconncFileMeta"),
+    reconncCropBadge: document.getElementById("zeroyReconncCropBadge"),
+    btnAbrirCropperReconnc: document.getElementById("btnAbrirCropperReconnc"),
+    btnUsarOriginalReconnc: document.getElementById("btnUsarOriginalReconnc"),
+    btnRemoverFotoReconnc: document.getElementById("btnRemoverFotoReconnc"),
+    reconncCropBox: document.getElementById("zeroyReconncCropBox"),
+    reconncShapes: document.getElementById("zeroyReconncShapes"),
+    reconncCropStage: document.getElementById("zeroyReconncCropStage"),
+    reconncCropImg: document.getElementById("zeroyReconncCropImg"),
+    reconncCropSelection: document.getElementById("zeroyReconncCropSelection"),
+    reconncCropInfo: document.getElementById("zeroyReconncCropInfo"),
+    btnResetarCropReconnc: document.getElementById("btnResetarCropReconnc"),
+    btnCancelarCropReconnc: document.getElementById("btnCancelarCropReconnc"),
+    btnAplicarCropReconnc: document.getElementById("btnAplicarCropReconnc"),
+    reconncTopK: document.getElementById("zeroyReconncTopK"),
+    reconncThreshold: document.getElementById("zeroyReconncThreshold"),
+    btnReconncSubmit: document.getElementById("btnZeroyReconncSubmit"),
+    btnReconncText: document.getElementById("btnZeroyReconncText"),
     bancoInput: document.getElementById("zeroyBancoInput"),
     filtrosExtras: document.getElementById("zeroyFiltrosExtras"),
     selectTipoPixContainer: document.getElementById("zeroySelectTipoPixContainer"),
@@ -318,6 +344,155 @@
   }
 
   let moduloAtivoAtual = null;
+  let originalReconncFile = null;
+  let selectedReconncFile = null;
+  let reconncPreviewUrl = null;
+  let reconncCropper = null;
+  let activeCropShapeLabel = "";
+  let lastRenderedTermo = "";
+
+  function formatBytesLabel(bytes) {
+    const kb = Math.max(1, Math.round((Number(bytes) || 0) / 1024));
+    return kb >= 1024 ? `${(kb / 1024).toFixed(2)} MB` : `${kb} KB`;
+  }
+
+  function atualizarPreviewReconncUi(file, cropped = false, shapeLabel = "") {
+    if (!file) return;
+    if (reconncPreviewUrl) {
+      try {
+        URL.revokeObjectURL(reconncPreviewUrl);
+      } catch {}
+    }
+    reconncPreviewUrl = URL.createObjectURL(file);
+
+    if (DOM.reconncPreviewImg) DOM.reconncPreviewImg.src = reconncPreviewUrl;
+    if (DOM.reconncFileName) DOM.reconncFileName.textContent = file.name || "foto_facial.jpg";
+
+    if (DOM.reconncCropBadge) {
+      if (cropped) {
+        DOM.reconncCropBadge.textContent = shapeLabel ? `Recorte • ${shapeLabel}` : "Recorte Ativo";
+        DOM.reconncCropBadge.style.display = "inline-flex";
+      } else {
+        DOM.reconncCropBadge.style.display = "none";
+      }
+    }
+    if (DOM.btnUsarOriginalReconnc) {
+      DOM.btnUsarOriginalReconnc.style.display = cropped ? "inline-flex" : "none";
+    }
+    if (DOM.reconncFileMeta) {
+      if (cropped && originalReconncFile && originalReconncFile.size > 0) {
+        const pct = Math.max(0, Math.round((1 - file.size / originalReconncFile.size) * 100));
+        const reductionText = pct > 0 ? ` (${pct}% menor)` : "";
+        DOM.reconncFileMeta.textContent = `Original ${formatBytesLabel(originalReconncFile.size)} → Recorte ${formatBytesLabel(file.size)}${reductionText}`;
+      } else {
+        DOM.reconncFileMeta.textContent = `${formatBytesLabel(file.size)} • Otimização e Base64 automáticos no envio`;
+      }
+    }
+  }
+
+  function fecharCropperReconnc() {
+    if (DOM.reconncCropBox) DOM.reconncCropBox.style.display = "none";
+  }
+
+  function garantirCropperInicializado() {
+    if (reconncCropper || !window.RimuImageCropper || !DOM.reconncCropStage || !DOM.reconncCropImg || !DOM.reconncCropSelection) {
+      return reconncCropper;
+    }
+    reconncCropper = new window.RimuImageCropper({
+      stageEl: DOM.reconncCropStage,
+      imgEl: DOM.reconncCropImg,
+      selectionEl: DOM.reconncCropSelection,
+      onChange: (info) => {
+        activeCropShapeLabel = info.shapeLabel;
+        if (DOM.reconncCropInfo) {
+          DOM.reconncCropInfo.textContent = `${info.shapeLabel} • ${info.width} × ${info.height} px (de ${info.naturalWidth} × ${info.naturalHeight} px)`;
+        }
+      },
+    });
+    return reconncCropper;
+  }
+
+  async function abrirCropperReconnc() {
+    const baseFile = originalReconncFile || selectedReconncFile;
+    if (!baseFile || !DOM.reconncCropBox) return;
+    DOM.reconncCropBox.style.display = "block";
+    const cropper = garantirCropperInicializado();
+    if (!cropper) return;
+    try {
+      await cropper.loadFile(baseFile);
+      if (window.renderLucide) window.renderLucide();
+    } catch {
+      window.toast?.warning("Não foi possível carregar o editor de recorte para esta imagem.");
+      fecharCropperReconnc();
+    }
+  }
+
+  async function aplicarRecorteReconnc({ silent = false } = {}) {
+    if (!reconncCropper || !originalReconncFile) return false;
+    try {
+      const croppedFile = await reconncCropper.exportCroppedFile(0.9);
+      selectedReconncFile = croppedFile;
+      atualizarPreviewReconncUi(croppedFile, true, activeCropShapeLabel);
+      fecharCropperReconnc();
+      if (!silent) {
+        window.toast?.success(`Recorte aplicado (${formatBytesLabel(croppedFile.size)})! Pronto para buscar.`);
+      }
+      return true;
+    } catch (err) {
+      if (!silent) {
+        window.toast?.error(err.message || "Falha ao recortar imagem.");
+      }
+      return false;
+    }
+  }
+
+  function restaurarImagemOriginalReconnc() {
+    if (!originalReconncFile) return;
+    selectedReconncFile = originalReconncFile;
+    atualizarPreviewReconncUi(originalReconncFile, false);
+    fecharCropperReconnc();
+    window.toast?.info("Imagem original restaurada.");
+  }
+
+  function limparArquivoReconnc() {
+    originalReconncFile = null;
+    selectedReconncFile = null;
+    activeCropShapeLabel = "";
+    if (reconncPreviewUrl) {
+      try {
+        URL.revokeObjectURL(reconncPreviewUrl);
+      } catch {}
+      reconncPreviewUrl = null;
+    }
+    fecharCropperReconnc();
+    if (DOM.reconncFile) DOM.reconncFile.value = "";
+    if (DOM.reconncPreviewImg) DOM.reconncPreviewImg.src = "";
+    if (DOM.reconncPreview) DOM.reconncPreview.style.display = "none";
+    if (DOM.reconncPrompt) DOM.reconncPrompt.style.display = "block";
+    if (DOM.reconncCropBadge) DOM.reconncCropBadge.style.display = "none";
+    if (DOM.btnUsarOriginalReconnc) DOM.btnUsarOriginalReconnc.style.display = "none";
+  }
+
+  function definirArquivoReconnc(file) {
+    if (!file) return;
+    if (!String(file.type || "").startsWith("image/")) {
+      window.toast?.warning("Selecione um arquivo de imagem válido (JPG, PNG ou WEBP).");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      window.toast?.warning("A imagem selecionada excede o limite de 10 MB.");
+      return;
+    }
+
+    originalReconncFile = file;
+    selectedReconncFile = file;
+    activeCropShapeLabel = "";
+    fecharCropperReconnc();
+    atualizarPreviewReconncUi(file, false);
+
+    if (DOM.reconncPrompt) DOM.reconncPrompt.style.display = "none";
+    if (DOM.reconncPreview) DOM.reconncPreview.style.display = "flex";
+  }
 
   /**
    * Reconhecimento inteligente do formato da entrada digitada pelo usuário
@@ -441,7 +616,13 @@
 
     if (p === "telefone") {
       if (window.masks?.telefone) return window.masks.telefone(valor);
-      const clean = valor.replace(/\D/g, "").slice(0, 11);
+      const raw = String(valor || "").trim();
+      let clean = raw.replace(/\D/g, "");
+      if ((raw.startsWith("+55") || (clean.length >= 12 && clean.length <= 13)) && clean.startsWith("55")) {
+        clean = clean.slice(2);
+      }
+      if (clean.startsWith("0") && clean.length >= 11) clean = clean.slice(1);
+      clean = clean.slice(0, 11);
       if (clean.length > 10) {
         return clean.replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
       }
@@ -565,6 +746,77 @@
     DOM.selectTipoPix?.addEventListener("change", (e) => {
       atualizarConfiguracaoPixBacen(e.target.value);
       if (DOM.termoInput) DOM.termoInput.focus();
+    });
+
+    // 2.2 Upload e Drag-and-Drop de Foto Facial (Reconhecimento Facial Nacional - reconnc)
+    DOM.reconncDropzone?.addEventListener("click", (e) => {
+      if (e.target.closest("#btnRemoverFotoReconnc, #btnAbrirCropperReconnc, #btnUsarOriginalReconnc")) return;
+      DOM.reconncFile?.click();
+    });
+
+    DOM.btnAbrirCropperReconnc?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      abrirCropperReconnc();
+    });
+
+    DOM.btnUsarOriginalReconnc?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      restaurarImagemOriginalReconnc();
+    });
+
+    DOM.reconncShapes?.addEventListener("click", (e) => {
+      const shapeBtn = e.target.closest(".osint-crop-shape-btn");
+      if (!shapeBtn) return;
+      const shapeKey = shapeBtn.getAttribute("data-shape");
+      DOM.reconncShapes.querySelectorAll(".osint-crop-shape-btn").forEach((b) => {
+        b.classList.toggle("active", b === shapeBtn);
+      });
+      reconncCropper?.setShape(shapeKey);
+    });
+
+    DOM.btnResetarCropReconnc?.addEventListener("click", () => {
+      reconncCropper?.resetSelection();
+    });
+
+    DOM.btnCancelarCropReconnc?.addEventListener("click", () => {
+      fecharCropperReconnc();
+    });
+
+    DOM.btnAplicarCropReconnc?.addEventListener("click", () => {
+      aplicarRecorteReconnc();
+    });
+
+    DOM.reconncDropzone?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        DOM.reconncFile?.click();
+      }
+    });
+
+    DOM.reconncDropzone?.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      DOM.reconncDropzone.classList.add("is-dragover");
+    });
+
+    DOM.reconncDropzone?.addEventListener("dragleave", () => {
+      DOM.reconncDropzone.classList.remove("is-dragover");
+    });
+
+    DOM.reconncDropzone?.addEventListener("drop", (e) => {
+      e.preventDefault();
+      DOM.reconncDropzone.classList.remove("is-dragover");
+      const file = e.dataTransfer?.files?.[0];
+      if (file) definirArquivoReconnc(file);
+    });
+
+    DOM.reconncFile?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) definirArquivoReconnc(file);
+    });
+
+    DOM.btnRemoverFotoReconnc?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      limparArquivoReconnc();
     });
 
     // 3. Copiar JSON bruto
@@ -694,7 +946,7 @@
     const moduloNome = customState?.moduloNome || moduloAtivoAtual?.nome || moduloAtivoAtual?.label || moduloId.toUpperCase();
     const parametro = customState?.parametro || moduloAtivoAtual?.parametro || "";
     const path = customState?.path || DOM.pathInput?.value || moduloAtivoAtual?.path || "";
-    const termo = customState?.termo || DOM.termoInput?.value?.trim() || "Alvo não especificado";
+    const termo = customState?.termo || DOM.termoInput?.value?.trim() || lastRenderedTermo || "Alvo não especificado";
 
     let rawResponse = customState?.rawResponse;
     if (!rawResponse && DOM.rawJson?.textContent) {
@@ -871,9 +1123,19 @@
     if (DOM.pathBadge) DOM.pathBadge.textContent = path;
     if (DOM.custoBadge) DOM.custoBadge.textContent = `R$ ${Number(custo).toFixed(2).replace(".", ",")}`;
 
+    const isReconnc = idFinal === "reconnc";
+    if (DOM.textInputRow) {
+      DOM.textInputRow.style.display = isReconnc ? "none" : "flex";
+    }
+    if (DOM.reconncPanel) {
+      DOM.reconncPanel.style.display = isReconnc ? "block" : "none";
+    }
     if (DOM.termoInput) {
       DOM.termoInput.placeholder = placeholder;
-      DOM.termoInput.focus();
+      DOM.termoInput.required = !isReconnc;
+      if (!isReconnc) {
+        DOM.termoInput.focus();
+      }
     }
 
     // Exibe ou oculta campos avançados (como filtro por Banco para SISBAJUD)
@@ -918,10 +1180,16 @@
 
   async function executarConsulta() {
     const moduloId = DOM.tipoInput?.value || "cpf-zeroy";
-    const termo = DOM.termoInput?.value.trim();
+    const isReconnc = moduloId === "reconnc";
+    const termo = DOM.termoInput?.value.trim() || "";
     const banco = DOM.bancoInput?.value.trim() || undefined;
 
-    if (!termo) {
+    if (isReconnc) {
+      if (!selectedReconncFile) {
+        if (window.toast) window.toast.warning("Selecione ou arraste uma foto de rosto antes de consultar.");
+        return;
+      }
+    } else if (!termo) {
       if (window.toast) window.toast.error("Informe o valor a ser consultado.");
       return;
     }
@@ -960,8 +1228,11 @@
     // Validação específica: Módulo Telefone
     if (moduloId === "telefone") {
       let cleanPhone = digits;
-      if (cleanPhone.length > 11 && cleanPhone.startsWith("55")) {
+      if ((termo.startsWith("+55") || (cleanPhone.length >= 12 && cleanPhone.length <= 13)) && cleanPhone.startsWith("55")) {
         cleanPhone = cleanPhone.slice(2);
+      }
+      if (cleanPhone.startsWith("0") && cleanPhone.length >= 11) {
+        cleanPhone = cleanPhone.slice(1);
       }
       if (cleanPhone.length < 10 || cleanPhone.length > 11) {
         if (window.toast) {
@@ -976,39 +1247,67 @@
     if (DOM.resultsArea) DOM.resultsArea.style.display = "none";
     if (DOM.btnSubmit) DOM.btnSubmit.disabled = true;
     if (DOM.btnText) DOM.btnText.textContent = "Consultando...";
+    if (DOM.btnReconncSubmit) DOM.btnReconncSubmit.disabled = true;
+    if (DOM.btnReconncText) DOM.btnReconncText.textContent = "Otimizando e Analisando Rosto...";
 
     try {
-      const payload = {
-        id: moduloId,
-        tipo: moduloId,
-        termo,
-      };
+      let requestBody;
+      let termoAtual = termo;
 
-      if (moduloId === "chave-pix") {
-        if (digits.length === 14) payload.cnpj = digits;
-        else if (digits.length === 11) payload.cpf = digits;
-      } else if (moduloId === "telefone") {
-        let cleanPhone = digits;
-        if (cleanPhone.length > 11 && cleanPhone.startsWith("55")) {
-          cleanPhone = cleanPhone.slice(2);
+      if (isReconnc) {
+        if (DOM.reconncCropBox && DOM.reconncCropBox.style.display !== "none" && reconncCropper) {
+          await aplicarRecorteReconnc({ silent: true });
         }
-        payload.termo = cleanPhone;
-        payload.telefone = cleanPhone;
-      } else if (moduloId === "pix-bacen") {
-        const tipoPix = DOM.selectTipoPix ? DOM.selectTipoPix.value : "cpf_titular";
-        payload.tipoPix = tipoPix;
-        if (tipoPix === "cpf_titular") {
-          payload.cpf = digits;
-        } else {
-          payload.chave = (tipoPix === "chave_cpf" || tipoPix === "chave_cnpj") ? digits : termo;
+        const topK = DOM.reconncTopK ? Number(DOM.reconncTopK.value) || 3 : 3;
+        const thresholdVal = DOM.reconncThreshold ? Number(DOM.reconncThreshold.value) : 0.35;
+        const threshold = Number.isFinite(thresholdVal) ? Math.min(1, Math.max(0, thresholdVal)) : 0.35;
+        const formData = new FormData();
+        formData.append("id", "reconnc");
+        formData.append("tipo", "reconnc");
+        formData.append("imagem", selectedReconncFile);
+        formData.append("top_k", String(topK));
+        formData.append("threshold", String(threshold));
+        requestBody = formData;
+        termoAtual = selectedReconncFile?.name || "Reconhecimento Facial";
+      } else {
+        const payload = {
+          id: moduloId,
+          tipo: moduloId,
+          termo,
+        };
+
+        if (moduloId === "chave-pix") {
+          if (digits.length === 14) payload.cnpj = digits;
+          else if (digits.length === 11) payload.cpf = digits;
+        } else if (moduloId === "telefone") {
+          let cleanPhone = digits;
+          if ((termo.startsWith("+55") || (cleanPhone.length >= 12 && cleanPhone.length <= 13)) && cleanPhone.startsWith("55")) {
+            cleanPhone = cleanPhone.slice(2);
+          }
+          if (cleanPhone.startsWith("0") && cleanPhone.length >= 11) {
+            cleanPhone = cleanPhone.slice(1);
+          }
+          payload.termo = cleanPhone;
+          payload.telefone = cleanPhone;
+        } else if (moduloId === "pix-bacen") {
+          const tipoPix = DOM.selectTipoPix ? DOM.selectTipoPix.value : "cpf_titular";
+          payload.tipoPix = tipoPix;
+          if (tipoPix === "cpf_titular") {
+            payload.cpf = digits;
+          } else {
+            payload.chave = (tipoPix === "chave_cpf" || tipoPix === "chave_cnpj") ? digits : termo;
+          }
+        } else if (moduloId === "pix-sisbajud" && banco) {
+          payload.banco = banco;
         }
-      } else if (moduloId === "pix-sisbajud" && banco) {
-        payload.banco = banco;
+        requestBody = payload;
+        termoAtual = payload.termo || payload.telefone || termo || "";
       }
 
-      const resp = await window.api.post("/api/zeroy/consultar", payload, { timeout: 50000 });
+      const resp = await window.api.post("/api/zeroy/consultar", requestBody, { timeout: 65000 });
 
       if (resp.success && resp.data) {
+        lastRenderedTermo = resp.data.termo || termoAtual || "";
         // Atualiza saldo global no topo da página
         if (resp.data.carteira?.saldoFormatado) {
           const headerSaldo = document.getElementById("zeroyHeaderSaldoDisplay");
@@ -1018,6 +1317,12 @@
         }
 
         renderizarResultados(resp.data);
+
+        if (resp.data.notFound || resp.data.dados?.notFound) {
+          window.toast?.info("Nenhum registro localizado na Zeroy API (sem débito na carteira).");
+          return;
+        }
+
         if (window.toast) {
           if (resp.data.cached) {
             window.toast.success("Consulta instantânea recuperada do Cache! (Sem desconto na carteira)");
@@ -1034,11 +1339,29 @@
       }
     } catch (err) {
       console.error("[ZEROY FRONTEND ERRO]:", err);
-      if (window.toast) window.toast.error(err.message || "Falha na consulta.");
+      const isNotFoundErr =
+        err.status === 404 ||
+        /nenhum\s+registro|nenhum\s+dado|n[aã]o\s+encontrad|n[aã]o\s+localizad|not\s+found|sem\s+registro/i.test(String(err.message || ""));
+
+      if (isNotFoundErr) {
+        renderizarResultados({
+          id: moduloId,
+          tipo: moduloId,
+          termo: lastRenderedTermo || termo || (selectedReconncFile?.name || ""),
+          fonte: "Zeroy API (Conexão Oficial)",
+          timestamp: new Date().toISOString(),
+          notFound: true,
+          dados: { notFound: true, termo, mensagem: err.message },
+        });
+      } else if (window.toast) {
+        window.toast.error(err.message || "Falha na consulta.");
+      }
     } finally {
       if (DOM.loading) DOM.loading.style.display = "none";
       if (DOM.btnSubmit) DOM.btnSubmit.disabled = false;
       if (DOM.btnText) DOM.btnText.textContent = "Consultar";
+      if (DOM.btnReconncSubmit) DOM.btnReconncSubmit.disabled = false;
+      if (DOM.btnReconncText) DOM.btnReconncText.textContent = "Buscar Correspondência Facial";
     }
   }
 
@@ -1161,6 +1484,9 @@
         });
       });
     }
+
+    // 2.1 Filtros da tabela de residentes por CEP
+    window.RimuInterpreters?.bindCepResidentsFilters?.(DOM.resultsArea);
 
     // 3. Botão genérico "Copiar Texto"
     document.querySelectorAll(".btn-copiar-texto").forEach((btn) => {

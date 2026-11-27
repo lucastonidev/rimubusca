@@ -215,6 +215,21 @@ export const GenericInterpreter = {
    */
   render(responseData, dataPayload) {
     const data = dataPayload || {};
+    if (responseData?.notFound || responseData?.isNotFound || data?.notFound || data?.isNotFound) {
+      const searched = escapeHtml(String(responseData?.termo || data?.termo || "pesquisado"));
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--purple">
+            <i data-lucide="search-x" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">Nenhum Registro Localizado</h3>
+          <p class="osint-empty-desc">
+            Não foram encontrados registros na base oficial para <strong>${searched}</strong>.
+          </p>
+        </div>
+      `;
+    }
+
     const IGNORED_ROOT_KEYS = new Set([
       "resultado",
       "resultados",
@@ -227,6 +242,12 @@ export const GenericInterpreter = {
       "success",
       "tipo",
       "type",
+      "notFound",
+      "isNotFound",
+      "isList",
+      "__notFound",
+      "total",
+      "totalBruto",
     ]);
 
     const entries = Object.entries(data).filter(([k]) => !IGNORED_ROOT_KEYS.has(k));

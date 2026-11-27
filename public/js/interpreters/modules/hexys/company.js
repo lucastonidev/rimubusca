@@ -18,6 +18,214 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
+function formatCnaeEntry(cnae) {
+  if (!cnae) return "";
+  if (typeof cnae === "string") return cnae.trim();
+  if (typeof cnae === "object") {
+    const codigo = cnae.codigo ?? cnae.CODIGO ?? cnae.id ?? "";
+    const descricao = cnae.descricao ?? cnae.DESCRICAO ?? cnae.nome ?? "";
+    return [codigo, descricao].filter(Boolean).join(" - ");
+  }
+  return String(cnae);
+}
+
+function formatCompanyAddress(data) {
+  if (!data || typeof data !== "object") return "Endereço não cadastrado";
+  const endObj = data.endereco;
+  if (typeof endObj === "string") {
+    return endObj.trim() || "Endereço não cadastrado";
+  }
+  const src = endObj && typeof endObj === "object" ? endObj : data;
+  const street = [
+    src.descricao_tipo_de_logradouro || src.tipoLogradouro || src.tipo_logradouro,
+    src.logradouro || src.rua || src.endereco,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const num = src.numero && src.numero !== "S/N" ? `nº ${src.numero}` : src.numero === "S/N" ? "S/N" : null;
+  const comp = src.complemento ? `(${src.complemento})` : null;
+  const bairro = src.bairro ? `- ${src.bairro}` : null;
+  const city = src.municipio || src.cidade || "";
+  const uf = src.uf || "";
+  const cityUf = city ? `${city}${uf ? `/${uf}` : ""}` : uf || null;
+  const cepDigits = String(src.cep || "").replace(/\D/g, "");
+  const cepFormatted = cepDigits.length === 8 ? `CEP ${Formatters.cep(cepDigits)}` : src.cep ? `CEP ${src.cep}` : null;
+
+  return [street, num, comp, bairro, cityUf, cepFormatted].filter(Boolean).join(", ") || "Endereço não cadastrado";
+}
+
+function renderEmptyCompanyState(queryType, searchedTerm) {
+  const searchedDoc = escapeHtml(String(searchedTerm || "informado"));
+  const isRazao = queryType === "razao_social";
+  const isSocios = queryType === "socios" || queryType === "socios2";
+  const title = isRazao
+    ? "Nenhuma Empresa Localizada"
+    : isSocios
+      ? "Nenhum Sócio Localizado"
+      : "Nenhum CNPJ Localizado";
+  const desc = isRazao
+    ? `Não foram encontradas empresas na Receita Federal para a razão social <strong>${searchedDoc}</strong>.`
+    : isSocios
+      ? `Não foram encontrados sócios ou participações societárias para o CNPJ <strong>${searchedDoc}</strong>.`
+      : `Não foram encontrados dados empresariais na Receita Federal para o documento <strong>${searchedDoc}</strong>.`;
+
+  return `
+    <div class="card osint-empty-card osint-empty-card--purple">
+      <div class="osint-empty-icon osint-empty-icon--purple">
+        <i data-lucide="${isSocios ? "users" : "building-2"}" class="icon-xl"></i>
+      </div>
+      <h3 class="osint-empty-title">${title}</h3>
+      <p class="osint-empty-desc">${desc}</p>
+    </div>
+  `;
+}
+
+function renderCompaniesListView(companies, searchedTerm) {
+  return `
+    <div class="card osint-section-card osint-section-card--purple">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">
+            <i data-lucide="building-2" class="icon-lg icon-purple"></i>
+            <span>Empresas Localizadas (${companies.length})</span>
+          </h3>
+          <p class="card-subtitle">Resultados encontrados para "${escapeHtml(String(searchedTerm || "consulta"))}"</p>
+        </div>
+        <span class="badge badge-purple">${companies.length} CNPJ(s)</span>
+      </div>
+
+      <div class="osint-company-list-grid">
+        ${companies
+          .map((item) => {
+            const cnpjRaw = String(item.cnpj_raw || item.cnpj_limpo || item.cnpj || "").replace(/\D/g, "");
+            const cnpjFmt = cnpjRaw.length === 14 ? Formatters.cnpj(cnpjRaw) : (item.cnpj || "Não informado");
+            const razao = item.razaoSocial || item.razao_social || item.nome || "Razão Social Não Informada";
+            const fantasia = item.nomeFantasia || item.nome_fantasia || "";
+            const sit = String(item.situacaoCadastral || item.situacao || "ATIVA").toUpperCase();
+            const isActive = sit.includes("ATIVA");
+            const addrText = formatCompanyAddress(item);
+
+            return `
+              <div class="osint-company-mini-card">
+                <div>
+                  <div class="osint-chip-row mb-2">
+                    <span class="badge ${isActive ? "badge-emerald" : "badge-danger"}">${escapeHtml(sit)}</span>
+                    ${item.porte ? `<span class="badge badge-dark">${escapeHtml(item.porte)}</span>` : ""}
+                  </div>
+                  <div style="font-weight: 800; font-size: 0.98rem; color: var(--color-text); line-height: 1.3;">
+                    ${escapeHtml(razao)}
+                  </div>
+                  ${fantasia && fantasia !== razao ? `<div class="osint-td-meta mt-1">Fantasia: ${escapeHtml(fantasia)}</div>` : ""}
+                  <div class="osint-emp-bond-cnpj mt-2">
+                    <span class="text-mono">${escapeHtml(cnpjFmt)}</span>
+                    ${
+                      cnpjRaw.length === 14
+                        ? `<button type="button" class="btn btn-ghost btn-copy-inline btn-copiar-texto btn-action-copy" data-copy="${escapeHtml(cnpjRaw)}" title="Copiar CNPJ">
+                             <i data-lucide="copy" class="icon-xs"></i>
+                           </button>`
+                        : ""
+                    }
+                  </div>
+                  ${addrText && addrText !== "Endereço não cadastrado" ? `<div class="osint-td-dim mt-2">${escapeHtml(addrText)}</div>` : ""}
+                </div>
+                ${
+                  cnpjRaw.length === 14
+                    ? `<div>
+                         <button type="button" class="btn btn-primary btn-sm btn-puxar-cnpj-item" data-cnpj="${escapeHtml(cnpjRaw)}">
+                           <i data-lucide="search" class="icon-xs"></i>
+                           <span>Investigar CNPJ</span>
+                         </button>
+                       </div>`
+                    : ""
+                }
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderFlatPartnersView(rawPayload, partners, searchedTerm) {
+  const cnpjDigits = String(rawPayload?.cnpj_raw || rawPayload?.cnpj || searchedTerm || "").replace(/\D/g, "");
+  const cnpjFmt = cnpjDigits.length === 14 ? Formatters.cnpj(cnpjDigits) : String(rawPayload?.cnpj || searchedTerm || "CNPJ não informado");
+  const companyTitle = rawPayload?.razaoSocial || `QUADRO SOCIETÁRIO (CNPJ ${cnpjFmt})`;
+
+  return `
+    <div class="card osint-section-card osint-section-card--purple">
+      <div class="osint-emp-header-row">
+        <div class="osint-emp-identity">
+          <div class="osint-emp-badges">
+            <span class="badge badge-purple">QUADRO DE SÓCIOS &amp; COTAS (QSA)</span>
+            <span class="badge badge-emerald">${partners.length} ${partners.length === 1 ? "Sócio" : "Sócios"}</span>
+          </div>
+          <h2 class="osint-emp-title">${escapeHtml(companyTitle)}</h2>
+          <div class="osint-emp-subrow">
+            <span class="osint-emp-doc-pill">
+              <i data-lucide="building-2" class="icon-xs icon-purple"></i>
+              <span class="text-mono">${escapeHtml(cnpjFmt)}</span>
+            </span>
+            ${
+              cnpjDigits.length === 14
+                ? `<button type="button" class="btn btn-ghost btn-xs btn-copiar-texto btn-action-copy" data-copy="${escapeHtml(cnpjDigits)}" title="Copiar CNPJ">
+                     <i data-lucide="copy" class="icon-xs"></i>
+                     <span>Copiar CNPJ</span>
+                   </button>
+                   <button type="button" class="btn btn-outline btn-xs btn-puxar-cnpj-item" data-cnpj="${escapeHtml(cnpjDigits)}" title="Ver Dossiê Completo do CNPJ">
+                     <i data-lucide="building" class="icon-xs"></i>
+                     <span>Ver Dossiê da Empresa</span>
+                   </button>`
+                : ""
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="osint-company-list-grid mt-4">
+        ${partners
+          .map((p) => {
+            const nomeSocio = p.nome || p.nome_socio || p.nomeSocio || p.razaoSocial || "Sócio / Participante";
+            const qualif = p.qualificacao || p.qualificacao_socio || p.qualificacaoSocio || "Sócio";
+            const rawDoc = String(p.documento || p.cpf || p.cnpj_cpf_do_socio || "").replace(/\D/g, "");
+            const isCpf = rawDoc.length === 11;
+            const docFmt = p.documento || (isCpf ? Formatters.cpf(rawDoc) : "");
+
+            return `
+              <div class="osint-company-mini-card">
+                <div>
+                  <div class="osint-chip-row mb-2">
+                    <span class="badge badge-purple">${escapeHtml(qualif)}</span>
+                    ${p.percentualCapital ? `<span class="badge badge-emerald">Cota: ${escapeHtml(String(p.percentualCapital))}%</span>` : ""}
+                  </div>
+                  <div style="font-weight: 800; font-size: 0.96rem; color: var(--color-text);">${escapeHtml(nomeSocio)}</div>
+                  ${docFmt ? `<div class="osint-td-meta text-mono mt-1">Doc: ${escapeHtml(docFmt)}</div>` : ""}
+                  ${p.dataEntrada ? `<div class="osint-td-dim mt-1">Entrada: ${escapeHtml(p.dataEntrada)}</div>` : ""}
+                  ${p.valorCapital ? `<div class="osint-td-dim mt-1">Capital: ${escapeHtml(p.valorCapital)}</div>` : ""}
+                </div>
+                <div>
+                  ${
+                    isCpf
+                      ? `<button type="button" class="btn btn-primary btn-sm btn-puxar-cpf" data-cpf="${escapeHtml(rawDoc)}">
+                           <i data-lucide="search" class="icon-xs"></i>
+                           <span>Investigar CPF</span>
+                         </button>`
+                      : `<button type="button" class="btn btn-outline btn-sm btn-puxar-nome-item" data-nome="${escapeHtml(nomeSocio)}">
+                           <i data-lucide="search" class="icon-xs"></i>
+                           <span>Investigar Nome</span>
+                         </button>`
+                  }
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
 export const CompanyInterpreter = {
   /**
    * Renderiza os dados cadastrais da empresa e quadro societário (QSA)
@@ -26,7 +234,40 @@ export const CompanyInterpreter = {
    * @returns {string} Markup HTML
    */
   render(responseData, dataPayload) {
-    const data = dataPayload || responseData?.dados || responseData || {};
+    const rawPayload = dataPayload || responseData?.dados || responseData || {};
+    const queryType = String(responseData?.tipo || rawPayload?.tipo || "").toLowerCase().trim();
+    const empresasList = Array.isArray(rawPayload?.empresas)
+      ? rawPayload.empresas
+      : Array.isArray(rawPayload)
+        ? rawPayload
+        : null;
+    const data = empresasList ? (empresasList[0] || {}) : rawPayload;
+
+    const isNotFound = Boolean(
+      responseData?.notFound ||
+      responseData?.isNotFound ||
+      rawPayload?.notFound ||
+      rawPayload?.isNotFound ||
+      data?.notFound ||
+      data?.isNotFound
+    );
+    const cleanCnpjCheck = String(data.cnpj_raw || data.cnpj_limpo || data.cnpj || "").replace(/\D/g, "");
+    const hasCorpName = Boolean(data.razaoSocial || data.razao_social || data.nome || data.nomeFantasia || data.nome_fantasia);
+    const flatPartners = Array.isArray(rawPayload?.socios) && !cleanCnpjCheck && !hasCorpName
+      ? rawPayload.socios
+      : null;
+
+    if (isNotFound || (!empresasList?.length && !flatPartners?.length && !cleanCnpjCheck && !hasCorpName)) {
+      return renderEmptyCompanyState(queryType, responseData?.termo || data.cnpj);
+    }
+
+    if (empresasList && empresasList.length > 1) {
+      return renderCompaniesListView(empresasList, responseData?.termo || "");
+    }
+
+    if (flatPartners && flatPartners.length > 0) {
+      return renderFlatPartnersView(rawPayload, flatPartners, responseData?.termo || "");
+    }
 
     const rawPartners = Array.isArray(data.sociosQSA)
       ? data.sociosQSA
@@ -41,9 +282,9 @@ export const CompanyInterpreter = {
     const corporateName = data.razaoSocial || data.razao_social || data.nome || "Razão Social Não Informada";
     const tradeName = data.nomeFantasia || data.nome_fantasia || "Não informado";
     const status = String(data.situacaoCadastral || data.descricao_situacao_cadastral || data.situacao || "ATIVA").toUpperCase();
-    const cleanCnpj = String(data.cnpj_limpo || data.cnpj || "").replace(/\D/g, "");
+    const cleanCnpj = String(data.cnpj_raw || data.cnpj_limpo || data.cnpj || "").replace(/\D/g, "");
     const formattedCnpj = cleanCnpj.length === 14 ? Formatters.cnpj(cleanCnpj) : (data.cnpj || "Não informado");
-    const openingDate = data.dataAbertura || data.data_inicio_atividade || "Não informada";
+    const openingDate = data.dataAbertura || data.dataInicioAtividade || data.data_inicio_atividade || "Não informada";
     const formattedOpeningDate = openingDate.includes("-") ? Formatters.date(openingDate) : openingDate;
     const shareCapital = typeof data.capitalSocial === "number"
       ? Formatters.currency(data.capitalSocial)
@@ -51,10 +292,8 @@ export const CompanyInterpreter = {
 
     // CNAE Principal
     let cnaePrincipalText = "Não informado";
-    if (data.cnaePrincipal && typeof data.cnaePrincipal === "object") {
-      cnaePrincipalText = `${data.cnaePrincipal.codigo || ""} - ${data.cnaePrincipal.descricao || ""}`;
-    } else if (data.cnaePrincipal) {
-      cnaePrincipalText = String(data.cnaePrincipal);
+    if (data.cnaePrincipal) {
+      cnaePrincipalText = formatCnaeEntry(data.cnaePrincipal) || "Não informado";
     } else if (data.cnae_fiscal) {
       cnaePrincipalText = `${data.cnae_fiscal} - ${data.cnae_fiscal_descricao || ""}`;
     }
@@ -65,14 +304,7 @@ export const CompanyInterpreter = {
       : [];
 
     // Endereço
-    const fullAddress = data.endereco || [
-      [data.descricao_tipo_de_logradouro, data.logradouro].filter(Boolean).join(" "),
-      data.numero ? `nº ${data.numero}` : null,
-      data.complemento ? `(${data.complemento})` : null,
-      data.bairro ? `- ${data.bairro}` : null,
-      data.municipio ? `${data.municipio}/${data.uf || ""}` : null,
-      data.cep ? `CEP ${data.cep}` : null,
-    ].filter(Boolean).join(", ") || "Endereço não cadastrado";
+    const fullAddress = formatCompanyAddress(data);
 
     const legalNature = data.naturezaJuridica || data.natureza_juridica || "Não informada";
     const companySize = data.porte || data.porteEmpresa || "DEMAIS";
@@ -131,7 +363,7 @@ export const CompanyInterpreter = {
               <span style="font-size: 1.3rem; font-weight: 800; font-family: var(--font-mono); color: #60A5FA;">
                 ${escapeHtml(formattedCnpj)}
               </span>
-              <button type="button" class="btn btn-ghost btn-sm btn-action-copy" data-copy="${escapeHtml(cleanCnpj)}" title="Copiar CNPJ Limpo" style="padding: 2px 6px;">
+              <button type="button" class="btn btn-ghost btn-sm btn-copiar-texto btn-action-copy" data-copy="${escapeHtml(cleanCnpj || formattedCnpj)}" title="Copiar CNPJ" style="padding: 2px 6px;">
                 <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
               </button>
             </div>
@@ -192,12 +424,19 @@ export const CompanyInterpreter = {
                   Secundárias (${secondaryCnaes.length}):
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 6px; max-height: 110px; overflow-y: auto;">
-                  ${secondaryCnaes.slice(0, 5).map((sc) => `
+                  ${secondaryCnaes.slice(0, 10).map((sc) => {
+                    const txt = formatCnaeEntry(sc);
+                    return `
                     <div style="font-size: 0.78rem; color: var(--color-text-dim); background: rgba(255,255,255,0.02); padding: 4px 8px; border-radius: 4px;">
-                      <strong style="color: #F59E0B;">${escapeHtml(sc.codigo)}</strong> - ${escapeHtml(sc.descricao)}
+                      ${
+                        typeof sc === "object" && sc !== null && (sc.codigo || sc.CODIGO)
+                          ? `<strong style="color: #F59E0B;">${escapeHtml(sc.codigo ?? sc.CODIGO)}</strong> - ${escapeHtml(sc.descricao ?? sc.DESCRICAO ?? "")}`
+                          : escapeHtml(txt)
+                      }
                     </div>
-                  `).join("")}
-                  ${secondaryCnaes.length > 5 ? `<span style="font-size: 0.72rem; color: var(--color-text-muted); text-align: center;">+ ${secondaryCnaes.length - 5} outras atividades secundárias</span>` : ""}
+                  `;
+                  }).join("")}
+                  ${secondaryCnaes.length > 10 ? `<span style="font-size: 0.72rem; color: var(--color-text-muted); text-align: center;">+ ${secondaryCnaes.length - 10} outras atividades secundárias</span>` : ""}
                 </div>
               </div>
             `
@@ -224,7 +463,7 @@ export const CompanyInterpreter = {
                 <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
                 Ver no Google Maps
               </a>
-              <button type="button" class="btn btn-ghost btn-xs btn-action-copy" data-copy="${escapeHtml(fullAddress)}" style="gap: 4px; font-size: 0.75rem;">
+              <button type="button" class="btn btn-ghost btn-xs btn-copiar-texto btn-action-copy" data-copy="${escapeHtml(fullAddress)}" style="gap: 4px; font-size: 0.75rem;">
                 <i data-lucide="copy" style="width: 12px; height: 12px;"></i>
                 Copiar Endereço
               </button>

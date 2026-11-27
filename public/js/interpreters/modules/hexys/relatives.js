@@ -20,6 +20,57 @@ export const RelativesInterpreter = {
    */
   render(responseData, dataPayload) {
     const data = dataPayload || {};
+    const queryType = String(responseData?.tipo || responseData?.type || "").toLowerCase().trim();
+    const externalUrl = String(data?.url || data?.link || responseData?.url || responseData?.link || "").trim();
+    const isValidExternalUrl = /^https?:\/\//i.test(externalUrl);
+
+    if (
+      queryType === "arvore_familiar" ||
+      (isValidExternalUrl && !Array.isArray(data?.parentescos) && !Array.isArray(data?.parentes))
+    ) {
+      if (responseData?.notFound || responseData?.isNotFound || data?.notFound || data?.isNotFound || !isValidExternalUrl) {
+        return `
+          <div class="card osint-empty-card osint-empty-card--purple">
+            <div class="osint-empty-icon osint-empty-icon--purple">
+              <i data-lucide="git-merge" class="icon-xl"></i>
+            </div>
+            <h3 class="osint-empty-title">Árvore Genealógica Não Localizada</h3>
+            <p class="osint-empty-desc">
+              Não foi possível gerar ou localizar o link da árvore genealógica para o documento informado.
+            </p>
+          </div>
+        `;
+      }
+
+      const cpfDigits = String(data?.cpf || responseData?.termo || "").replace(/\D/g, "");
+      const cpfFmt = cpfDigits.length === 11 ? Formatters.cpf(cpfDigits) : String(data?.cpf || responseData?.termo || "Documento");
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--purple">
+            <i data-lucide="git-merge" class="icon-xl"></i>
+          </div>
+          <div class="osint-chip-row mb-4" style="justify-content: center;">
+            <span class="badge badge-purple">
+              <i data-lucide="git-merge" class="icon-xs"></i> ÁRVORE GENEALÓGICA EXTERNA
+            </span>
+            <span class="badge badge-emerald">${escapeHtml(cpfFmt)}</span>
+          </div>
+          <h3 class="osint-empty-title">Árvore Genealógica Pronta para Visualização</h3>
+          <p class="osint-empty-desc" style="margin-bottom: var(--space-5);">
+            O mapeamento genealógico completo foi gerado em um painel externo interativo. Clique abaixo para abrir em uma nova aba.
+          </p>
+          <div class="osint-chip-row" style="justify-content: center; gap: 10px;">
+            <a href="${escapeHtml(externalUrl)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+              <i data-lucide="external-link" class="icon-xs"></i> Abrir Árvore Genealógica
+            </a>
+            <button type="button" class="btn btn-outline btn-copiar-texto" data-copy="${escapeHtml(externalUrl)}">
+              <i data-lucide="copy" class="icon-xs"></i> Copiar Link
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
     const termo = responseData?.termo || data?.titular || data?.target || "Alvo";
     const titular = String(data.titular || data.target || data.termo || termo || "Titular Não Informado").toUpperCase();
 
@@ -33,6 +84,20 @@ export const RelativesInterpreter = {
           : Array.isArray(data)
             ? data
             : [];
+
+    if (responseData?.notFound || responseData?.isNotFound || data?.notFound || data?.isNotFound || rawList.length === 0) {
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--purple">
+            <i data-lucide="users" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">Nenhum Vínculo Familiar Localizado</h3>
+          <p class="osint-empty-desc">
+            Não encontramos parentes ou vínculos familiares registrados para o documento consultado.
+          </p>
+        </div>
+      `;
+    }
 
     const relatives = rawList.map((item) => {
       const vinculo = String(item.vinculo || item.parentesco || item.grau || item.relationship || "Parente").toUpperCase();

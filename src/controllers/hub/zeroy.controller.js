@@ -29,26 +29,14 @@ const zeroyConsultaSchema = z
     telefone: z.string().max(30).optional(),
     banco: z.string().max(60).optional(),
     tipoPix: z.string().max(50).optional(),
-    forceRefresh: z.boolean().optional().default(false),
-  })
-  .refine(
-    (data) =>
-      Boolean(
-        (data.termo && data.termo.trim().length > 0) ||
-          (data.nome && data.nome.trim().length > 0) ||
-          (data.valor && data.valor.trim().length > 0) ||
-          (data.parametroValor && data.parametroValor.trim().length > 0) ||
-          (data.busca && data.busca.trim().length > 0) ||
-          (data.query && data.query.trim().length > 0) ||
-          (data.cpf && data.cpf.trim().length > 0) ||
-          (data.cnpj && data.cnpj.trim().length > 0) ||
-          (data.chave && data.chave.trim().length > 0) ||
-          (data.telefone && data.telefone.trim().length > 0)
-      ),
-    {
-      message: "Informe ao menos um valor de busca (CPF, CNPJ, Chave, Telefone, Nome ou Termo).",
-    }
-  );
+    imagem: z.string().max(10_000_000).optional(),
+    top_k: z.coerce.number().int().min(1).max(10).optional().default(3),
+    threshold: z.coerce.number().min(0).max(1).optional().default(0.35),
+    forceRefresh: z
+      .preprocess((v) => v === true || v === "true" || v === "1", z.boolean())
+      .optional()
+      .default(false),
+  });
 
 export class ZeroyController {
   constructor(service = zeroyService) {
@@ -105,7 +93,13 @@ export class ZeroyController {
       });
     }
 
-    const moduloId = validation.data.id || validation.data.tipo || validation.data.moduloId || "placa";
+    const moduloId = String(
+      validation.data.id || validation.data.tipo || validation.data.moduloId || "placa"
+    )
+      .toLowerCase()
+      .trim();
+
+    const isReconnc = moduloId === "reconnc";
     const termoNormalizado =
       validation.data.termo ||
       validation.data.nome ||
@@ -118,13 +112,39 @@ export class ZeroyController {
       validation.data.chave ||
       validation.data.telefone ||
       "";
-    validation.data.termo = termoNormalizado;
+
+    if (isReconnc) {
+      if (!req.file?.buffer && !validation.data.imagem) {
+        return res.status(400).json({
+          success: false,
+          error: "Envie uma foto facial válida para o módulo de Reconhecimento Facial.",
+        });
+      }
+    } else if (!termoNormalizado.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: "Informe ao menos um valor de busca (CPF, CNPJ, Chave, Telefone, Nome ou Termo).",
+      });
+    }
+
+    const consultaInput = isReconnc
+      ? {
+          ...validation.data,
+          termo: termoNormalizado || req.file?.originalname || "Reconhecimento Facial",
+          imageBuffer: req.file?.buffer || null,
+          originalName: req.file?.originalname || "face.jpg",
+          imagem: validation.data.imagem || null,
+        }
+      : {
+          ...validation.data,
+          termo: termoNormalizado,
+        };
 
     // Obtém metadados do módulo a partir do catálogo central para custo e nome
     const metaModulo = hubApiService.getModuleById(moduloId) || {
       id: moduloId,
       nome: moduloId,
-      custo: 0.1,
+      custo: isReconnc ? 0.05 : 0.1,
       path: `/${moduloId}`,
     };
 
@@ -133,22 +153,26 @@ export class ZeroyController {
       await hubApiService.verificarSaldoDisponivel(metaModulo.custo);
 
       // 2. Executa a requisição na Zeroy API puxando o path e parâmetro do JSON
-      const resultado = await this.service.consultar(moduloId, validation.data);
-      const inputSalvo = resultado.termo || termoNormalizado;
+      const resultado = await this.service.consultar(moduloId, consultaInput);
+      const inputSalvo = String(resultado.termo || termoNormalizado || moduloId).slice(0, 200);
 
-      // 3. Debita o custo do módulo do saldo da carteira global compartilhada (hub_carteira e hub_transacoes)
-      const infoCarteira = await hubApiService.debitarConsultaZeroy(metaModulo, inputSalvo, {
-        userId,
-        userNome,
-        ip,
-      });
+      // 3. Debita o custo do módulo apenas quando não for notFound nem cache hit
+      const isNotFound = Boolean(resultado.notFound);
+      const infoCarteira =
+        isNotFound || resultado.cached
+          ? await hubApiService.getWalletSummary(metaModulo.custo)
+          : await hubApiService.debitarConsultaZeroy(metaModulo, inputSalvo, {
+              userId,
+              userNome,
+              ip,
+            });
 
       resultado.carteira = infoCarteira;
-      resultado.custo = metaModulo.custo;
-      resultado.custoFormatado = hubApiService.formatCurrency(metaModulo.custo);
+      resultado.custo = isNotFound || resultado.cached ? 0 : metaModulo.custo;
+      resultado.custoFormatado = hubApiService.formatCurrency(resultado.custo);
 
       // Salva histórico e auditoria de forma assíncrona não bloqueante
-      if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && userId) {
+      if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && userId && !isNotFound) {
         Promise.resolve(
           supabaseAdmin.from("buscas").insert([
             {
@@ -171,9 +195,10 @@ export class ZeroyController {
             moduloId,
             termo: inputSalvo,
             fonte: resultado.fonte,
-            custo: metaModulo.custo,
+            custo: resultado.custo,
             saldoApos: infoCarteira.saldoAtual,
             cached: Boolean(resultado.cached),
+            notFound: isNotFound,
             url: resultado.urlConsultada,
           },
           ip,
@@ -189,7 +214,9 @@ export class ZeroyController {
       });
     } catch (err) {
       console.error("[ZEROY CONTROLLER ERRO]:", err.message);
-      return res.status(400).json({
+      const isBalanceErr = Boolean(err.message && err.message.includes("Saldo compartilhado insuficiente"));
+      const statusCode = err.statusCode || (isBalanceErr ? 402 : 502);
+      return res.status(statusCode).json({
         success: false,
         error: err.message || "Falha ao conectar com a Zeroy API.",
       });

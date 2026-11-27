@@ -2,6 +2,7 @@ import { httpRequest } from "../core/httpClient.js";
 import { hubApiService } from "./hubapi.service.js";
 import { cacheService } from "../core/cache.service.js";
 import { interpretZeroy } from "./interpreter/index.js";
+import { optimizeFacialImageToBase64 } from "./imageOptimizer.service.js";
 
 /**
  * ==============================================================================
@@ -12,7 +13,7 @@ export class ZeroyService {
   constructor() {
     this.baseUrl = (process.env.ZEROY_API_URL || "https://zeroyapi.online").replace(/\/+$/, "");
     this.apiKey = process.env.ZEROY_API_KEY || "";
-    this.timeout = Number(process.env.ZEROY_TIMEOUT_MS) || 25000; // 25s padrão configurável
+    this.timeout = Number(process.env.ZEROY_TIMEOUT_MS) || 45000; // 45s alinhado ao httpClient e APIs governamentais
   }
 
   /**
@@ -113,6 +114,32 @@ export class ZeroyService {
         },
         aviso: "Dados simulados em ambiente de desenvolvimento (MOCK_MODE=true).",
         timestamp: agora,
+      };
+    }
+
+    // Mock para Reconhecimento Facial Nacional (POST /api/v1/reconnc)
+    if (idLower === "reconnc") {
+      return {
+        tipo: "reconnc",
+        total: 1,
+        matches: [
+          {
+            ordem: 1,
+            estado: "SP",
+            cpf: "02259013740",
+            similaridade: "88.4%",
+            similaridadeScore: 88.4,
+            foto: null,
+            nome: "CARLOS EDUARDO DA SILVA PEREIRA",
+            detalhes: {
+              nascimento: "14/08/1986",
+              mae: "MARIA APARECIDA DA SILVA PEREIRA",
+              sexo: "M",
+              telefones: ["11987654321"],
+            },
+          },
+        ],
+        aviso: "Dados simulados em ambiente de desenvolvimento (MOCK_MODE=true).",
       };
     }
 
@@ -243,6 +270,19 @@ export class ZeroyService {
 
     const q = new URLSearchParams();
 
+    // 0. Módulo Reconhecimento Facial (POST /api/v1/reconnc)
+    if (meta.id === "reconnc") {
+      const topK = Math.min(10, Math.max(1, Number(input?.top_k) || 3));
+      const thresholdNum = Number(input?.threshold);
+      const threshold = Number.isFinite(thresholdNum) ? Math.min(1, Math.max(0, thresholdNum)) : 0.35;
+      return {
+        queryString: "reconnc",
+        paramsObjeto: { top_k: topK, threshold },
+        termoPrincipal: String(input?.originalName || input?.termo || "Reconhecimento Facial").trim(),
+        tipoPix: null,
+      };
+    }
+
     // 1. Módulo Chave PIX (id: chave-pix): aceita ESTRITAMENTE 'cpf' ou 'cnpj'
     if (meta.id === "chave-pix") {
       if (extraCnpj || isCnpj) {
@@ -317,10 +357,13 @@ export class ZeroyService {
         q.set("cnpj", digits);
       } else if (paramName === "telefone" || meta.id === "telefone") {
         let cleanPhone = digits;
-        if (cleanPhone.length > 11 && cleanPhone.startsWith("55")) {
+        if (cleanPhone.length >= 12 && cleanPhone.startsWith("55")) {
           cleanPhone = cleanPhone.slice(2);
         }
-        q.set("telefone", cleanPhone);
+        if (cleanPhone.length >= 11 && cleanPhone.startsWith("0")) {
+          cleanPhone = cleanPhone.slice(1);
+        }
+        q.set("telefone", cleanPhone.slice(0, 11));
       } else if (paramName === "cep") {
         q.set("cep", digits);
       } else if (paramName === "cns") {
@@ -341,10 +384,13 @@ export class ZeroyService {
     let termoPrincipal = raw;
     if (meta.id === "telefone" || meta.param === "telefone") {
       let cleanPhone = digits;
-      if (cleanPhone.length > 11 && cleanPhone.startsWith("55")) {
+      if (cleanPhone.length >= 12 && cleanPhone.startsWith("55")) {
         cleanPhone = cleanPhone.slice(2);
       }
-      termoPrincipal = cleanPhone;
+      if (cleanPhone.length >= 11 && cleanPhone.startsWith("0")) {
+        cleanPhone = cleanPhone.slice(1);
+      }
+      termoPrincipal = cleanPhone.slice(0, 11);
     }
 
     return {
@@ -353,6 +399,348 @@ export class ZeroyService {
       termoPrincipal,
       tipoPix: (typeof input === "object" && input !== null) ? (input.tipoPix || input.tipo_pix || null) : null,
     };
+  }
+
+  /**
+   * Evita reutilizar entradas antigas de cache com erro/notFound ou payloads CPF/Reconnc vazios.
+   */
+  isStaleCacheData(metaId, data) {
+    if (!data || typeof data !== "object") return true;
+    if (data.notFound || data.isNotFound) return true;
+    if (metaId === "cpf-zeroy" || metaId === "cpf-2") {
+      const inner = data.data && typeof data.data === "object" ? data.data : data;
+      return !Boolean(
+        inner.dadosBasicos ||
+        inner.DadosBasicos ||
+        inner.cpf ||
+        inner.nome ||
+        inner.name
+      );
+    }
+    if (metaId === "reconnc") {
+      return !Array.isArray(data.matches) || data.matches.length === 0;
+    }
+    return false;
+  }
+
+  extrairMensagemErroZeroy(response, meta, termoPrincipal) {
+    let errorMsg = null;
+    if (response.data && typeof response.data === "object") {
+      errorMsg = response.data.error || response.data.message || response.data.msg || response.data.detalhes;
+    } else if (typeof response.data === "string" && response.data.length > 0) {
+      const s = response.data.trim();
+      if (!s.startsWith("<") && !s.includes("<html") && !s.includes("<!DOCTYPE") && !s.includes("<body")) {
+        errorMsg = response.data;
+      }
+    }
+
+    if (!errorMsg) {
+      if (response.status === 401) {
+        errorMsg = "Token da Zeroy API inválido ou não autorizado (401 Unauthorized). Verifique sua ZEROY_API_KEY no .env.";
+      } else if (response.status === 402 || response.status === 403) {
+        errorMsg = "Saldo insuficiente ou sem permissão na sua conta Zeroy API (402/403).";
+      } else if (response.status === 404) {
+        errorMsg = `Nenhum registro localizado na Zeroy API para ${meta.label || meta.nome || meta.id}: "${termoPrincipal}".`;
+      } else if (response.status === 429) {
+        errorMsg = "Limite de requisições excedido na Zeroy API (Rate Limit 429). Aguarde alguns instantes.";
+      } else {
+        errorMsg = `A Zeroy API retornou erro HTTP ${response.status}.`;
+      }
+    }
+
+    return errorMsg;
+  }
+
+  isNotFoundText(msg) {
+    return /nenhum|n[aã]o\s+encontrad|n[aã]o\s+localizad|not\s+found|sem\s+registro|sem\s+resultado|sem\s+correspond|no\s+match/i.test(
+      String(msg || "")
+    );
+  }
+
+  isEmptyModulePayload(meta, payload) {
+    if (!payload) return true;
+    if (Array.isArray(payload)) return payload.length === 0;
+    if (typeof payload !== "object") return true;
+
+    const inner = payload.data || payload.dados || payload;
+    if (Array.isArray(inner)) return inner.length === 0;
+    if (!inner || typeof inner !== "object") return true;
+
+    if (meta.id === "telefone") {
+      if (inner.error && !inner.titular && !inner.nome && !inner.cpf && !inner.operadora) return true;
+      return !Boolean(
+        inner.titular ||
+        inner.nome ||
+        inner.razaoSocial ||
+        inner.cliente ||
+        inner.cpf ||
+        inner.cnpj ||
+        inner.documento ||
+        inner.operadora ||
+        inner.prestadora ||
+        inner.provedor ||
+        inner.cidade ||
+        inner.uf ||
+        inner.estado
+      );
+    }
+
+    if (meta.id === "reconnc") {
+      const matches = Array.isArray(inner.matches) ? inner.matches : Array.isArray(payload.matches) ? payload.matches : [];
+      return matches.length === 0;
+    }
+
+    if (meta.id === "cpf-zeroy" || meta.id === "cpf-2") {
+      if (inner.error && !inner.dadosBasicos && !inner.cpf && !inner.nome) return true;
+      return !Boolean(
+        inner.dadosBasicos?.cpf ||
+        inner.dadosBasicos?.nome ||
+        inner.cpf ||
+        inner.nome ||
+        inner.name
+      );
+    }
+
+    if (inner.error && Object.keys(inner).length <= 2) return true;
+    return Object.keys(inner).length === 0;
+  }
+
+  criarRetornoNotFound({ meta, paramsObjeto, tipoPix = null, termoPrincipal, baseUrl, urlConsultada, mensagem, otimizacao = null }) {
+    const dadosNotFound = {
+      notFound: true,
+      termo: termoPrincipal,
+      mensagem: mensagem || `Nenhum registro localizado para "${termoPrincipal}".`,
+    };
+    if (meta.id === "telefone") {
+      dadosNotFound.telefone = termoPrincipal;
+    }
+    if (meta.id === "reconnc") {
+      dadosNotFound.tipo = "reconnc";
+      dadosNotFound.total = 0;
+      dadosNotFound.matches = [];
+    }
+    if (otimizacao) {
+      dadosNotFound.otimizacao = otimizacao;
+    }
+
+    return {
+      id: meta.id,
+      tipo: meta.id,
+      path: meta.path,
+      parametro: meta.param,
+      parametrosUsados: paramsObjeto,
+      tipoPix,
+      termo: termoPrincipal,
+      fonte: "Zeroy API (Conexão Oficial)",
+      urlConsultada: urlConsultada || `${baseUrl}${meta.path}`,
+      cached: false,
+      notFound: true,
+      timestamp: new Date().toISOString(),
+      dados: dadosNotFound,
+    };
+  }
+
+  async executarHttpZeroy(url, fetchOptions, meta, termoPrincipal) {
+    const response = await httpRequest(url, fetchOptions);
+
+    if (response.ok && response.data !== undefined && response.data !== null) {
+      let parsed = response.data;
+      if (typeof parsed === "string") {
+        try {
+          parsed = JSON.parse(parsed);
+        } catch {
+          // Mantém string se não for JSON
+        }
+      }
+      if (parsed && typeof parsed === "object" && parsed.error && Object.keys(parsed).length <= 3) {
+        return {
+          status: response.status,
+          ok: false,
+          notFound: this.isNotFoundText(parsed.error),
+          errorMsg: String(parsed.error),
+          data: parsed,
+        };
+      }
+      return { status: response.status, ok: true, data: parsed };
+    }
+
+    const errorMsg = this.extrairMensagemErroZeroy(response, meta, termoPrincipal);
+    return {
+      status: response.status,
+      ok: false,
+      notFound: response.status === 404 || this.isNotFoundText(errorMsg),
+      errorMsg,
+      data: response.data,
+    };
+  }
+
+  /**
+   * Executa Reconhecimento Facial Nacional (POST /api/v1/reconnc)
+   * Recebe arquivo ou base64, otimiza com Sharp no servidor e envia em Base64 para a Zeroy API.
+   */
+  async consultarReconhecimentoFacial(meta, input, forceRefresh = false) {
+    const topK = Math.min(10, Math.max(1, Number(input?.top_k) || 3));
+    const thresholdNum = Number(input?.threshold);
+    const threshold = Number.isFinite(thresholdNum) ? Math.min(1, Math.max(0, thresholdNum)) : 0.35;
+
+    const optimized = await optimizeFacialImageToBase64({
+      buffer: input?.imageBuffer || null,
+      base64: input?.imagem || input?.termo || null,
+      originalName: input?.originalName || "face.jpg",
+    });
+
+    const kbSize = Math.max(1, Math.round(optimized.optimizedBytes / 1024));
+    const termoAudit = `${optimized.originalName} (${kbSize} KB)`;
+    const cacheTerm = `${optimized.sha256.slice(0, 20)}:k${topK}:t${threshold}`;
+    const otimizacaoMeta = {
+      originalBytes: optimized.originalBytes,
+      optimizedBytes: optimized.optimizedBytes,
+      width: optimized.width,
+      height: optimized.height,
+      mimeType: optimized.mimeType,
+    };
+    const paramsUsados = { top_k: topK, threshold, otimizadoKB: kbSize };
+    const apiUrl = `${this.baseUrl}${meta.path}`;
+
+    if (!forceRefresh) {
+      try {
+        const cached = await cacheService.get(meta.id, cacheTerm);
+        if (cached && cached.data && !this.isStaleCacheData(meta.id, cached.data)) {
+          console.log(`[ZEROY API CACHE HIT] Módulo: ${meta.id} (${termoAudit}) via ${cached.source}`);
+          return {
+            id: meta.id,
+            tipo: meta.id,
+            path: meta.path,
+            parametro: meta.param,
+            parametrosUsados: paramsUsados,
+            tipoPix: null,
+            termo: termoAudit,
+            fonte: `Zeroy API (${cached.source === "memory" ? "Cache Memória" : "Cache Persistente"})`,
+            urlConsultada: apiUrl,
+            cached: true,
+            cacheSource: cached.source,
+            timestamp: cached.cachedAt,
+            dados: { ...cached.data, otimizacao: cached.data.otimizacao || otimizacaoMeta },
+          };
+        }
+      } catch (cacheErr) {
+        console.warn("[ZEROY RECONNC CACHE READ ERROR]:", cacheErr.message);
+      }
+    }
+
+    if (process.env.MOCK_MODE === "true") {
+      const mockPayload = interpretZeroy(meta.id, this.gerarMockZeroy(meta, termoAudit, paramsUsados, null));
+      mockPayload.otimizacao = otimizacaoMeta;
+      cacheService.set(meta.id, cacheTerm, mockPayload).catch(() => {});
+      return {
+        id: meta.id,
+        tipo: meta.id,
+        path: meta.path,
+        parametro: meta.param,
+        parametrosUsados: paramsUsados,
+        tipoPix: null,
+        termo: termoAudit,
+        fonte: "Zeroy API (Simulação Local - MOCK_MODE=true)",
+        urlConsultada: `https://zeroyapi.online${meta.path}`,
+        cached: false,
+        timestamp: new Date().toISOString(),
+        dados: mockPayload,
+      };
+    }
+
+    const apiKey = process.env.ZEROY_API_KEY || this.apiKey;
+    const baseUrl = (process.env.ZEROY_API_URL || this.baseUrl).replace(/\/+$/, "");
+    if (!apiKey || apiKey.trim() === "") {
+      const err = new Error(
+        "A chave da Zeroy API não foi configurada no arquivo .env (ZEROY_API_KEY). Insira sua chave para realizar a conexão real ou ative MOCK_MODE=true."
+      );
+      err.statusCode = 500;
+      throw err;
+    }
+
+    const postUrl = `${baseUrl}${meta.path}`;
+    console.log(`[ZEROY API CONEXÃO ATIVA] Módulo: reconnc | POST ${postUrl} (${kbSize} KB JPEG otimizado)`);
+
+    try {
+      const callRes = await this.executarHttpZeroy(
+        postUrl,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            imagem: optimized.base64,
+            top_k: topK,
+            threshold,
+          }),
+          timeout: Math.max(this.timeout, 45000),
+        },
+        meta,
+        termoAudit
+      );
+
+      if (!callRes.ok) {
+        if (callRes.notFound) {
+          return this.criarRetornoNotFound({
+            meta,
+            paramsObjeto: paramsUsados,
+            termoPrincipal: termoAudit,
+            baseUrl,
+            urlConsultada: postUrl,
+            mensagem: callRes.errorMsg,
+            otimizacao: otimizacaoMeta,
+          });
+        }
+        const err = new Error(callRes.errorMsg);
+        err.statusCode = callRes.status === 402 || callRes.status === 403 ? 402 : callRes.status || 502;
+        throw err;
+      }
+
+      const normalized = interpretZeroy(meta.id, callRes.data);
+      normalized.otimizacao = otimizacaoMeta;
+
+      if (this.isEmptyModulePayload(meta, normalized)) {
+        return this.criarRetornoNotFound({
+          meta,
+          paramsObjeto: paramsUsados,
+          termoPrincipal: termoAudit,
+          baseUrl,
+          urlConsultada: postUrl,
+          mensagem: "Nenhum rosto compatível encontrado na base nacional com os critérios informados.",
+          otimizacao: otimizacaoMeta,
+        });
+      }
+
+      cacheService.set(meta.id, cacheTerm, normalized).catch(() => {});
+
+      return {
+        id: meta.id,
+        tipo: meta.id,
+        path: meta.path,
+        parametro: meta.param,
+        parametrosUsados: paramsUsados,
+        tipoPix: null,
+        termo: termoAudit,
+        fonte: "Zeroy API (Conexão Oficial)",
+        urlConsultada: postUrl,
+        cached: false,
+        timestamp: new Date().toISOString(),
+        dados: normalized,
+      };
+    } catch (err) {
+      console.error(`[ZEROY RECONNC ERRO]:`, err.message);
+      if (err.message && err.message.includes("Timeout")) {
+        const timeoutErr = new Error(
+          `A Zeroy API (${baseUrl}) não respondeu dentro do tempo limite para o módulo '${meta.id}'. Tente novamente em instantes.`
+        );
+        timeoutErr.statusCode = 504;
+        throw timeoutErr;
+      }
+      throw err;
+    }
   }
 
   /**
@@ -368,17 +756,24 @@ export class ZeroyService {
     );
 
     const meta = this.obterMetadados(cleanId);
+
+    if (meta.id === "reconnc") {
+      return this.consultarReconhecimentoFacial(meta, input, forceRefresh);
+    }
+
     const { queryString, paramsObjeto, termoPrincipal, tipoPix } = this.resolverParametros(meta, input);
 
     if (!queryString || !termoPrincipal) {
-      throw new Error("O valor de busca não foi informado.");
+      const err = new Error("O valor de busca não foi informado.");
+      err.statusCode = 400;
+      throw err;
     }
 
     // 1. Verificação no Sistema de Cache Multi-Tier (Vercel-proof)
     if (!forceRefresh) {
       try {
         const cached = await cacheService.get(meta.id, termoPrincipal);
-        if (cached && cached.data) {
+        if (cached && cached.data && !this.isStaleCacheData(meta.id, cached.data)) {
           console.log(`[ZEROY API CACHE HIT] Módulo: ${meta.id} (${termoPrincipal}) via ${cached.source}`);
           return {
             id: meta.id,
@@ -406,7 +801,6 @@ export class ZeroyService {
       console.log(`[ZEROY MOCK ENGINE] Módulo: ${meta.id} (${termoPrincipal}) simulado localmente via MOCK_MODE=true`);
       const mockData = this.gerarMockZeroy(meta, termoPrincipal, paramsObjeto, tipoPix);
 
-      // Grava no cache para simulação completa do ciclo de vida da aplicação
       try {
         await cacheService.set(meta.id, termoPrincipal, mockData);
       } catch (cacheSaveErr) {
@@ -430,8 +824,6 @@ export class ZeroyService {
     }
 
     // 2.1 Tratamento resiliente para Módulo CEP & Endereçamento
-    // A Zeroy API não dispõe de endpoint ativo para CEP (/api/v1/cep retorna 404).
-    // Delegamos transparentemente para o motor oficial multi-provider de CEP/Endereço:
     if (cleanId === "cep" || meta.id === "cep" || meta.param === "cep") {
       try {
         console.log(`[ZEROY CEP DELEGADO] Consultando CEP '${termoPrincipal}' via motor multi-provider oficial...`);
@@ -473,103 +865,163 @@ export class ZeroyService {
     const baseUrl = (process.env.ZEROY_API_URL || this.baseUrl).replace(/\/+$/, "");
 
     if (!apiKey || apiKey.trim() === "") {
-      throw new Error(
+      const err = new Error(
         "A chave da Zeroy API não foi configurada no arquivo .env (ZEROY_API_KEY). Insira sua chave para realizar a conexão real ou ative MOCK_MODE=true."
       );
+      err.statusCode = 500;
+      throw err;
     }
 
     const url = `${baseUrl}${meta.path}?${queryString}`;
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/json",
+    };
 
     console.log(`[ZEROY API CONEXÃO ATIVA] Módulo: ${meta.id} | GET ${url}`);
 
+    const tentarFallbackCpf2 = async (motivoErro) => {
+      const cpfLimpo = String(paramsObjeto.cpf || termoPrincipal).replace(/\D/g, "");
+      if (meta.id !== "cpf-zeroy" || cpfLimpo.length !== 11) return null;
+
+      const cpf2Url = `${baseUrl}/api/v1/cpf2?cpf=${cpfLimpo}`;
+      console.warn(`[ZEROY CPF FALLBACK] ${motivoErro} Alternando para ${cpf2Url}...`);
+
+      const fbRes = await this.executarHttpZeroy(cpf2Url, { method: "GET", headers, timeout: Math.min(this.timeout, 30000) }, meta, termoPrincipal);
+      if (!fbRes.ok) {
+        if (fbRes.notFound) return { notFound: true, msg: fbRes.errorMsg, url: cpf2Url };
+        return null;
+      }
+
+      const interpreted = interpretZeroy(meta.id, fbRes.data);
+      if (this.isEmptyModulePayload(meta, interpreted)) {
+        return { notFound: true, msg: `Nenhum registro localizado para CPF "${termoPrincipal}".`, url: cpf2Url };
+      }
+
+      return { ok: true, data: interpreted, url: cpf2Url };
+    };
+
     try {
-      const response = await httpRequest(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          Accept: "application/json",
-        },
-        timeout: this.timeout,
-      });
-      
-      // Sucesso HTTP (200 - 299)
-      if (response.ok && response.data) {
-        let responseData = response.data;
-        if (typeof responseData === "string") {
-          try {
-            responseData = JSON.parse(responseData);
-          } catch {
-            // Mantém string caso não seja JSON
+      let callRes;
+      let primaryError = null;
+      try {
+        callRes = await this.executarHttpZeroy(url, { method: "GET", headers, timeout: this.timeout }, meta, termoPrincipal);
+      } catch (netErr) {
+        primaryError = netErr;
+      }
+
+      // Fallback automático para /api/v1/cpf2 caso /api/v1/cpf dê timeout, 5xx, 404 ou retorno vazio
+      const isHardAuthOrLimit = callRes && !callRes.ok && [401, 402, 403, 429].includes(callRes.status);
+      const primaryInterpreted = callRes?.ok ? interpretZeroy(meta.id, callRes.data) : null;
+      const primaryIsEmpty = callRes?.ok && this.isEmptyModulePayload(meta, primaryInterpreted);
+
+      if (
+        meta.id === "cpf-zeroy" &&
+        !isHardAuthOrLimit &&
+        (primaryError || !callRes?.ok || primaryIsEmpty)
+      ) {
+        try {
+          const reason = primaryError
+            ? primaryError.message
+            : !callRes?.ok
+              ? `HTTP ${callRes.status}: ${callRes.errorMsg}`
+              : "Payload vazio em /api/v1/cpf.";
+          const fallback = await tentarFallbackCpf2(reason);
+          if (fallback?.ok) {
+            cacheService.set(meta.id, termoPrincipal, fallback.data).catch(() => {});
+            return {
+              id: meta.id,
+              tipo: meta.id,
+              path: meta.path,
+              parametro: meta.param,
+              parametrosUsados: paramsObjeto,
+              tipoPix: null,
+              termo: termoPrincipal,
+              fonte: "Zeroy API (Conexão Oficial - Fallback CPF2)",
+              urlConsultada: fallback.url,
+              cached: false,
+              timestamp: new Date().toISOString(),
+              dados: fallback.data,
+            };
           }
+          if (fallback?.notFound) {
+            return this.criarRetornoNotFound({
+              meta,
+              paramsObjeto,
+              termoPrincipal,
+              baseUrl,
+              urlConsultada: url,
+              mensagem: fallback.msg,
+            });
+          }
+        } catch (fbErr) {
+          console.warn("[ZEROY CPF FALLBACK ERRO]:", fbErr.message);
         }
+      }
 
-        // Normalização via Backend Interpreter
-        responseData = interpretZeroy(meta.id, responseData);
+      if (primaryError) {
+        throw primaryError;
+      }
 
-        // Grava no cache de forma assíncrona não bloqueante
-        cacheService.set(meta.id, termoPrincipal, responseData).catch((cacheSaveErr) => {
-          console.warn("[ZEROY CACHE SAVE ERROR]:", cacheSaveErr.message);
-        });
+      if (!callRes.ok) {
+        if (callRes.notFound) {
+          return this.criarRetornoNotFound({
+            meta,
+            paramsObjeto,
+            termoPrincipal,
+            baseUrl,
+            urlConsultada: url,
+            mensagem: callRes.errorMsg,
+          });
+        }
+        const err = new Error(callRes.errorMsg);
+        err.statusCode = callRes.status === 402 || callRes.status === 403 ? 402 : callRes.status || 502;
+        throw err;
+      }
 
-        return {
-          id: meta.id,
-          tipo: meta.id,
-          path: meta.path,
-          parametro: meta.param,
-          parametrosUsados: paramsObjeto,
-          tipoPix: tipoPix || (paramsObjeto.cpf ? "cpf_titular" : (paramsObjeto.chave ? "chave" : null)),
-          termo: termoPrincipal,
-          fonte: "Zeroy API (Conexão Oficial)",
+      if (primaryIsEmpty) {
+        return this.criarRetornoNotFound({
+          meta,
+          paramsObjeto,
+          termoPrincipal,
+          baseUrl,
           urlConsultada: url,
-          cached: false,
-          timestamp: new Date().toISOString(),
-          dados: responseData,
-        };
+          mensagem: `Nenhum registro localizado na Zeroy API para "${termoPrincipal}".`,
+        });
       }
 
-      // Tratamento detalhado de respostas de erro retornadas diretamente pela Zeroy API
-      let errorMsg = null;
-      if (response.data && typeof response.data === "object") {
-        errorMsg = response.data.error || response.data.message || response.data.msg || response.data.detalhes;
-      } else if (typeof response.data === "string" && response.data.length > 0) {
-        // Se a resposta for HTML (ex: 404 do Next.js da Zeroy, Cloudflare, etc.), NÃO vaza HTML bruto
-        if (
-          response.data.trim().startsWith("<") ||
-          response.data.includes("<html") ||
-          response.data.includes("<!DOCTYPE") ||
-          response.data.includes("<body")
-        ) {
-          errorMsg = null;
-        } else {
-          errorMsg = response.data;
-        }
-      }
+      cacheService.set(meta.id, termoPrincipal, primaryInterpreted).catch((cacheSaveErr) => {
+        console.warn("[ZEROY CACHE SAVE ERROR]:", cacheSaveErr.message);
+      });
 
-      if (!errorMsg) {
-        if (response.status === 401) {
-          errorMsg = "Token da Zeroy API inválido ou não autorizado (401 Unauthorized). Verifique sua ZEROY_API_KEY no .env.";
-        } else if (response.status === 402 || response.status === 403) {
-          errorMsg = "Saldo insuficiente ou sem permissão na sua conta Zeroy API (402/403).";
-        } else if (response.status === 404) {
-          errorMsg = `Nenhum registro localizado na Zeroy API para ${meta.label || meta.nome || meta.id}: "${termoPrincipal}".`;
-        } else if (response.status === 429) {
-          errorMsg = "Limite de requisições excedido na Zeroy API (Rate Limit 429). Aguarde alguns instantes.";
-        } else {
-          errorMsg = `A Zeroy API retornou erro HTTP ${response.status}.`;
-        }
-      }
-
-      throw new Error(errorMsg);
+      return {
+        id: meta.id,
+        tipo: meta.id,
+        path: meta.path,
+        parametro: meta.param,
+        parametrosUsados: paramsObjeto,
+        tipoPix: tipoPix || (paramsObjeto.cpf ? "cpf_titular" : (paramsObjeto.chave ? "chave" : null)),
+        termo: termoPrincipal,
+        fonte: "Zeroy API (Conexão Oficial)",
+        urlConsultada: url,
+        cached: false,
+        timestamp: new Date().toISOString(),
+        dados: primaryInterpreted,
+      };
     } catch (err) {
       console.error(`[ZEROY API ERRO DE CONEXÃO]:`, err.message);
 
       if (err.message && err.message.includes("Timeout")) {
-        throw new Error(
-          `A Zeroy API (${baseUrl}) não respondeu dentro do tempo limite para o módulo '${meta.id}'. Os servidores da Zeroy API estão temporariamente instáveis ou o saldo de consultas da sua chave pode ter esgotado no painel da Zeroy. Para testar sem depender da rede externa, ative MOCK_MODE=true no seu arquivo .env.`
+        const timeoutErr = new Error(
+          `A Zeroy API (${baseUrl}) não respondeu dentro do tempo limite para o módulo '${meta.id}'. Os servidores da Zeroy API estão temporariamente instáveis ou lentos. Tente novamente em instantes.`
         );
+        timeoutErr.statusCode = 504;
+        throw timeoutErr;
       }
 
-      throw new Error(err.message);
+      const wrapped = new Error(err.message);
+      wrapped.statusCode = err.statusCode || 502;
+      throw wrapped;
     }
   }
 }

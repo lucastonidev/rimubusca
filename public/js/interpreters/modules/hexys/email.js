@@ -15,14 +15,25 @@ import { Formatters, escapeHtml } from "../../utils.js";
  * @param {Object} payload
  * @returns {Array<Object>}
  */
+function isInvalidEmailPersonText(v) {
+  const s = String(v ?? "").trim().toUpperCase();
+  return !s || ["NÃO INFORMADO", "NAO INFORMADO", "NOME NÃO INFORMADO", "NOME NAO INFORMADO", "N/I", "N/A", "NULL", "UNDEFINED"].includes(s);
+}
+
+function hasValidEmailPersonIdentity(p) {
+  if (!p || typeof p !== "object") return false;
+  const cpfDigits = String(p.cpf_raw || p.cpf || p.CPF || "").replace(/\D/g, "");
+  return !isInvalidEmailPersonText(p.nome || p.name || p.titularNome) || cpfDigits.length >= 6;
+}
+
 export function extractEmailPersons(payload) {
   if (!payload) return [];
-  if (Array.isArray(payload.pessoas_vinculadas)) return payload.pessoas_vinculadas;
-  if (Array.isArray(payload.pessoas)) return payload.pessoas;
-  if (Array.isArray(payload.titulares)) return payload.titulares;
-  if (Array.isArray(payload.resultado)) return payload.resultado;
-  if (Array.isArray(payload.resultados)) return payload.resultados;
-  if (payload.cpf && (payload.name || payload.nome)) return [payload];
+  if (Array.isArray(payload.pessoas_vinculadas)) return payload.pessoas_vinculadas.filter(hasValidEmailPersonIdentity);
+  if (Array.isArray(payload.pessoas)) return payload.pessoas.filter(hasValidEmailPersonIdentity);
+  if (Array.isArray(payload.titulares)) return payload.titulares.filter(hasValidEmailPersonIdentity);
+  if (Array.isArray(payload.resultado)) return payload.resultado.filter(hasValidEmailPersonIdentity);
+  if (Array.isArray(payload.resultados)) return payload.resultados.filter(hasValidEmailPersonIdentity);
+  if (hasValidEmailPersonIdentity(payload)) return [payload];
   return [];
 }
 
@@ -86,7 +97,8 @@ export const EmailInterpreter = {
    */
   render(responseData, dataPayload) {
     const data = dataPayload || responseData?.dados || {};
-    const email = String(data.email || responseData?.termo || "E-mail não informado").trim().toLowerCase();
+    const emailRaw = String(data.email || responseData?.termo || "").trim();
+    const email = (emailRaw || "E-mail não informado").toLowerCase();
 
     // 1. Google Profile & Digital Footprint
     const perfilGoogle = data.perfil_google || {};
@@ -113,6 +125,41 @@ export const EmailInterpreter = {
     const vazamentos = Array.isArray(seguranca.vazamentos) ? seguranca.vazamentos : Array.isArray(data.vazamentos) ? data.vazamentos : [];
     const totalVazamentos = seguranca.total_vazamentos ?? (data.total_vazamentos ?? vazamentos.length);
     const isVulnerable = totalVazamentos > 0;
+
+    const isInvalidText = (v) => {
+      const s = String(v ?? "").trim().toUpperCase();
+      return !s || ["NÃO INFORMADO", "NAO INFORMADO", "NOME NÃO INFORMADO", "NOME NAO INFORMADO", "N/I", "N/A", "NULL", "UNDEFINED"].includes(s);
+    };
+    const hasGoogleProfile = Boolean(
+      gaiaId ||
+      photoUrl ||
+      appsAtivos.length > 0 ||
+      mapsContribUrl ||
+      ultimaEdicao ||
+      perfilGoogle?.encontrado === true ||
+      contasGoogle?.encontrado === true
+    );
+    const titularObj = data.titular && typeof data.titular === "object" ? data.titular : null;
+    const hasTitularData = Boolean(
+      (titularObj && (!isInvalidText(titularObj.nome || titularObj.name) || String(titularObj.cpf || "").replace(/\D/g, "").length >= 11)) ||
+      !isInvalidText(data.nome || data.name) ||
+      String(data.cpf_raw || data.cpf || "").replace(/\D/g, "").length >= 11
+    );
+    const isExplicitNotFound = Boolean(responseData?.notFound || responseData?.isNotFound || data?.notFound || data?.isNotFound);
+
+    if (isExplicitNotFound || (!hasGoogleProfile && totalPersons === 0 && empresas.length === 0 && totalVazamentos === 0 && !hasTitularData)) {
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--purple">
+            <i data-lucide="mail-x" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">Nenhum Dado Localizado para Este E-mail</h3>
+          <p class="osint-empty-desc">
+            Não encontramos titulares vinculados, perfil digital ou registros associados ao e-mail <strong>${escapeHtml(email)}</strong>.
+          </p>
+        </div>
+      `;
+    }
 
     // 4. Metrics & Counters
     let regularesCount = 0;

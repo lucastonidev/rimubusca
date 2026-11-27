@@ -59,31 +59,6 @@
       color: #34D399;
     }
 
-    .consulta-input-row {
-      display: flex;
-      gap: var(--space-3);
-      margin-top: var(--space-2);
-    }
-
-    .consulta-input-field {
-      flex: 1;
-      padding: 12px 18px;
-      background-color: var(--color-surface-2);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-md);
-      color: var(--color-text);
-      font-size: 1.0625rem;
-      font-family: var(--font-mono);
-      outline: none;
-      transition: all var(--transition-fast);
-    }
-
-    .consulta-input-field:focus {
-      border-color: #10B981;
-      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.22);
-      background-color: var(--color-surface);
-    }
-
     .consulta-demo-row {
       display: flex;
       flex-wrap: wrap;
@@ -92,33 +67,6 @@
       margin-top: var(--space-4);
       padding-top: var(--space-3);
       border-top: 1px solid var(--color-border);
-    }
-
-    .demo-consulta-btn {
-      background: var(--color-surface-2);
-      border: 1px solid var(--color-border);
-      color: var(--color-text-muted);
-      padding: 4px 10px;
-      border-radius: var(--radius-full);
-      font-size: 0.75rem;
-      font-family: var(--font-mono);
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: all var(--transition-fast);
-    }
-
-    .demo-consulta-btn:hover {
-      background: var(--color-surface-3);
-      color: #6EE7B7;
-      border-color: rgba(16, 185, 129, 0.4);
-    }
-
-    @media (max-width: 640px) {
-      .consulta-input-row {
-        flex-direction: column;
-      }
     }
 
     /* ==========================================================================
@@ -290,49 +238,6 @@
       align-items: center;
       gap: 4px;
       font-family: var(--font-mono);
-    }
-
-    /* Botão de Ação Rápida Puxar CPF */
-    .btn-action-puxar {
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      color: #10B981;
-      padding: 4px 10px;
-      border-radius: var(--radius-sm);
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      transition: all var(--transition-fast);
-      text-decoration: none;
-    }
-
-    .btn-action-puxar:hover {
-      background: rgba(16, 185, 129, 0.28);
-      color: #FFFFFF;
-      border-color: #10B981;
-      transform: translateY(-1px);
-    }
-
-    .btn-action-copy {
-      background: var(--color-surface-2);
-      border: 1px solid var(--color-border);
-      color: var(--color-text-dim);
-      padding: 4px 8px;
-      border-radius: var(--radius-sm);
-      font-size: 0.75rem;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      transition: all var(--transition-fast);
-    }
-
-    .btn-action-copy:hover {
-      color: var(--color-text);
-      border-color: var(--color-primary);
     }
 
     /* Placa Automotiva Estilizada */
@@ -509,7 +414,7 @@
               </select>
             </div>
 
-            <div class="consulta-input-row">
+            <div class="consulta-input-row" id="zeroyTextInputRow" style="<%= activeId === 'reconnc' ? 'display: none;' : '' %>">
               <input 
                 type="text" 
                 id="zeroyTermoInput" 
@@ -517,12 +422,133 @@
                 placeholder="<%= activeMod ? activeMod.placeholder : '000.000.000-00' %>"
                 autocomplete="off"
                 spellcheck="false"
-                required
+                <%= activeId === 'reconnc' ? '' : 'required' %>
               >
               <button type="submit" class="btn btn-primary" id="btnZeroyConsultar" style="background: #10B981; border-color: #059669; padding: 0 24px;">
                 <i data-lucide="search" style="width: 18px; height: 18px;"></i>
                 <span id="btnZeroyText">Consultar</span>
               </button>
+            </div>
+
+            <!-- Painel Dedicado: Upload de Foto para Reconhecimento Facial (reconnc) -->
+            <div id="zeroyReconncPanel" class="osint-reconnc-panel" style="<%= activeId === 'reconnc' ? 'display: block;' : 'display: none;' %>">
+              <input type="file" id="zeroyReconncFile" accept="image/jpeg,image/png,image/webp,image/*" hidden>
+
+              <div id="zeroyReconncDropzone" class="osint-upload-dropzone" role="button" tabindex="0" aria-label="Selecionar ou arrastar foto facial">
+                <div id="zeroyReconncPrompt">
+                  <div class="osint-upload-icon">
+                    <i data-lucide="scan-face" style="width: 24px; height: 24px;"></i>
+                  </div>
+                  <div class="osint-upload-title">Arraste uma foto de rosto ou clique para enviar</div>
+                  <div class="osint-upload-hint">JPG, PNG ou WEBP (até 10 MB) — otimização e conversão Base64 automáticas no servidor</div>
+                </div>
+
+                <div id="zeroyReconncPreview" class="osint-upload-preview-wrap" style="display: none;">
+                  <div class="osint-upload-preview-left">
+                    <img id="zeroyReconncPreviewImg" src="" alt="Prévia da face enviada" class="osint-upload-preview-img">
+                    <div style="min-width: 0;">
+                      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <div id="zeroyReconncFileName" style="font-weight: 700; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">foto.jpg</div>
+                        <span id="zeroyReconncCropBadge" class="badge" style="display: none; background: rgba(236, 72, 153, 0.2); color: #F472B6; font-size: 0.7rem;">Recorte Ativo</span>
+                      </div>
+                      <div id="zeroyReconncFileMeta" style="font-size: 0.78rem; color: var(--color-text-muted); margin-top: 3px;">Pronta para envio</div>
+                    </div>
+                  </div>
+                  <div class="osint-upload-actions">
+                    <button type="button" id="btnAbrirCropperReconnc" class="btn btn-outline btn-sm" style="border-color: rgba(236, 72, 153, 0.45); color: #F472B6;">
+                      <i data-lucide="crop" style="width: 14px; height: 14px;"></i>
+                      <span>Recortar / Focar Rosto</span>
+                    </button>
+                    <button type="button" id="btnUsarOriginalReconnc" class="btn btn-outline btn-sm" style="display: none;">
+                      <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+                      <span>Usar Original</span>
+                    </button>
+                    <button type="button" id="btnRemoverFotoReconnc" class="btn btn-outline btn-sm">
+                      <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                      <span>Trocar Foto</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Editor / Recortador Opcional de Rosto (Quadrado, Retrato, Círculo, Oval ou Livre) -->
+              <div id="zeroyReconncCropBox" class="osint-cropper-box" style="display: none;">
+                <div class="osint-cropper-header">
+                  <div class="osint-cropper-title">
+                    <i data-lucide="crop" style="width: 16px; height: 16px;"></i>
+                    <span>Recortar &amp; Focar Rosto (Economiza Espaço e Melhora Precisão)</span>
+                  </div>
+                  <div class="osint-cropper-shapes" id="zeroyReconncShapes">
+                    <button type="button" class="osint-crop-shape-btn active" data-shape="square" title="Quadrado 1:1">
+                      <i data-lucide="square" style="width: 12px; height: 12px;"></i> Quadrado
+                    </button>
+                    <button type="button" class="osint-crop-shape-btn" data-shape="portrait" title="Retrato 3:4">
+                      <i data-lucide="rectangle-vertical" style="width: 12px; height: 12px;"></i> Retrato 3:4
+                    </button>
+                    <button type="button" class="osint-crop-shape-btn" data-shape="circle" title="Círculo (isola rostos próximos)">
+                      <i data-lucide="circle" style="width: 12px; height: 12px;"></i> Círculo
+                    </button>
+                    <button type="button" class="osint-crop-shape-btn" data-shape="oval" title="Oval facial (isola fundo/cantos)">
+                      <i data-lucide="scan-face" style="width: 12px; height: 12px;"></i> Oval
+                    </button>
+                    <button type="button" class="osint-crop-shape-btn" data-shape="free" title="Seleção livre">
+                      <i data-lucide="maximize-2" style="width: 12px; height: 12px;"></i> Livre
+                    </button>
+                  </div>
+                </div>
+
+                <div class="osint-cropper-stage-wrap">
+                  <div id="zeroyReconncCropStage" class="osint-crop-stage">
+                    <img id="zeroyReconncCropImg" src="" alt="Editor de recorte facial">
+                    <div id="zeroyReconncCropSelection" class="osint-crop-selection">
+                      <span class="osint-crop-grid-line osint-crop-grid-line--h1"></span>
+                      <span class="osint-crop-grid-line osint-crop-grid-line--h2"></span>
+                      <span class="osint-crop-grid-line osint-crop-grid-line--v1"></span>
+                      <span class="osint-crop-grid-line osint-crop-grid-line--v2"></span>
+                      <span class="osint-crop-handle osint-crop-handle--nw" data-crop-handle="nw"></span>
+                      <span class="osint-crop-handle osint-crop-handle--n" data-crop-handle="n"></span>
+                      <span class="osint-crop-handle osint-crop-handle--ne" data-crop-handle="ne"></span>
+                      <span class="osint-crop-handle osint-crop-handle--e" data-crop-handle="e"></span>
+                      <span class="osint-crop-handle osint-crop-handle--se" data-crop-handle="se"></span>
+                      <span class="osint-crop-handle osint-crop-handle--s" data-crop-handle="s"></span>
+                      <span class="osint-crop-handle osint-crop-handle--sw" data-crop-handle="sw"></span>
+                      <span class="osint-crop-handle osint-crop-handle--w" data-crop-handle="w"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="osint-cropper-footer">
+                  <div id="zeroyReconncCropInfo" class="osint-cropper-info">Arraste os cantos ou a área para focar no rosto.</div>
+                  <div class="osint-upload-actions">
+                    <button type="button" id="btnResetarCropReconnc" class="btn btn-outline btn-sm">Centralizar</button>
+                    <button type="button" id="btnCancelarCropReconnc" class="btn btn-outline btn-sm">Cancelar</button>
+                    <button type="button" id="btnAplicarCropReconnc" class="btn btn-primary btn-sm" style="background: #EC4899; border-color: #DB2777;">
+                      <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+                      <span>Aplicar Recorte</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="osint-reconnc-controls">
+                <div class="osint-reconnc-param">
+                  <label for="zeroyReconncTopK">Máximo de Resultados (top_k: 1 a 10)</label>
+                  <select id="zeroyReconncTopK" class="form-select">
+                    <option value="1">1 resultado</option>
+                    <option value="3" selected>3 resultados (Padrão)</option>
+                    <option value="5">5 resultados</option>
+                    <option value="10">10 resultados (Máximo)</option>
+                  </select>
+                </div>
+                <div class="osint-reconnc-param">
+                  <label for="zeroyReconncThreshold">Similaridade Mínima (threshold: 0 a 1)</label>
+                  <input type="number" id="zeroyReconncThreshold" class="form-input" min="0.05" max="0.99" step="0.05" value="0.35">
+                </div>
+                <button type="submit" class="btn btn-primary osint-reconnc-submit-btn" id="btnZeroyReconncSubmit">
+                  <i data-lucide="scan-face" style="width: 18px; height: 18px;"></i>
+                  <span id="btnZeroyReconncText">Buscar Correspondência Facial</span>
+                </button>
+              </div>
             </div>
 
             <!-- Indicador Inteligente de Tipo Detectado -->
@@ -683,7 +709,7 @@
   <script src="/js/ui.js"></script>
   <script src="/js/api.js"></script>
   <script src="/js/main.js"></script>
-  <script type="module" src="/js/interpreters/zeroy-interpreters.js?v=2.2"></script>
+  <script type="module" src="/js/interpreters/zeroy-interpreters.js?v=2.9"></script>
   <!-- Modal Dark OSINT Report para Zeroy -->
   <div id="modalRelatorioOsint" style="display: none; position: fixed; inset: 0; background: rgba(4, 6, 9, 0.88); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
     <div style="background: #0D111A; border: 1px solid #2D1F55; border-radius: 12px; width: 100%; max-width: 1120px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75);">
@@ -722,11 +748,11 @@
     </div>
   </div>
 
-  <script src="/js/settings.js"></script>
   <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
   <script src="/js/osint-graph.js"></script>
-  <script src="/js/osint-dark-report.js?v=2.2"></script>
-  <script src="/js/zeroy.js?v=2.2"></script>
+  <script src="/js/osint-dark-report.js?v=2.9"></script>
+  <script src="/js/components/image-cropper.js?v=2.10"></script>
+  <script src="/js/zeroy.js?v=2.10"></script>
 </body>
 </html>
 

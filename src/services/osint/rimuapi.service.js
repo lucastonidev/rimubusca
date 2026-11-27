@@ -10,6 +10,27 @@
  */
 
 /**
+ * Sanitiza um telefone brasileiro removendo DDI (+55 / 55) e zero à esquerda,
+ * preservando estritamente DDD (2 dígitos) + número (8 ou 9 dígitos).
+ * @param {string|number} val
+ * @returns {string}
+ */
+export function limparTelefoneBr(val) {
+  const rawStr = String(val || "").trim();
+  let digits = rawStr.replace(/\D/g, "");
+  if (
+    (rawStr.startsWith("+55") && digits.length > 2 && digits.startsWith("55")) ||
+    (digits.length >= 12 && digits.startsWith("55"))
+  ) {
+    digits = digits.slice(2);
+  }
+  if (digits.length >= 11 && digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+  return digits.slice(0, 11);
+}
+
+/**
  * Recupera e valida as configurações oficiais da RimuAPI a partir do .env
  */
 export function getRimuApiConfig() {
@@ -197,25 +218,30 @@ export async function consultarRimuApi({
     throw err;
   }
 
-  // O payload útil pode estar em:
-  // 1. envelope.data?.response
-  // 2. envelope.dados?.response
-  // 3. envelope.response
-  // 4. envelope.data
-  // 5. envelope.dados
-  // 6. envelope
-  let registros =
-    envelope.data?.response !== undefined
-      ? envelope.data.response
-      : envelope.dados?.response !== undefined
-      ? envelope.dados.response
-      : envelope.response !== undefined
-      ? envelope.response
-      : envelope.data !== undefined
-      ? envelope.data
-      : envelope.dados !== undefined
-      ? envelope.dados
-      : envelope;
+  // O payload útil pode estar em response ou conteudo dentro de data/dados ou na raiz.
+  // Evita selecionar response vazio quando conteudo trouxer dados úteis (ex: CNA_ADVOGADOS em OAB).
+  const hasUsefulPayload = (val) => {
+    if (val === undefined || val === null) return false;
+    if (Array.isArray(val)) return val.length > 0;
+    if (typeof val === "object") return Object.keys(val).length > 0;
+    return String(val).trim() !== "";
+  };
+
+  const candidates = [
+    envelope.data?.response,
+    envelope.data?.conteudo,
+    envelope.dados?.response,
+    envelope.dados?.conteudo,
+    envelope.response,
+    envelope.conteudo,
+    envelope.data,
+    envelope.dados,
+  ];
+
+  let registros = candidates.find(hasUsefulPayload);
+  if (registros === undefined) {
+    registros = candidates.find((c) => c !== undefined && c !== null) ?? envelope;
+  }
 
   // Anexa metadados úteis se for um objeto ou array
   if (typeof registros === "object" && registros !== null) {
@@ -282,7 +308,7 @@ export const rimuApi = {
   // 2. CATEGORIA: CONTATO (2 Módulos)
   // ============================================================================
   telefone: (telefone) =>
-    consultarRimuApi({ tipo: "telefone", chave: String(telefone).replace(/\D/g, "") }),
+    consultarRimuApi({ tipo: "telefone", chave: limparTelefoneBr(telefone) }),
 
   email: (email) =>
     consultarRimuApi({ tipo: "email", chave: String(email).trim().toLowerCase() }),
@@ -363,11 +389,11 @@ export const rimuApi = {
   razaoSocial: (termo) =>
     consultarRimuApi({ tipo: "razao_social", chave: String(termo).trim() }),
 
-  socios: (cpfOuCnpj) =>
-    consultarRimuApi({ tipo: "socios", chave: String(cpfOuCnpj).replace(/\D/g, "") }),
+  socios: (cnpj) =>
+    consultarRimuApi({ tipo: "socios", chave: String(cnpj).replace(/\D/g, "") }),
 
-  socios2: (cpfOuCnpj) =>
-    consultarRimuApi({ tipo: "socios2", chave: String(cpfOuCnpj).replace(/\D/g, "") }),
+  socios2: (cnpj) =>
+    consultarRimuApi({ tipo: "socios2", chave: String(cnpj).replace(/\D/g, "") }),
 
   funcionarios: (cnpj) =>
     consultarRimuApi({ tipo: "funcionarios", chave: String(cnpj).replace(/\D/g, "") }),

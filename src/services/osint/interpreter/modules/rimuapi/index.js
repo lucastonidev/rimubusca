@@ -24,11 +24,16 @@ import {
  * @returns {{ regiao: string, estados: string, descricao: string }}
  */
 export function obterRegiaoFiscalCpf(cpf) {
-  const clean = String(cpf || "").replace(/\D/g, "");
-  if (clean.length < 9) {
+  const rawStr = String(cpf || "");
+  const clean = rawStr.replace(/\D/g, "");
+  let digit = "";
+  if (clean.length >= 9) {
+    digit = clean.charAt(8);
+  } else if (clean.length === 6 && /\*{2,3}/.test(rawStr)) {
+    digit = clean.charAt(5);
+  } else {
     return { regiao: "N/I", estados: "Não identificado", descricao: "Dígitos insuficientes" };
   }
-  const digit = clean.charAt(8);
   const mapa = {
     "1": { regiao: "1ª RF", estados: "DF, GO, MT, MS, TO", descricao: "1ª Região Fiscal (DF, GO, MT, MS, TO)" },
     "2": { regiao: "2ª RF", estados: "AC, AM, AP, PA, RO, RR", descricao: "2ª Região Fiscal (AC, AM, AP, PA, RO, RR)" },
@@ -42,6 +47,118 @@ export function obterRegiaoFiscalCpf(cpf) {
     "0": { regiao: "10ª RF", estados: "Rio Grande do Sul (RS)", descricao: "10ª Região Fiscal (RS)" },
   };
   return mapa[digit] || { regiao: "N/I", estados: "Não identificado", descricao: "Região não identificada" };
+}
+
+const UFS_BRASIL = new Set([
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+]);
+
+function limparTextoEndereco(val) {
+  if (val === null || val === undefined) return "";
+  const str = String(val).trim();
+  if (!str) return "";
+  const normalized = str.replace(/[()]/g, "").trim().toUpperCase();
+  if (
+    normalized === "" ||
+    normalized === "SEM RESULTADO" ||
+    normalized === "N/I" ||
+    normalized === "N/" ||
+    normalized === "N/A" ||
+    normalized === "NULL" ||
+    normalized === "NONE" ||
+    normalized === "UNDEFINED" ||
+    normalized === "NAO INFORMADO" ||
+    normalized === "NÃO INFORMADO" ||
+    normalized === "NAO INFORMADA" ||
+    normalized === "NÃO INFORMADA" ||
+    normalized === "-"
+  ) {
+    return "";
+  }
+  return str;
+}
+
+function normalizarUfEndereco(val) {
+  const clean = limparTextoEndereco(val).toUpperCase().replace(/[^A-Z]/g, "");
+  return UFS_BRASIL.has(clean) ? clean : "";
+}
+
+function extrairBlocoEndereco(reg) {
+  if (!reg || typeof reg !== "object") return {};
+  return reg.ENDERECO || reg.endereco || reg.ENDERECOS?.[0] || reg.enderecos?.[0] || reg;
+}
+
+function extrairMoradorCep(item) {
+  if (!item || typeof item !== "object") return null;
+  const d = item.DADOS || item.dados || item;
+  const endItem = item.ENDERECO || item.endereco || item.ENDERECOS?.[0] || item.enderecos?.[0] || {};
+  const cpfRawVal = d.CPF || d.cpf || item.CPF || item.cpf || "";
+  const nomeVal = limparTextoEndereco(d.NOME || d.nome || item.NOME || item.nome || item.morador || item.name);
+  if (!cpfRawVal && !nomeVal) return null;
+
+  const tipoLogrVal = limparTextoEndereco(endItem.LOGR_TIPO || endItem.tipoLogradouro || item.tipoLogradouro);
+  const nomeLogrVal = limparTextoEndereco(
+    endItem.LOGR_NOME || endItem.logr_nome || endItem.LOGRADOURO || endItem.logradouro || endItem.rua || item.logradouro
+  );
+  const logradouroVal = [tipoLogrVal, nomeLogrVal].filter(Boolean).join(" ").trim() || limparTextoEndereco(endItem.endereco);
+
+  const numeroVal = limparTextoEndereco(
+    endItem.LOGR_NUMERO ??
+    endItem.logr_numero ??
+    endItem.NUMERO ??
+    endItem.numero ??
+    d.LOGR_NUMERO ??
+    d.logr_numero ??
+    d.numero ??
+    item.LOGR_NUMERO ??
+    item.logr_numero ??
+    item.numero
+  );
+
+  const complementoVal = limparTextoEndereco(
+    endItem.LOGR_COMPLEMENTO ??
+    endItem.logr_complemento ??
+    endItem.COMPLEMENTO ??
+    endItem.complemento ??
+    d.LOGR_COMPLEMENTO ??
+    d.complemento ??
+    item.LOGR_COMPLEMENTO ??
+    item.complemento
+  );
+
+  const bairroVal = limparTextoEndereco(endItem.BAIRRO || endItem.bairro || item.bairro);
+  const cidadeVal = limparTextoEndereco(endItem.CIDADE || endItem.cidade || endItem.municipio || endItem.localidade || item.cidade);
+  const ufVal = normalizarUfEndereco(endItem.UF || endItem.uf || endItem.estado || item.uf);
+  const cepRawItem = endItem.CEP || endItem.cep || item.cep || "";
+  const cepFmtItem = formatCep(cepRawItem);
+
+  let sexoVal = limparTextoEndereco(d.SEXO || d.sexo || item.sexo).toUpperCase();
+  if (sexoVal === "M") sexoVal = "MASCULINO";
+  else if (sexoVal === "F") sexoVal = "FEMININO";
+
+  const nascVal = limparTextoEndereco(d.NASC || d.NASCIMENTO || d.nascimento || item.nascimento) || "Não informada";
+  const cpfDigits = String(cpfRawVal).replace(/\D/g, "");
+
+  return {
+    endereco: {
+      ...(logradouroVal ? { logradouro: logradouroVal } : {}),
+      numero: numeroVal || "S/N",
+      ...(complementoVal ? { complemento: complementoVal } : {}),
+      ...(bairroVal ? { bairro: bairroVal } : {}),
+      ...(cidadeVal ? { cidade: cidadeVal } : {}),
+      ...(ufVal ? { uf: ufVal } : {}),
+      ...(cepFmtItem && cepFmtItem !== "N/I" ? { cep: cepFmtItem } : {}),
+    },
+    dados: {
+      cpf: formatCpf(cpfDigits || cpfRawVal),
+      cpfLimpo: cpfDigits,
+      nome: (nomeVal || "N/I").toUpperCase(),
+      sexo: sexoVal || "NÃO INFORMADO",
+      nascimento: nascVal,
+    },
+  };
 }
 
 /**
@@ -74,48 +191,90 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
     // 2. NOMES: NOME COMPLETO (1 RESULTADO) vs NOME SIMILAR (LISTA HOMÔNIMOS)
     // ==========================================================================
     case "nome": {
-      const lista = registros.map((item) => {
-        const cpfRaw = item.CPF || item.cpf || "";
-        const birthInfo = parseBirthDate(item.NASCIMENTO || item.NASC || item.nascimento);
+      if (!rawData || rawData.__notFound || (Array.isArray(rawData) && rawData.length === 0)) {
         return {
-          cpf: formatCpf(cpfRaw),
-          cpf_raw: cpfRaw,
-          nome: String(item.NOME || item.nome || "").toUpperCase(),
-          sexo: (item.SEXO || item.sexo || "NÃO INFORMADO").toUpperCase(),
-          nascimento: birthInfo.birthFormatted || item.NASCIMENTO || item.NASC || "Não informada",
-          data_nascimento: birthInfo.birthFormatted,
-          idade: birthInfo.age,
-          signo: birthInfo.sign,
-          nomeMae: item.NOME_MAE || item.nome_mae || null,
-          nomePai: item.NOME_PAI || item.nome_pai || null,
-          ...(item.DADOS ? item.DADOS : {}),
+          tipo: "nome",
+          total: 0,
+          notFound: true,
+          isNotFound: true,
+          resultado: [],
         };
-      });
+      }
 
-      const primeiroNome = lista[0] || {};
+      const lista = registros
+        .filter((item) => item && typeof item === "object")
+        .map((item) => {
+          const d = item.DADOS || item.dados || item;
+          const cpfRaw = String(d.CPF || d.cpf || "").replace(/\D/g, "");
+          const nomeLimpo = limparTextoEndereco(d.NOME || d.nome);
+          if (!cpfRaw && !nomeLimpo) return null;
+
+          const rawNasc = d.NASCIMENTO || d.NASC || d.nascimento || "";
+          const birthInfo = parseBirthDate(rawNasc);
+          const regiao = obterRegiaoFiscalCpf(cpfRaw);
+          const rawSexo = limparTextoEndereco(d.SEXO || d.sexo).toUpperCase();
+
+          return {
+            cpf: formatCpf(cpfRaw),
+            cpf_raw: cpfRaw,
+            nome: nomeLimpo.toUpperCase(),
+            sexo: rawSexo || null,
+            nascimento: birthInfo.birthFormatted || limparTextoEndereco(rawNasc) || "Não informada",
+            data_nascimento: birthInfo.birthFormatted || limparTextoEndereco(rawNasc) || null,
+            idade: birthInfo.age,
+            signo: birthInfo.sign || null,
+            regiaoFiscal: regiao.regiao,
+            localEmissao: regiao.estados,
+            regiaoFiscalDesc: regiao.descricao,
+          };
+        })
+        .filter(Boolean);
+
+      if (lista.length === 0) {
+        return {
+          tipo: "nome",
+          total: 0,
+          notFound: true,
+          isNotFound: true,
+          resultado: [],
+        };
+      }
+
+      const primeiroNome = lista[0];
       return {
         tipo: "nome",
         ...primeiroNome,
-        total: 1,
-        resultado: [primeiroNome],
-        resultados: [primeiroNome],
+        total: lista.length,
+        resultado: lista,
       };
     }
 
     case "nome_similar": {
-      const lista = registros.map((item) => {
-        const cpfRaw = String(item.CPF || item.cpf || "").replace(/\D/g, "");
-        const regiao = obterRegiaoFiscalCpf(cpfRaw);
-        return {
-          cpf: formatCpf(cpfRaw),
-          cpf_raw: cpfRaw,
-          nome: String(item.NOME || item.nome || "").toUpperCase(),
-          sexo: (item.SEXO || item.sexo || "NÃO INFORMADO").toUpperCase(),
-          regiaoFiscal: regiao.regiao,
-          localEmissao: regiao.estados,
-          regiaoFiscalDesc: regiao.descricao,
-        };
-      });
+      const listaRaw = Array.isArray(rawData)
+        ? rawData
+        : Array.isArray(rawData?.resultado)
+          ? rawData.resultado
+          : Array.isArray(rawData?.resultados)
+            ? rawData.resultados
+            : Array.isArray(rawData?.registros)
+              ? rawData.registros
+              : registros;
+
+      const lista = listaRaw
+        .filter((item) => item && typeof item === "object" && (item.CPF || item.cpf || item.NOME || item.nome))
+        .map((item) => {
+          const cpfVal = item.CPF || item.cpf || "";
+          const cpfRaw = String(cpfVal).replace(/\D/g, "");
+          const regiao = obterRegiaoFiscalCpf(cpfVal);
+          return {
+            cpf: formatCpf(cpfRaw || cpfVal),
+            cpf_raw: cpfRaw,
+            nome: String(item.NOME || item.nome || "").toUpperCase(),
+            regiaoFiscal: regiao.regiao,
+            localEmissao: regiao.estados,
+            regiaoFiscalDesc: regiao.descricao,
+          };
+        });
 
       return {
         tipo: "nome_similar",
@@ -187,23 +346,30 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
     case "telefone":
     case "celular":
     case "operadora": {
-      const d = primeiro.DADOS || primeiro.dados || (Array.isArray(primeiro.DADOS_PESSOAIS) ? primeiro.DADOS_PESSOAIS[0] : (primeiro.DADOS_PESSOAIS || primeiro.dadosPessoais)) || primeiro;
+      if (!rawData || rawData.__notFound || (Array.isArray(rawData) && rawData.length === 0)) {
+        return {
+          tipo: t,
+          notFound: true,
+          isNotFound: true,
+          numeroConsultado: formatPhone(termo || rawData?.termo || ""),
+          telefones: [],
+          enderecos: [],
+          totalTelefones: 0,
+        };
+      }
 
-      // 1. Caso a API retorne o dossiê cadastral completo do titular associado à linha
-      if (
+      const d =
         primeiro.DADOS ||
         primeiro.dados ||
-        primeiro.CPF ||
-        primeiro.cpf ||
-        primeiro.NOME ||
-        primeiro.nome ||
-        primeiro.DADOS_PESSOAIS ||
-        primeiro.dadosPessoais ||
-        d.CPF ||
-        d.cpf ||
-        d.NOME ||
-        d.nome
-      ) {
+        (Array.isArray(primeiro.DADOS_PESSOAIS) ? primeiro.DADOS_PESSOAIS[0] : (primeiro.DADOS_PESSOAIS || primeiro.dadosPessoais)) ||
+        primeiro;
+
+      const cpfLimpoTel = String(d.CPF || primeiro.CPF || d.cpf || primeiro.cpf || "").replace(/\D/g, "");
+      const nomeLimpoTel = limparTextoEndereco(d.NOME || primeiro.NOME || d.nome || primeiro.nome);
+      const possuiTitularValido = Boolean(cpfLimpoTel.length >= 11 || nomeLimpoTel);
+
+      // 1. Caso a API retorne o dossiê cadastral completo do titular associado à linha
+      if (possuiTitularValido) {
         const pessoaNorm = normalizarPessoaRimu(primeiro, "telefone");
         const telConsultado = formatPhone(
           termo ||
@@ -217,7 +383,7 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
 
         return {
           ...pessoaNorm,
-          tipo: "telefone",
+          tipo: t === "operadora" ? "operadora" : "telefone",
           numeroConsultado: telConsultado,
           titularNome: pessoaNorm.nome,
           titularCpf: pessoaNorm.cpf,
@@ -237,22 +403,47 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
           ? primeiro.ENDERECOS
           : [];
 
-      const telefonesNormalizados = telArr.map((tItem) => ({
-        numero: formatPhone(tItem.TELEFONE || tItem.telefone || tItem.numero),
-        numeroLimpo: String(tItem.TELEFONE || tItem.telefone || "").replace(/\D/g, ""),
-        operadora: tItem.OPERADORA || tItem.operadora || "Telefonia Móvel",
-        tipo: tItem.TIPO || tItem.tipo || "Móvel",
-        whatsapp: String(tItem.WHATSAPP || tItem.whatsapp || "").toUpperCase() === "SIM" || true,
-        data: tItem.DT_TIMESTAMP || tItem.data || null,
-      }));
+      const telefonesNormalizados = telArr
+        .filter((tItem) => tItem && String(tItem.TELEFONE || tItem.telefone || tItem.numero || "").replace(/\D/g, "").length >= 8)
+        .map((tItem) => ({
+          numero: formatPhone(tItem.TELEFONE || tItem.telefone || tItem.numero),
+          numeroLimpo: String(tItem.TELEFONE || tItem.telefone || tItem.numero || "").replace(/\D/g, ""),
+          operadora: limparTextoEndereco(tItem.OPERADORA || tItem.operadora) || null,
+          tipo: limparTextoEndereco(tItem.TIPO || tItem.tipo) || "Móvel",
+          whatsapp: String(tItem.WHATSAPP || tItem.whatsapp || "").toUpperCase() === "SIM",
+          data: tItem.DT_TIMESTAMP || tItem.data || null,
+        }));
 
       const enderecosNormalizados = normalizarListaEnderecos(endArr);
+      const operadoraExplicita = limparTextoEndereco(primeiro.OPERADORA || primeiro.operadora || primeiro.operator);
+      const cidadeTel = limparTextoEndereco(primeiro.CIDADE || primeiro.cidade);
+      const ufTel = normalizarUfEndereco(primeiro.UF || primeiro.uf || primeiro.estado);
+
+      if (
+        telefonesNormalizados.length === 0 &&
+        enderecosNormalizados.length === 0 &&
+        !operadoraExplicita &&
+        !cidadeTel &&
+        !ufTel
+      ) {
+        return {
+          tipo: t,
+          notFound: true,
+          isNotFound: true,
+          numeroConsultado: formatPhone(termo || rawData?.termo || primeiro.telefone || ""),
+          telefones: [],
+          enderecos: [],
+          totalTelefones: 0,
+        };
+      }
 
       return {
-        tipo: "telefone",
-        numeroConsultado: formatPhone(rawData?.termo || primeiro.TELEFONE?.[0]?.TELEFONE || primeiro.telefone || ""),
-        operadora: primeiro.OPERADORA || primeiro.operadora || telefonesNormalizados[0]?.operadora || "Telefonia Móvel",
+        tipo: t === "operadora" ? "operadora" : "telefone",
+        numeroConsultado: formatPhone(termo || rawData?.termo || primeiro.TELEFONE?.[0]?.TELEFONE || primeiro.telefone || ""),
+        operadora: operadoraExplicita || telefonesNormalizados[0]?.operadora || null,
         portabilidade: primeiro.PORTABILIDADE || primeiro.portabilidade || false,
+        ...(ufTel ? { uf: ufTel, estado: ufTel } : {}),
+        ...(cidadeTel ? { cidade: cidadeTel } : {}),
         telefones: telefonesNormalizados,
         enderecos: enderecosNormalizados,
         totalTelefones: telefonesNormalizados.length,
@@ -263,42 +454,55 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
     // 6. E-MAIL & VÍNCULOS DIGITAIS
     // ==========================================================================
     case "email": {
+      if (!rawData || rawData.__notFound || (Array.isArray(rawData) && rawData.length === 0)) {
+        return {
+          tipo: "email",
+          notFound: true,
+          isNotFound: true,
+          email: String(termo || "").trim().toLowerCase(),
+          vinculos: [],
+        };
+      }
+
+      const dEmail =
+        primeiro.DADOS ||
+        primeiro.dados ||
+        (Array.isArray(primeiro.DADOS_PESSOAIS) ? primeiro.DADOS_PESSOAIS[0] : (primeiro.DADOS_PESSOAIS || primeiro.dadosPessoais)) ||
+        primeiro;
+
       const emailConsultado = String(
         termo ||
         rawData?.termo ||
         primeiro.EMAIL ||
         primeiro.email ||
-        primeiro.DADOS?.EMAIL ||
-        primeiro.dados?.EMAIL ||
+        dEmail?.EMAIL ||
+        dEmail?.email ||
         (Array.isArray(primeiro.VINCULOS) && primeiro.VINCULOS[0]?.EMAIL) ||
         (Array.isArray(primeiro.vinculos) && primeiro.vinculos[0]?.email) ||
         ""
       ).trim().toLowerCase();
 
-      // 1. Caso a API retorne o dossiê da pessoa titular vinculada ao e-mail
-      if (
-        primeiro.DADOS ||
-        primeiro.dados ||
-        primeiro.CPF ||
-        primeiro.cpf ||
-        primeiro.NOME ||
-        primeiro.nome ||
-        primeiro.DADOS_PESSOAIS ||
-        primeiro.dadosPessoais
-      ) {
-        const pessoaNorm = normalizarPessoaRimu(primeiro, "email");
-        const rawVinculos = Array.isArray(primeiro.VINCULOS)
-          ? primeiro.VINCULOS
-          : Array.isArray(primeiro.vinculos)
-            ? primeiro.vinculos
-            : [];
-        const vinculos = rawVinculos.map((v) => ({
+      const cpfDigitsEmail = String(dEmail?.CPF || primeiro.CPF || dEmail?.cpf || primeiro.cpf || "").replace(/\D/g, "");
+      const nomeLimpoEmail = limparTextoEndereco(dEmail?.NOME || primeiro.NOME || dEmail?.nome || primeiro.nome);
+      const possuiTitularValido = Boolean(cpfDigitsEmail.length >= 11 || nomeLimpoEmail);
+
+      const rawVinculos = Array.isArray(primeiro.VINCULOS)
+        ? primeiro.VINCULOS
+        : Array.isArray(primeiro.vinculos)
+          ? primeiro.vinculos
+          : [];
+      const vinculos = rawVinculos
+        .filter((v) => v && (v.EMAIL || v.email || v.DOMINIO || v.dominio))
+        .map((v) => ({
           email: v.EMAIL || v.email,
           dominio: v.DOMINIO || v.dominio,
           origem: v.ORIGEM || v.origem || "Cadastro Oficial",
           ultimaAtualizacao: v.ULTIMA_ATUALIZACAO || v.ultima_atualizacao,
         }));
 
+      // 1. Caso a API retorne o dossiê da pessoa titular vinculada ao e-mail
+      if (possuiTitularValido) {
+        const pessoaNorm = normalizarPessoaRimu(primeiro, "email");
         const emailsList = Array.from(
           new Set([emailConsultado, ...(pessoaNorm.emails || [])].filter(Boolean))
         );
@@ -312,31 +516,38 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
           totalEmails: emailsList.length,
           titularNome: pessoaNorm.nome,
           titularCpf: pessoaNorm.cpf,
-          raw: rawData,
         };
       }
 
-      // 2. Consulta de vínculos pura
-      const d = primeiro.DADOS || primeiro;
-      const vinculos = Array.isArray(primeiro.VINCULOS)
-        ? primeiro.VINCULOS
-        : Array.isArray(primeiro.vinculos)
-          ? primeiro.vinculos
-          : [];
+      const temPerfilDigital = Boolean(
+        primeiro.perfil_google ||
+        primeiro.PERFIL_GOOGLE ||
+        primeiro.foto ||
+        primeiro.FOTO ||
+        primeiro.gaia_id ||
+        (Array.isArray(primeiro.vazamentos) && primeiro.vazamentos.length > 0) ||
+        (Array.isArray(primeiro.empresas_vinculadas) && primeiro.empresas_vinculadas.length > 0)
+      );
 
+      if (vinculos.length === 0 && !temPerfilDigital) {
+        return {
+          tipo: "email",
+          notFound: true,
+          isNotFound: true,
+          email: emailConsultado,
+          vinculos: [],
+        };
+      }
+
+      // 2. Consulta de vínculos ou pegada digital sem dossiê completo
       return {
         tipo: "email",
         email: emailConsultado,
-        cpf: formatCpf(d.CPF || d.cpf),
-        nome: (d.NOME || d.nome || "").toUpperCase(),
-        sexo: d.SEXO || d.sexo || "",
-        nascimento: d.NASC || d.nascimento || "",
-        vinculos: vinculos.map((v) => ({
-          email: v.EMAIL || v.email,
-          dominio: v.DOMINIO || v.dominio,
-          origem: v.ORIGEM || v.origem || "Cadastro Oficial",
-          ultimaAtualizacao: v.ULTIMA_ATUALIZACAO || v.ultima_atualizacao,
-        })),
+        ...(cpfDigitsEmail.length >= 6 ? { cpf: formatCpf(cpfDigitsEmail) } : {}),
+        ...(nomeLimpoEmail ? { nome: nomeLimpoEmail.toUpperCase() } : {}),
+        ...(primeiro.perfil_google || primeiro.PERFIL_GOOGLE ? { perfil_google: primeiro.perfil_google || primeiro.PERFIL_GOOGLE } : {}),
+        ...(primeiro.foto || primeiro.FOTO ? { foto: primeiro.foto || primeiro.FOTO } : {}),
+        vinculos,
       };
     }
 
@@ -346,42 +557,57 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
     case "cep":
     case "cep_avancado":
     case "endereco": {
-      const moradores = registros
-        .filter((r) => r.DADOS?.CPF || r.DADOS?.NOME || r.CPF || r.NOME)
-        .map((r) => {
-          const d = r.DADOS || r;
-          return {
-            cpf: formatCpf(d.CPF || d.cpf),
-            nome: (d.NOME || d.nome || "").toUpperCase(),
-            sexo: d.SEXO || d.sexo || "NÃO INFORMADO",
-            nascimento: d.NASC || d.NASCIMENTO || d.nascimento || "Não informada",
-          };
-        });
+      const listaResidentesBruta =
+        registros.some((r) => r?.DADOS || r?.dados || r?.CPF || r?.cpf || r?.NOME || r?.nome)
+          ? registros
+          : Array.isArray(primeiro.response)
+            ? primeiro.response
+            : Array.isArray(primeiro.data?.response)
+              ? primeiro.data.response
+              : Array.isArray(primeiro.moradores)
+                ? primeiro.moradores
+                : Array.isArray(primeiro.residentes)
+                  ? primeiro.residentes
+                  : [];
 
-      const end = primeiro.ENDERECO || primeiro.ENDERECOS?.[0] || primeiro;
+      const moradores = listaResidentesBruta.map(extrairMoradorCep).filter(Boolean);
+
+      const primeiroRegistroCep = listaResidentesBruta[0] || primeiro;
+      const end = extrairBlocoEndereco(primeiroRegistroCep);
+      const tipoLogr = limparTextoEndereco(end.LOGR_TIPO || end.tipoLogradouro || primeiro.tipoLogradouro);
+      const nomeLogr = limparTextoEndereco(
+        end.LOGR_NOME || end.logr_nome || end.LOGRADOURO || end.logradouro || end.rua || end.street || primeiro.logradouro
+      );
       const logradouro =
-        [end.LOGR_TIPO || end.tipoLogradouro, end.LOGR_NOME || end.logradouro || end.rua]
-          .filter(Boolean)
-          .join(" ")
-          .trim() || "Logradouro não informado";
+        [tipoLogr, nomeLogr].filter(Boolean).join(" ").trim() ||
+        limparTextoEndereco(end.endereco || primeiro.endereco) ||
+        "Logradouro não informado";
+
+      const complementoLimpo = limparTextoEndereco(
+        end.LOGR_COMPLEMENTO ?? end.logr_complemento ?? end.COMPLEMENTO ?? end.complemento ?? primeiro.complemento
+      );
+      const ufLimpa = normalizarUfEndereco(end.UF || end.uf || end.estado || end.state || primeiro.uf);
+      const estadoLimpo = limparTextoEndereco(primeiro.estado || end.estado);
+      const cepRaw = end.CEP || end.cep || primeiro.cep || primeiro.cepLimpo || termo || "";
 
       return {
         tipo: "cep",
-        cep: formatCep(end.CEP || end.cep),
-        cepLimpo: String(end.CEP || end.cep || "").replace(/\D/g, ""),
+        cep: formatCep(cepRaw),
+        cepLimpo: String(cepRaw).replace(/\D/g, ""),
         logradouro,
-        numero: end.LOGR_NUMERO || end.numero || "S/N",
-        complemento: end.LOGR_COMPLEMENTO || end.complemento || "",
-        bairro: end.BAIRRO || end.bairro || "Não informado",
-        cidade: end.CIDADE || end.cidade || "Não informada",
-        uf: (end.UF || end.uf || "").toUpperCase(),
-        totalResidentesEstimados: moradores.length,
-        residentes: moradores,
+        ...(complementoLimpo ? { complemento: complementoLimpo } : {}),
+        bairro: limparTextoEndereco(end.BAIRRO || end.bairro || end.neighborhood || primeiro.bairro) || "Não informado",
+        cidade:
+          limparTextoEndereco(
+            end.CIDADE || end.cidade || end.municipio || end.localidade || end.city || primeiro.cidade
+          ) || "Não informada",
+        ...(ufLimpa ? { uf: ufLimpa } : {}),
+        ...(estadoLimpo && estadoLimpo !== ufLimpa ? { estado: estadoLimpo } : {}),
+        ...(primeiro.coordenadas ? { coordenadas: primeiro.coordenadas } : {}),
+        ...(primeiro.provedor ? { provedor: primeiro.provedor } : {}),
+        ...(primeiro.fonte ? { fonte: primeiro.fonte } : {}),
+        totalMoradores: moradores.length,
         moradores,
-        resultado: {
-          endereco: end,
-          moradores,
-        },
       };
     }
 
@@ -469,94 +695,175 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
 
     case "socios":
     case "socios2": {
-      const listaSocios = registros.map((s) => ({
-        cnpj: formatCnpj(s.CNPJ || s.cnpj),
-        razaoSocial: (s.RAZAO_SOCIAL || s.razao_social || "").toUpperCase(),
-        qualificacao: s.QUALIFICACAO || s.qualificacao || "SÓCIO",
-        dataEntrada: s.DATA_ENTRADA || s.data_entrada || "Não informada",
-        percentualCapital: s.PERCENTUAL_CAPITAL || s.percentual_capital || "N/I",
-      }));
+      const validRecords = registros.filter(
+        (r) => r && typeof r === "object" && !r.__notFound
+      );
+      if (
+        validRecords.length > 0 &&
+        validRecords.some((r) => r.EMPRESA || r.ESTABELECIMENTO || Array.isArray(r.SOCIOS))
+      ) {
+        return normalizarEmpresaRimu(validRecords, t);
+      }
+
+      const listaSocios = validRecords
+        .map((s) => {
+          const nomeSocio = limparTextoEndereco(
+            s.NOME_SOCIO || s.nome_socio || s.nomeSocio || s.NOME || s.nome
+          ).toUpperCase();
+          const cnpjLimpo = String(s.CNPJ || s.cnpj || "").replace(/\D/g, "");
+          const razaoEmp = limparTextoEndereco(s.RAZAO_SOCIAL || s.razao_social || s.razaoSocial).toUpperCase();
+          const docRaw = limparTextoEndereco(
+            s.CPF_CNPJ_SOCIO || s.cpf_cnpj_do_socio || s.DOCUMENTO || s.documento || s.CPF || s.cpf
+          );
+          const qualif = limparTextoEndereco(
+            s.QUALIFICACAO_SOCIO || s.QUALIFICACAO || s.qualificacao_socio || s.qualificacao
+          ) || "SÓCIO";
+          const entrada = formatarDataTrabalhista(
+            s.DATA_ENTRADA || s.DATA_ENTRADA_SOCIEDADE || s.data_entrada || s.dataEntrada
+          ).display;
+          const pct = limparTextoEndereco(
+            s.PERCENTUAL_CAPITAL || s.percentual_capital || s.percentualCapital || s.PARTICIPACAO || s.participacao
+          );
+          const valorCap = limparTextoEndereco(s.VALOR_CAPITAL || s.valor_capital || s.CAPITAL);
+
+          if (!nomeSocio && !cnpjLimpo && !razaoEmp && !docRaw) return null;
+
+          return {
+            ...(nomeSocio ? { nome: nomeSocio } : {}),
+            ...(docRaw ? { documento: docRaw } : {}),
+            ...(cnpjLimpo ? { cnpj: formatCnpj(cnpjLimpo), cnpj_raw: cnpjLimpo } : {}),
+            ...(razaoEmp ? { razaoSocial: razaoEmp } : {}),
+            qualificacao: qualif,
+            ...(entrada ? { dataEntrada: entrada } : {}),
+            ...(pct ? { percentualCapital: pct } : {}),
+            ...(valorCap ? { valorCapital: formatCurrency(valorCap) } : {}),
+          };
+        })
+        .filter(Boolean);
+
+      if (listaSocios.length === 0) {
+        return {
+          tipo: t,
+          notFound: true,
+          isNotFound: true,
+          total: 0,
+          socios: [],
+          resultado: [],
+        };
+      }
+
+      const cnpjAlvoRaw =
+        listaSocios.find((s) => s.cnpj_raw)?.cnpj_raw ||
+        String(termo || "").replace(/\D/g, "");
+      const razaoAlvo = listaSocios.find((s) => s.razaoSocial)?.razaoSocial || null;
 
       return {
-        tipo: "socios",
+        tipo: t,
         isList: true,
+        ...(cnpjAlvoRaw.length === 14 ? { cnpj: formatCnpj(cnpjAlvoRaw), cnpj_raw: cnpjAlvoRaw } : {}),
+        ...(razaoAlvo ? { razaoSocial: razaoAlvo } : {}),
         total: listaSocios.length,
         socios: listaSocios,
         resultado: listaSocios,
       };
     }
 
-    case "funcionarios": {
-      const listaFunc = registros.map((f) => ({
-        cpf: formatCpf(f.CPF || f.cpf),
-        nome: (f.NOME || f.nome || "").toUpperCase(),
-        cargo: f.CARGO || f.cargo || "Não especificado",
-        dataAdmissao: f.DATA_ADMISSAO || f.data_admissao || "N/I",
-        remuneracao: f.REMUNERACAO || f.remuneracao || "N/I",
-      }));
-
-      return {
-        tipo: "funcionarios",
-        isList: true,
-        total: listaFunc.length,
-        funcionarios: listaFunc,
-        resultado: listaFunc,
-      };
-    }
-
+    case "funcionarios":
     case "empregos": {
-      const listaEmp = registros.map((e) => ({
-        razaoSocial: (e.RAZAO_SOCIAL || e.razao_social || "").toUpperCase(),
-        cnpj: formatCnpj(e.CNPJ || e.cnpj),
-        cargo: e.CARGO || e.cargo || "Não informado",
-        dataAdmissao: e.DATA_ADMISSAO || e.data_admissao || "N/I",
-        dataDemissao: e.DATA_DEMISSAO || e.data_demissao || "Atual",
-      }));
-
-      return {
-        tipo: "empregos",
-        isList: true,
-        total: listaEmp.length,
-        empregos: listaEmp,
-        resultado: listaEmp,
-      };
+      return normalizarRelacaoTrabalhistaRimu(registros, t, termo);
     }
 
     case "oab": {
-      const advs = Array.isArray(primeiro.ADVOGADOS)
-        ? primeiro.ADVOGADOS
-        : Array.isArray(primeiro.CNA_ADVOGADOS)
-          ? primeiro.CNA_ADVOGADOS
-          : registros.map((r) => r.ADVOGADOS || r.CNA_ADVOGADOS || r).flat();
+      const cnaCandidates = [
+        primeiro.data?.response,
+        primeiro.data?.conteudo,
+        primeiro.response,
+        primeiro.conteudo,
+        primeiro.data,
+        primeiro,
+      ].filter((c) => c && typeof c === "object");
 
-      const fotos = Array.isArray(primeiro.CNA_FOTOS) ? primeiro.CNA_FOTOS : [];
-      const fotoPrincipal = fotos[0]?.FOTO_BASE64
-        ? (fotos[0].FOTO_BASE64.startsWith("data:") ? fotos[0].FOTO_BASE64 : `data:image/jpeg;base64,${fotos[0].FOTO_BASE64}`)
-        : (fotos[0]?.FOTO_URL || null);
+      const cnaRoot =
+        cnaCandidates.find((c) => Array.isArray(c.CNA_ADVOGADOS) && c.CNA_ADVOGADOS.length > 0) ||
+        cnaCandidates.find((c) => Array.isArray(c.ADVOGADOS) && c.ADVOGADOS.length > 0) ||
+        cnaCandidates.find((c) => Array.isArray(c.CNA_ADVOGADOS) || Array.isArray(c.ADVOGADOS)) ||
+        cnaCandidates[0] ||
+        primeiro;
+
+      const advs = Array.isArray(cnaRoot.ADVOGADOS)
+        ? cnaRoot.ADVOGADOS
+        : Array.isArray(cnaRoot.CNA_ADVOGADOS)
+          ? cnaRoot.CNA_ADVOGADOS
+          : registros.map((r) => r.ADVOGADOS || r.CNA_ADVOGADOS || r.response?.CNA_ADVOGADOS || r.conteudo?.CNA_ADVOGADOS || r).flat();
+
+      const fotos = Array.isArray(cnaRoot.CNA_FOTOS)
+        ? cnaRoot.CNA_FOTOS
+        : Array.isArray(primeiro.conteudo?.CNA_FOTOS)
+          ? primeiro.conteudo.CNA_FOTOS
+          : Array.isArray(primeiro.data?.conteudo?.CNA_FOTOS)
+            ? primeiro.data.conteudo.CNA_FOTOS
+            : [];
+
+      const sociedades = Array.isArray(cnaRoot.CNA_SOCIEDADES)
+        ? cnaRoot.CNA_SOCIEDADES
+        : Array.isArray(cnaRoot.sociedades)
+          ? cnaRoot.sociedades
+          : [];
+
+      const normalizeOabFoto = (f) => {
+        if (!f) return null;
+        const b64 = f.FOTO_BASE64 || f.foto_base64 || f.fotoBase64;
+        if (b64 && String(b64).trim().toUpperCase() !== "SEM RESULTADO") {
+          const s = String(b64).trim();
+          return s.startsWith("data:") ? s : `data:image/jpeg;base64,${s}`;
+        }
+        return limparTextoEndereco(f.FOTO_URL || f.foto_url || f.fotoUrl) || null;
+      };
 
       const listaAdv = advs
-        .filter((a) => a && (a.NOME || a.nome || a.INSCRICAO || a.inscricao))
-        .map((a, idx) => ({
-          nome: (a.NOME || a.nome || "").toUpperCase(),
-          nomeSocial: a.NOME_SOCIAL || a.nome_social || null,
-          inscricao: a.INSCRICAO || a.inscricao || "",
-          seccional: (a.UF || a.SECCIONAL || a.seccional || "").toUpperCase(),
-          subsecao: a.SUBSECAO || a.subsecao || "",
-          categoria: a.TIPO || a.CATEGORIA || a.categoria || "ADVOGADO(A)",
-          enderecoProfissional: a.ENDERECO_PROFISSIONAL || a.endereco || "N/I",
-          telefoneProfissional: formatPhone(a.TELEFONE_PROFISSIONAL || a.telefone),
-          situacao: (a.SITUACAO || a.situacao || "REGULAR").toUpperCase(),
-          fotoUrl: a.FOTO_URL || a.foto_url || (idx === 0 ? fotoPrincipal : null),
-          qtdSociedades: a.QTD_SOCIEDADES || "0",
-        }));
+        .filter((a) => a && typeof a === "object" && (a.NOME || a.nome || a.INSCRICAO || a.inscricao))
+        .map((a, idx) => {
+          const insc = String(a.INSCRICAO || a.inscricao || "").trim();
+          const ufAdv = (limparTextoEndereco(a.UF || a.SECCIONAL || a.seccional) || "").toUpperCase();
+          const fotoMatch =
+            fotos.find((f) => String(f.INSCRICAO || "").trim() === insc && String(f.UF || "").trim().toUpperCase() === ufAdv) ||
+            fotos.find((f) => String(f.INSCRICAO || "").trim() === insc) ||
+            fotos[idx] ||
+            null;
+          const allowRaw = a.ALLOW_EMAIL ?? a.allowEmail ?? a.allow_email;
+          const allowEmail =
+            allowRaw === undefined || allowRaw === null || allowRaw === ""
+              ? null
+              : String(allowRaw).trim() === "1" || allowRaw === true;
+
+          const subsecao = limparTextoEndereco(a.SUBSECAO || a.subsecao);
+          const endProf = limparTextoEndereco(a.ENDERECO_PROFISSIONAL || a.endereco);
+          const telProfRaw = limparTextoEndereco(a.TELEFONE_PROFISSIONAL || a.telefone);
+          const telProf = telProfRaw ? formatPhone(telProfRaw) : "";
+          const situacao = limparTextoEndereco(a.SITUACAO || a.situacao);
+          const carteirinha = limparTextoEndereco(a.FOTO_URL || a.foto_url) || normalizeOabFoto(fotoMatch);
+
+          return {
+            inscricao: insc,
+            uf: ufAdv,
+            nome: (limparTextoEndereco(a.NOME || a.nome) || "").toUpperCase(),
+            nomeSocial: limparTextoEndereco(a.NOME_SOCIAL || a.nome_social) || null,
+            tipo: (limparTextoEndereco(a.TIPO || a.CATEGORIA || a.categoria) || "ADVOGADO(A)").toUpperCase(),
+            qtdSociedades: String(a.QTD_SOCIEDADES ?? sociedades.length ?? "0"),
+            allowEmail,
+            ...(carteirinha ? { carteirinha } : {}),
+            ...(subsecao ? { subsecao } : {}),
+            ...(endProf ? { enderecoProfissional: endProf } : {}),
+            ...(telProf ? { telefoneProfissional: telProf } : {}),
+            ...(situacao ? { situacao: situacao.toUpperCase() } : {}),
+          };
+        });
 
       return {
         tipo: "oab",
-        isList: true,
         total: listaAdv.length,
         advogados: listaAdv,
-        resultado: listaAdv,
-        ...(listaAdv.length === 1 ? listaAdv[0] : {}),
+        ...(sociedades.length > 0 ? { sociedades } : {}),
       };
     }
 
@@ -565,26 +872,106 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
     // ==========================================================================
     case "mae":
     case "pai": {
-      const filhos = registros.map((f) => ({
-        cpf: formatCpf(f.CPF || f.cpf),
-        cpf_raw: String(f.CPF || f.cpf || "").replace(/\D/g, ""),
-        nome: (f.NOME || f.nome || "").toUpperCase(),
-        nascimento: f.NASCIMENTO || f.NASC || f.nascimento || "Não informada",
-        nomeMae: (f.NOME_MAE || f.nome_mae || "").toUpperCase(),
-        nomePai: (f.NOME_PAI || f.nome_pai || "").toUpperCase(),
-      }));
+      if (!rawData || rawData.__notFound || (Array.isArray(rawData) && rawData.length === 0)) {
+        return {
+          tipo: t,
+          isList: true,
+          total: 0,
+          notFound: true,
+          isNotFound: true,
+          filhos: [],
+        };
+      }
+
+      const filhos = registros
+        .filter((f) => f && typeof f === "object")
+        .map((f) => {
+          const d = f.DADOS || f.dados || f;
+          const cpfVal = limparTextoEndereco(d.CPF || d.cpf || f.CPF || f.cpf);
+          const cpfRaw = String(cpfVal).replace(/\D/g, "");
+          const nomeVal = limparTextoEndereco(d.NOME || d.nome || f.NOME || f.nome);
+          if (!cpfRaw && !nomeVal) return null;
+
+          const rawNasc = limparTextoEndereco(d.NASCIMENTO || d.NASC || d.nascimento || f.NASCIMENTO || f.NASC || f.nascimento);
+          const birthInfo = parseBirthDate(rawNasc);
+          const regiao = obterRegiaoFiscalCpf(cpfRaw || cpfVal);
+
+          return {
+            cpf: formatCpf(cpfRaw || cpfVal),
+            cpf_raw: cpfRaw,
+            nome: (nomeVal || "Não informado").toUpperCase(),
+            nascimento: birthInfo.birthFormatted || rawNasc || "Não informada",
+            ...(birthInfo.age !== null && birthInfo.age !== undefined ? { idade: birthInfo.age } : {}),
+            regiaoFiscal: regiao.regiao,
+            localEmissao: regiao.estados,
+            regiaoFiscalDesc: regiao.descricao,
+          };
+        })
+        .filter(Boolean);
+
+      if (filhos.length === 0) {
+        return {
+          tipo: t,
+          isList: true,
+          total: 0,
+          notFound: true,
+          isNotFound: true,
+          filhos: [],
+        };
+      }
 
       return {
         tipo: t,
         isList: true,
         total: filhos.length,
         filhos,
-        resultado: filhos,
       };
     }
 
-    case "parentes":
     case "arvore_familiar": {
+      if (!rawData || rawData.__notFound || (Array.isArray(rawData) && rawData.length === 0)) {
+        return {
+          tipo: "arvore_familiar",
+          notFound: true,
+          isNotFound: true,
+          cpf: formatCpf(termo || ""),
+        };
+      }
+
+      const candidatos = [
+        primeiro.response,
+        primeiro.data?.response,
+        primeiro.conteudo,
+        primeiro.data,
+        primeiro,
+        rawData,
+      ].filter((c) => c && typeof c === "object");
+
+      const node = candidatos.find((c) => c.url || c.URL || c.link || c.LINK) || primeiro;
+      const urlRaw = limparTextoEndereco(node.url || node.URL || node.link || node.LINK);
+      const linkRaw = limparTextoEndereco(node.link || node.LINK || node.url || node.URL);
+      const isValidHttp = (u) => /^https?:\/\//i.test(String(u || "").trim());
+      const urlFinal = isValidHttp(urlRaw) ? urlRaw : isValidHttp(linkRaw) ? linkRaw : null;
+      const linkFinal = isValidHttp(linkRaw) ? linkRaw : urlFinal;
+
+      if (!urlFinal) {
+        return {
+          tipo: "arvore_familiar",
+          notFound: true,
+          isNotFound: true,
+          cpf: formatCpf(termo || ""),
+        };
+      }
+
+      return {
+        tipo: "arvore_familiar",
+        cpf: formatCpf(termo || ""),
+        url: urlFinal,
+        link: linkFinal,
+      };
+    }
+
+    case "parentes": {
       const parentesList = (primeiro.PARENTES || primeiro.parentes || []).map((p) => ({
         cpf: formatCpf(p.CPF_VINCULO || p.CPF || p.cpf),
         cpf_raw: String(p.CPF_VINCULO || p.CPF || p.cpf || "").replace(/\D/g, ""),
@@ -693,12 +1080,49 @@ export function interpretRimuApi(tipo, rawData, termo = null) {
     case "dump_cpf":
     case "dump_email":
     case "dump_telefone": {
+      const listaBruta =
+        registros.some((r) => r && typeof r === "object" && (r.URL || r.url || r.USUARIO || r.usuario || r.SENHA || r.senha || r.EMAIL || r.email || r.CPF || r.cpf || r.NOME || r.nome || r.TELEFONE || r.telefone))
+          ? registros
+          : Array.isArray(primeiro.response)
+            ? primeiro.response
+            : Array.isArray(primeiro.registros)
+              ? primeiro.registros
+              : [];
+
+      const registrosLimpos = listaBruta
+        .filter((item) => item && typeof item === "object")
+        .map((item) => {
+          const d = item.DADOS || item.dados || item;
+          const urlVal = limparTextoEndereco(item.URL || item.url || item.HOST || item.host || item.DOMINIO || item.dominio);
+          const userVal = limparTextoEndereco(item.USUARIO || item.usuario || item.USER || item.user || item.LOGIN || item.login);
+          const emailVal = limparTextoEndereco(item.EMAIL || item.email || d.EMAIL || d.email);
+          const passRaw = String(item.SENHA ?? item.senha ?? item.PASSWORD ?? item.password ?? "").trim();
+          const passVal = passRaw && passRaw.toUpperCase() !== "SEM RESULTADO" ? passRaw : "";
+          const nomeVal = limparTextoEndereco(d.NOME || d.nome || item.NOME || item.nome);
+          const cpfVal = limparTextoEndereco(d.CPF || d.cpf || item.CPF || item.cpf);
+          const telVal = limparTextoEndereco(item.TELEFONE || item.telefone || d.TELEFONE || d.telefone);
+          const origemVal = limparTextoEndereco(item.ORIGEM || item.origem || item.BASE || item.base);
+          const dataVal = limparTextoEndereco(item.DATA || item.data);
+
+          const entry = {};
+          if (urlVal) entry.url = urlVal;
+          if (userVal) entry.usuario = userVal;
+          if (emailVal) entry.email = emailVal;
+          if (passVal) entry.senha = passVal;
+          if (nomeVal) entry.nome = nomeVal.toUpperCase();
+          if (cpfVal) entry.cpf = formatCpf(cpfVal);
+          if (telVal) entry.telefone = formatPhone(telVal);
+          if (origemVal) entry.origem = origemVal;
+          if (dataVal) entry.data = dataVal;
+          return Object.keys(entry).length > 0 ? entry : null;
+        })
+        .filter(Boolean);
+
       return {
         tipo: t,
-        isList: true,
-        total: registros.length,
-        registros,
-        resultado: registros,
+        total: registrosLimpos.length,
+        ...(registrosLimpos.length === 0 ? { notFound: true } : {}),
+        registros: registrosLimpos,
       };
     }
 
@@ -1041,13 +1465,13 @@ function normalizarPessoaRimu(raw, tipo) {
 
   // 10. Senhas Vazadas vinculadas ao CPF
   const rawSenhas = Array.isArray(raw.SENHA_CPF) ? raw.SENHA_CPF : [];
-  const senhasVazadas = rawSenhas.map((s) => ({
-    cpf: formatCpf(s.CPF || rawCpf),
-    senha: s.SENHA || s.senha,
-    fonte: "Vazamento Público de Credenciais",
-    titulo: "Senha Comprometida",
-    data: s.DT_INCLUSAO || null,
-  }));
+  const senhasVazadas = rawSenhas
+    .map((s) => ({
+      cpf: formatCpf(s.CPF || rawCpf),
+      senha: s.SENHA || s.senha || "",
+      data: s.DT_INCLUSAO || null,
+    }))
+    .filter((s) => Boolean(String(s.senha || "").trim()));
 
   // 10.5 CNH (Carteira Nacional de Habilitação)
   const rawCnh = Array.isArray(raw.CNH) ? raw.CNH : raw.CNH ? [raw.CNH] : [];
@@ -1116,11 +1540,16 @@ function normalizarPessoaRimu(raw, tipo) {
     ativo: c.ATIVO || c.ativo || "SIM",
   }));
 
+  const regiaoCpf = obterRegiaoFiscalCpf(rawCpf);
+
   return {
     tipo,
     cpf: formattedCpf,
     cpf_raw: rawCpf,
     cpf_masked: formattedCpf,
+    regiaoFiscal: regiaoCpf.regiao,
+    localEmissao: regiaoCpf.estados,
+    regiaoFiscalDesc: regiaoCpf.descricao,
     nome: nomeCompleto,
     name: nomeCompleto,
     dataNascimento: birthFormatted || birthRaw,
@@ -1169,7 +1598,7 @@ function normalizarPessoaRimu(raw, tipo) {
     rendaPoderAquisitivo,
     nivelPoderAquisitivo,
     rendaPresumida: rendaPoderAquisitivo ? formatCurrency(rendaPoderAquisitivo) : (d.RENDA ? formatCurrency(d.RENDA) : null),
-    vazamentos: senhasVazadas,
+    vazamentos: [],
     senhasVazadas,
     score: (scoreValor !== null && scoreValor !== undefined)
       ? {
@@ -1192,7 +1621,6 @@ function normalizarPessoaRimu(raw, tipo) {
     totalVeiculos: veiculosNormalizados.length,
     totalVacinas: vacinasCovid.length,
     totalBancos: dadosBancarios.length,
-    raw,
   };
 }
 
@@ -1302,7 +1730,181 @@ function normalizarVeiculoRimu(raw, tipo) {
     restricoes: v.restricao1 || "SEM RESTRIÇÃO",
     leilao: v.leilao || "NÃO CONSTA",
     rouboFurto: v.rouboFurto || "NADA CONSTA",
-    raw,
+  };
+}
+
+/**
+ * Converte datas heterogêneas (ISO "2010-01-01 00:00:00" ou BR "01/01/2010")
+ * em formato padronizado pt-BR + chave canônica para deduplicação de pares repetidos.
+ */
+function formatarDataTrabalhista(val) {
+  const txt = limparTextoEndereco(val);
+  if (!txt) return { display: null, canonical: "" };
+
+  const isoMatch = txt.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (isoMatch) {
+    const [, yyyy, mm, dd, hh, min] = isoMatch;
+    const brDate = `${dd}/${mm}/${yyyy}`;
+    const hasTime = Boolean(hh && min && !(hh === "00" && min === "00"));
+    return {
+      display: hasTime ? `${brDate} ${hh}:${min}` : brDate,
+      canonical: hasTime ? `${yyyy}-${mm}-${dd} ${hh}:${min}` : `${yyyy}-${mm}-${dd}`,
+    };
+  }
+
+  const brMatch = txt.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:[\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (brMatch) {
+    const [, dd, mm, yyyy, hh, min] = brMatch;
+    const brDate = `${dd}/${mm}/${yyyy}`;
+    const hasTime = Boolean(hh && min && !(hh === "00" && min === "00"));
+    return {
+      display: hasTime ? `${brDate} ${hh}:${min}` : brDate,
+      canonical: hasTime ? `${yyyy}-${mm}-${dd} ${hh}:${min}` : `${yyyy}-${mm}-${dd}`,
+    };
+  }
+
+  return { display: txt, canonical: txt.toUpperCase() };
+}
+
+/**
+ * Extrai e deduplica vínculos trabalhistas da RimuAPI para os módulos
+ * `funcionarios` (por CNPJ) e `empregos` (CTPS por CPF).
+ */
+function normalizarRelacaoTrabalhistaRimu(registros, tipo, termo = "") {
+  const rawList = [];
+  for (const reg of Array.isArray(registros) ? registros : [registros]) {
+    if (!reg || typeof reg !== "object" || reg.__notFound) continue;
+    const nested =
+      (Array.isArray(reg.response) && reg.response) ||
+      (Array.isArray(reg.data?.response) && reg.data.response) ||
+      (Array.isArray(reg.conteudo) && reg.conteudo) ||
+      (Array.isArray(reg.resultado) && reg.resultado) ||
+      (Array.isArray(reg[tipo]) && reg[tipo]);
+    if (nested) {
+      rawList.push(...nested);
+    } else {
+      rawList.push(reg);
+    }
+  }
+
+  const validItems = rawList.filter((item) => {
+    if (!item || typeof item !== "object" || item.__notFound) return false;
+    const cpfDigits = String(item.CPF || item.cpf || item.cpf_raw || "").replace(/\D/g, "");
+    const cnpjDigits = String(item.CNPJ || item.cnpj || item.cnpj_raw || "").replace(/\D/g, "");
+    const nome = limparTextoEndereco(item.NOME || item.nome);
+    const razao = limparTextoEndereco(item.RAZAO_SOCIAL || item.razao_social || item.razaoSocial);
+    return cpfDigits.length >= 6 || cnpjDigits.length >= 8 || Boolean(nome) || Boolean(razao);
+  });
+
+  if (validItems.length === 0) {
+    return {
+      tipo,
+      notFound: true,
+      isNotFound: true,
+      total: 0,
+      totalBruto: 0,
+      [tipo]: [],
+      resultado: [],
+    };
+  }
+
+  const seenMap = new Map();
+  const consolidated = [];
+
+  for (const item of validItems) {
+    const cpfRaw = String(item.CPF || item.cpf || item.cpf_raw || "").replace(/\D/g, "");
+    const cnpjRaw = String(item.CNPJ || item.cnpj || item.cnpj_raw || "").replace(/\D/g, "");
+    const nome = limparTextoEndereco(item.NOME || item.nome).toUpperCase() || null;
+    const razaoSocial = limparTextoEndereco(item.RAZAO_SOCIAL || item.razao_social || item.razaoSocial).toUpperCase() || null;
+    const situacao = limparTextoEndereco(item.SITUACAO || item.situacao).toUpperCase() || null;
+
+    const admissao = formatarDataTrabalhista(item.DATA_ADMISSAO || item.data_admissao || item.dataAdmissao);
+    const desligamento = formatarDataTrabalhista(
+      item.DATA_DESLIGAMENTO || item.data_desligamento || item.dataDesligamento || item.DATA_DEMISSAO || item.data_demissao || item.dataDemissao
+    );
+    const entrega = formatarDataTrabalhista(item.DATA_ENTREGA || item.data_entrega || item.dataEntrega);
+    const cadastro = formatarDataTrabalhista(item.DATA_CADASTRO || item.data_cadastro || item.dataCadastro);
+    const faixaRenda = limparTextoEndereco(item.FAIXA_RENDA || item.faixa_renda || item.faixaRenda) || null;
+    const cargo = limparTextoEndereco(item.CARGO || item.cargo || item.CBO || item.cbo) || null;
+    const remuneracaoRaw = limparTextoEndereco(item.REMUNERACAO || item.remuneracao);
+    const remuneracao = remuneracaoRaw ? formatCurrency(remuneracaoRaw) : null;
+
+    const normalized = {
+      ...(cpfRaw ? { cpf: formatCpf(cpfRaw), cpf_raw: cpfRaw } : {}),
+      ...(nome ? { nome } : {}),
+      ...(cnpjRaw ? { cnpj: formatCnpj(cnpjRaw), cnpj_raw: cnpjRaw } : {}),
+      ...(razaoSocial ? { razaoSocial } : {}),
+      ...(situacao ? { situacao } : {}),
+      ...(admissao.display ? { dataAdmissao: admissao.display } : {}),
+      ...(desligamento.display ? { dataDesligamento: desligamento.display } : {}),
+      ...(entrega.display ? { dataEntrega: entrega.display } : {}),
+      ...(cadastro.display ? { dataCadastro: cadastro.display } : {}),
+      ...(faixaRenda ? { faixaRenda } : {}),
+      ...(cargo ? { cargo } : {}),
+      ...(remuneracao ? { remuneracao } : {}),
+    };
+
+    const dedupKey = [
+      cpfRaw || nome || "",
+      cnpjRaw || razaoSocial || "",
+      admissao.canonical,
+      desligamento.canonical,
+      entrega.canonical,
+      situacao || "",
+    ].join("|");
+
+    if (seenMap.has(dedupKey)) {
+      const existing = seenMap.get(dedupKey);
+      for (const [k, v] of Object.entries(normalized)) {
+        if (v !== null && v !== undefined && (existing[k] === undefined || existing[k] === null || existing[k] === "")) {
+          existing[k] = v;
+        }
+      }
+      continue;
+    }
+
+    seenMap.set(dedupKey, normalized);
+    consolidated.push(normalized);
+  }
+
+  if (tipo === "funcionarios") {
+    const cleanTermCnpj = String(termo || "").replace(/\D/g, "");
+    const cnpjRawHeader = consolidated.find((i) => i.cnpj_raw)?.cnpj_raw || (cleanTermCnpj.length === 14 ? cleanTermCnpj : "");
+    const razaoHeader = consolidated.find((i) => i.razaoSocial)?.razaoSocial || null;
+
+    return {
+      tipo: "funcionarios",
+      isList: true,
+      ...(cnpjRawHeader ? { cnpj: formatCnpj(cnpjRawHeader), cnpj_raw: cnpjRawHeader } : {}),
+      ...(razaoHeader ? { razaoSocial: razaoHeader } : {}),
+      empresa: {
+        ...(cnpjRawHeader ? { cnpj: formatCnpj(cnpjRawHeader), cnpj_raw: cnpjRawHeader } : {}),
+        ...(razaoHeader ? { razaoSocial: razaoHeader } : {}),
+      },
+      total: consolidated.length,
+      totalBruto: validItems.length,
+      funcionarios: consolidated,
+      resultado: consolidated,
+    };
+  }
+
+  const cleanTermCpf = String(termo || "").replace(/\D/g, "");
+  const cpfRawHeader = consolidated.find((i) => i.cpf_raw)?.cpf_raw || (cleanTermCpf.length === 11 ? cleanTermCpf : "");
+  const nomeHeader = consolidated.find((i) => i.nome)?.nome || null;
+
+  return {
+    tipo: "empregos",
+    isList: true,
+    ...(cpfRawHeader ? { cpf: formatCpf(cpfRawHeader), cpf_raw: cpfRawHeader } : {}),
+    ...(nomeHeader ? { nome: nomeHeader } : {}),
+    titular: {
+      ...(cpfRawHeader ? { cpf: formatCpf(cpfRawHeader), cpf_raw: cpfRawHeader } : {}),
+      ...(nomeHeader ? { nome: nomeHeader } : {}),
+    },
+    total: consolidated.length,
+    totalBruto: validItems.length,
+    empregos: consolidated,
+    resultado: consolidated,
   };
 }
 
@@ -1310,47 +1912,128 @@ function normalizarVeiculoRimu(raw, tipo) {
  * Normaliza empresas da RimuAPI (CNPJ, CNPJ2, Razão Social)
  */
 function normalizarEmpresaRimu(registros, tipo) {
-  const lista = (Array.isArray(registros) ? registros : [registros]).map((item) => {
-    const emp = Array.isArray(item.EMPRESA) ? item.EMPRESA[0] : item.EMPRESA || item;
-    const est = Array.isArray(item.ESTABELECIMENTO)
-      ? item.ESTABELECIMENTO[0]
-      : item.ESTABELECIMENTO || item;
-    const simples = Array.isArray(item.SIMPLES) ? item.SIMPLES[0] : item.SIMPLES || {};
-    const sociosRaw = Array.isArray(item.SOCIOS) ? item.SOCIOS : item.SOCIOS ? [item.SOCIOS] : [];
+  const validRecords = (Array.isArray(registros) ? registros : [registros]).filter(
+    (item) => item && typeof item === "object" && !item.__notFound
+  );
 
-    const cnpjRaw = emp.CNPJ || est.CNPJ || "";
-    const socios = sociosRaw.map((s) => ({
-      nome: (s.NOME_SOCIO || s.nome || "").toUpperCase(),
-      qualificacao: s.QUALIFICACAO_SOCIO || s.qualificacao || "SÓCIO",
-      documento: s.CPF_CNPJ_SOCIO || s.cpf || s.cnpj || null,
-    }));
-
+  if (validRecords.length === 0) {
     return {
-      cnpj: formatCnpj(cnpjRaw),
-      cnpj_raw: cnpjRaw.replace(/\D/g, ""),
-      razaoSocial: (emp.RAZAO_SOCIAL || est.NOME_FANTASIA || "").toUpperCase(),
-      nomeFantasia: (est.NOME_FANTASIA || emp.RAZAO_SOCIAL || "").toUpperCase(),
-      naturezaJuridica: emp.NATUREZA_JURIDICA || "Sociedade Empresária",
-      capitalSocial: emp.CAPITAL_SOCIAL ? formatCurrency(emp.CAPITAL_SOCIAL) : "Não informado",
-      porte: emp.PORTE_EMPRESA || "DEMAIS",
-      situacaoCadastral: (est.SITUACAO_CADASTRAL || "ATIVA").toUpperCase(),
-      dataSituacaoCadastral: est.DT_SITUACAO_CADASTRAL || null,
-      dataInicioAtividade: est.DT_INICIO_ATIVIDADE || null,
-      cnaePrincipal: est.CNAE_FISCAL_PRINCIPAL || null,
-      endereco: {
-        logradouro: [est.TIPO_LOGRADOURO, est.LOGRADOURO].filter(Boolean).join(" "),
-        numero: est.NUMERO || "S/N",
-        bairro: est.BAIRRO || "",
-        cidade: est.CIDADE || "",
-        uf: (est.UF || "").toUpperCase(),
-        cep: formatCep(est.CEP || ""),
-      },
-      simplesNacional: simples.OPCAO_SIMPLES || "NAO",
-      mei: simples.OPCAO_MEI || "NAO",
-      socios,
-      totalSocios: socios.length,
+      tipo,
+      notFound: true,
+      isNotFound: true,
+      total: 0,
+      empresas: [],
     };
-  });
+  }
+
+  const lista = validRecords
+    .map((item) => {
+      // Se já veio normalizado (ex: fallback BrasilAPI / ReceitaWS)
+      if (item.razaoSocial && (item.cnpj || item.cnpj_limpo) && Array.isArray(item.sociosQSA)) {
+        return item;
+      }
+
+      const emp = Array.isArray(item.EMPRESA)
+        ? (item.EMPRESA[0] || item)
+        : (item.EMPRESA && typeof item.EMPRESA === "object" ? item.EMPRESA : item);
+      const est = Array.isArray(item.ESTABELECIMENTO)
+        ? (item.ESTABELECIMENTO[0] || item)
+        : (item.ESTABELECIMENTO && typeof item.ESTABELECIMENTO === "object" ? item.ESTABELECIMENTO : item);
+      const simples = Array.isArray(item.SIMPLES)
+        ? (item.SIMPLES[0] || {})
+        : (item.SIMPLES && typeof item.SIMPLES === "object" ? item.SIMPLES : {});
+      const sociosRaw = Array.isArray(item.SOCIOS)
+        ? item.SOCIOS
+        : (item.SOCIOS && typeof item.SOCIOS === "object" ? [item.SOCIOS] : []);
+
+      const cnpjRaw = String(emp?.CNPJ || est?.CNPJ || item?.CNPJ || item?.cnpj || "");
+      const razaoRaw = limparTextoEndereco(emp?.RAZAO_SOCIAL || emp?.razaoSocial || est?.NOME_FANTASIA || item?.NOME);
+      if (!cnpjRaw.replace(/\D/g, "") && !razaoRaw) {
+        return null;
+      }
+
+      const socios = sociosRaw
+        .filter((s) => s && typeof s === "object")
+        .map((s) => ({
+          nome: (s.NOME_SOCIO || s.nome || "").toUpperCase(),
+          qualificacao: s.QUALIFICACAO_SOCIO || s.qualificacao || "SÓCIO",
+          documento: s.CPF_CNPJ_SOCIO || s.cpf || s.cnpj || null,
+        }));
+
+      const cnaeRaw = est?.CNAE_FISCAL_PRINCIPAL ?? emp?.CNAE_FISCAL_PRINCIPAL ?? item?.cnaePrincipal ?? null;
+      let cnaePrincipal = null;
+      if (cnaeRaw && typeof cnaeRaw === "object") {
+        const cod = limparTextoEndereco(cnaeRaw.CODIGO || cnaeRaw.codigo || cnaeRaw.id);
+        const desc = limparTextoEndereco(cnaeRaw.DESCRICAO || cnaeRaw.descricao || cnaeRaw.nome);
+        cnaePrincipal = [cod, desc].filter(Boolean).join(" - ") || null;
+      } else if (limparTextoEndereco(cnaeRaw)) {
+        cnaePrincipal = limparTextoEndereco(cnaeRaw);
+      }
+
+      const secRaw = est?.CNAES_SECUNDARIOS || est?.CNAE_FISCAL_SECUNDARIA || item?.CNAES_SECUNDARIOS || item?.cnaes_secundarios || [];
+      const cnaesSecundarios = (Array.isArray(secRaw) ? secRaw : [secRaw])
+        .map((c) => {
+          if (!c) return null;
+          if (typeof c === "string") return limparTextoEndereco(c) || null;
+          if (typeof c === "object") {
+            const codigo = limparTextoEndereco(c.CODIGO || c.codigo || c.id);
+            const descricao = limparTextoEndereco(c.DESCRICAO || c.descricao || c.nome);
+            if (!codigo && !descricao) return null;
+            return { codigo: codigo || "", descricao: descricao || "" };
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      const dataInicioFmt = formatarDataTrabalhista(est?.DT_INICIO_ATIVIDADE || item?.dataAbertura).display;
+      const dataSituacaoFmt = formatarDataTrabalhista(est?.DT_SITUACAO_CADASTRAL || item?.dataSituacaoCadastral).display;
+      const dddTel = limparTextoEndereco(est?.DDD1 || est?.DDD);
+      const numTel = limparTextoEndereco(est?.TELEFONE1 || est?.TELEFONE);
+      const telEmpresa = dddTel && numTel ? formatPhone(`${dddTel}${numTel}`) : (numTel ? formatPhone(numTel) : null);
+      const emailEmpresa = limparTextoEndereco(est?.EMAIL || emp?.EMAIL || item?.email);
+
+      return {
+        cnpj: formatCnpj(cnpjRaw),
+        cnpj_raw: cnpjRaw.replace(/\D/g, ""),
+        razaoSocial: (emp?.RAZAO_SOCIAL || est?.NOME_FANTASIA || razaoRaw || "").toUpperCase(),
+        nomeFantasia: (est?.NOME_FANTASIA || emp?.RAZAO_SOCIAL || razaoRaw || "").toUpperCase(),
+        naturezaJuridica: limparTextoEndereco(emp?.NATUREZA_JURIDICA) || "Sociedade Empresária",
+        capitalSocial: emp?.CAPITAL_SOCIAL ? formatCurrency(emp.CAPITAL_SOCIAL) : "Não informado",
+        porte: limparTextoEndereco(emp?.PORTE_EMPRESA) || "DEMAIS",
+        situacaoCadastral: (limparTextoEndereco(est?.SITUACAO_CADASTRAL) || "ATIVA").toUpperCase(),
+        dataSituacaoCadastral: dataSituacaoFmt || null,
+        dataInicioAtividade: dataInicioFmt || null,
+        dataAbertura: dataInicioFmt || null,
+        cnaePrincipal,
+        ...(cnaesSecundarios.length > 0 ? { cnaesSecundarios } : {}),
+        ...(telEmpresa ? { telefone: telEmpresa } : {}),
+        ...(emailEmpresa ? { email: emailEmpresa.toLowerCase() } : {}),
+        endereco: {
+          logradouro: [limparTextoEndereco(est?.TIPO_LOGRADOURO), limparTextoEndereco(est?.LOGRADOURO)].filter(Boolean).join(" "),
+          numero: limparTextoEndereco(est?.NUMERO) || "S/N",
+          complemento: limparTextoEndereco(est?.COMPLEMENTO) || "",
+          bairro: limparTextoEndereco(est?.BAIRRO) || "",
+          cidade: limparTextoEndereco(est?.CIDADE) || "",
+          uf: normalizarUfEndereco(est?.UF || ""),
+          cep: formatCep(est?.CEP || ""),
+        },
+        simplesNacional: simples?.OPCAO_SIMPLES || "NAO",
+        mei: simples?.OPCAO_MEI || "NAO",
+        socios,
+        totalSocios: socios.length,
+      };
+    })
+    .filter(Boolean);
+
+  if (lista.length === 0) {
+    return {
+      tipo,
+      notFound: true,
+      isNotFound: true,
+      total: 0,
+      empresas: [],
+    };
+  }
 
   if (lista.length === 1) {
     return {
@@ -1379,17 +2062,17 @@ function normalizarListaEnderecos(arr) {
   return arr
     .filter(Boolean)
     .map((end) => {
-      const tipoLogr = end.LOGR_TIPO || end.tipoLogradouro || "";
-      const nomeLogr = end.LOGR_NOME || end.LOGRADOURO || end.logradouro || end.rua || "";
+      const tipoLogr = limparTextoEndereco(end.LOGR_TIPO || end.tipoLogradouro);
+      const nomeLogr = limparTextoEndereco(end.LOGR_NOME || end.LOGRADOURO || end.logradouro || end.rua);
       const logradouro = [tipoLogr, nomeLogr].filter(Boolean).join(" ").trim() || "Não informado";
 
       return {
         logradouro,
-        numero: end.LOGR_NUMERO || end.NUMERO || end.numero || "S/N",
-        complemento: end.LOGR_COMPLEMENTO || end.COMPLEMENTO || end.complemento || "",
-        bairro: end.BAIRRO || end.bairro || "Não informado",
-        cidade: end.CIDADE || end.cidade || "Não informada",
-        uf: (end.UF || end.uf || "").toUpperCase(),
+        numero: limparTextoEndereco(end.LOGR_NUMERO || end.NUMERO || end.numero) || "S/N",
+        complemento: limparTextoEndereco(end.LOGR_COMPLEMENTO || end.COMPLEMENTO || end.complemento),
+        bairro: limparTextoEndereco(end.BAIRRO || end.bairro) || "Não informado",
+        cidade: limparTextoEndereco(end.CIDADE || end.cidade) || "Não informada",
+        uf: normalizarUfEndereco(end.UF || end.uf),
         cep: formatCep(end.CEP || end.cep || ""),
         cepLimpo: String(end.CEP || end.cep || "").replace(/\D/g, ""),
         dataAtualizacao: end.DT_TIMESTAMP || end.DT_ATUALIZACAO || end.data || null,

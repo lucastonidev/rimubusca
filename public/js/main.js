@@ -6,6 +6,19 @@
  */
 
 const initMain = () => {
+  // 0. LIMPEZA DE SERVICE WORKERS ÓRFÃOS NA MESMA ORIGEM (EX: OUTROS APPS EM LOCALHOST)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      if (!registrations || registrations.length === 0) return;
+      Promise.all(registrations.map((reg) => reg.unregister())).then((removed) => {
+        if (removed.some(Boolean) && !sessionStorage.getItem('rimu_sw_cleaned')) {
+          sessionStorage.setItem('rimu_sw_cleaned', '1');
+          window.location.reload();
+        }
+      });
+    }).catch(() => {});
+  }
+
   // 1. INICIALIZAÇÃO DE ÍCONES LUCIDE
   const renderLucide = () => {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {

@@ -214,47 +214,115 @@ export function normalizarAwesomeApiCep(d, rawCep) {
   };
 }
 
+const UFS_BRASIL = new Set([
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+]);
+
+function limparCampoTextoCep(val) {
+  if (val === null || val === undefined) return "";
+  const str = String(val).trim();
+  if (!str) return "";
+  const norm = str.replace(/[()]/g, "").trim().toUpperCase();
+  if (
+    norm === "" ||
+    norm === "SEM RESULTADO" ||
+    norm === "N/I" ||
+    norm === "N/" ||
+    norm === "N/A" ||
+    norm === "NULL" ||
+    norm === "NONE" ||
+    norm === "UNDEFINED" ||
+    norm === "NAO INFORMADO" ||
+    norm === "NÃO INFORMADO" ||
+    norm === "NAO INFORMADA" ||
+    norm === "NÃO INFORMADA" ||
+    norm === "-"
+  ) {
+    return "";
+  }
+  return str;
+}
+
+function normalizarUfCep(val) {
+  const clean = limparCampoTextoCep(val).toUpperCase().replace(/[^A-Z]/g, "");
+  return UFS_BRASIL.has(clean) ? clean : "";
+}
+
 /**
  * Normaliza resposta da RimuAPI / Hexys caso retorne dados com sucesso
  */
 export function normalizarRimuApiCep(d, rawCep) {
-  const payload = Array.isArray(d) ? d[0] : d;
-  const digits = String(rawCep || payload.cep || payload.CEP || payload.ENDERECO?.CEP || "").replace(/\D/g, "");
+  const payload = Array.isArray(d) ? d[0] || {} : d || {};
+  const end = payload.ENDERECO || payload.endereco || payload.ENDERECOS?.[0] || payload.enderecos?.[0] || payload;
+  const digits = String(rawCep || end.CEP || end.cep || payload.cep || payload.CEP || "").replace(/\D/g, "");
   const cepFmt = formatarCep(digits);
 
-  const end = payload.ENDERECO || payload.endereco || payload;
-  const logrNome = [end.LOGR_TIPO || end.tipoLogradouro, end.LOGR_NOME || end.logradouro || end.street || end.rua].filter(Boolean).join(" ").trim();
+  const tipoLogr = limparCampoTextoCep(end.LOGR_TIPO || end.tipoLogradouro);
+  const nomeLogr = limparCampoTextoCep(end.LOGR_NOME || end.LOGRADOURO || end.logradouro || end.street || end.rua);
+  const logrNome = [tipoLogr, nomeLogr].filter(Boolean).join(" ").trim();
 
-  let moradores = [];
-  if (Array.isArray(d)) {
-    moradores = d
-      .filter((r) => r.DADOS?.CPF || r.DADOS?.NOME || r.CPF || r.NOME)
-      .map((r) => {
-        const item = r.DADOS || r;
-        return {
-          cpf: item.CPF || item.cpf,
-          nome: item.NOME || item.nome,
-          nascimento: item.NASC || item.NASCIMENTO || item.nascimento,
-        };
-      });
-  } else if (Array.isArray(payload.moradores)) {
-    moradores = payload.moradores;
-  }
+  const listaBruta = Array.isArray(d)
+    ? d
+    : Array.isArray(payload.moradores)
+      ? payload.moradores
+      : Array.isArray(payload.residentes)
+        ? payload.residentes
+        : [];
 
-  const ufFinal = (end.UF || end.uf || end.estado || "N/I").toUpperCase().slice(0, 2);
+  const moradores = listaBruta
+    .map((r) => {
+      if (!r || typeof r !== "object") return null;
+      const item = r.DADOS || r.dados || r;
+      const endItem = r.ENDERECO || r.endereco || r.ENDERECOS?.[0] || r.enderecos?.[0] || {};
+      const cpfVal = item.CPF || item.cpf || r.CPF || r.cpf || "";
+      const nomeVal = limparCampoTextoCep(item.NOME || item.nome || r.NOME || r.nome || r.morador || r.name);
+      if (!cpfVal && !nomeVal) return null;
+
+      return {
+        cpf: cpfVal,
+        nome: nomeVal || "N/I",
+        nascimento: item.NASC || item.NASCIMENTO || item.nascimento || r.nascimento || "Não informada",
+        numero:
+          limparCampoTextoCep(
+            endItem.LOGR_NUMERO ??
+              endItem.logr_numero ??
+              endItem.NUMERO ??
+              endItem.numero ??
+              item.LOGR_NUMERO ??
+              item.numero ??
+              r.LOGR_NUMERO ??
+              r.numero
+          ) || "S/N",
+        complemento: limparCampoTextoCep(
+          endItem.LOGR_COMPLEMENTO ??
+            endItem.logr_complemento ??
+            endItem.COMPLEMENTO ??
+            endItem.complemento ??
+            item.LOGR_COMPLEMENTO ??
+            item.complemento ??
+            r.LOGR_COMPLEMENTO ??
+            r.complemento
+        ),
+      };
+    })
+    .filter(Boolean);
+
+  const ufFinal = normalizarUfCep(end.UF || end.uf || end.estado);
   const ibgeFinal = extrairCodigoIbge(end.codigoIbge || end.ibge);
-  const dddFinal = resolverDdd(end.ddd, ufFinal);
+  const dddFinal = ufFinal ? resolverDdd(end.ddd, ufFinal) : "N/I";
 
   return {
     cep: cepFmt,
     cepLimpo: digits,
-    logradouro: logrNome || end.logradouro || end.endereco || "Não informado",
-    numero: end.LOGR_NUMERO || end.numero || "",
-    complemento: end.LOGR_COMPLEMENTO || end.complemento || "",
-    bairro: end.BAIRRO || end.bairro || end.neighborhood || "Não informado",
-    cidade: end.CIDADE || end.cidade || end.municipio || end.localidade || "Não informada",
+    logradouro: logrNome || limparCampoTextoCep(end.endereco) || "Não informado",
+    numero: limparCampoTextoCep(end.LOGR_NUMERO ?? end.NUMERO ?? end.numero),
+    complemento: limparCampoTextoCep(end.LOGR_COMPLEMENTO ?? end.COMPLEMENTO ?? end.complemento),
+    bairro: limparCampoTextoCep(end.BAIRRO || end.bairro || end.neighborhood) || "Não informado",
+    cidade: limparCampoTextoCep(end.CIDADE || end.cidade || end.municipio || end.localidade) || "Não informada",
     uf: ufFinal,
-    estado: end.estado || end.uf || "Não informado",
+    estado: limparCampoTextoCep(end.estado) || ufFinal,
     ddd: dddFinal,
     codigoIbge: ibgeFinal,
     totalResidentesEstimados: moradores.length || null,

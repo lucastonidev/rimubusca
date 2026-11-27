@@ -67,6 +67,8 @@ app.use(
           "https://unpkg.com",
           "https://cdn.jsdelivr.net",
           "https://cdnjs.cloudflare.com",
+          "https://fonts.googleapis.com",
+          "https://fonts.gstatic.com",
           "data:",
           "blob:",
         ],
@@ -78,6 +80,7 @@ app.use(
           process.env.NODE_ENV === "production" ? [] : null,
       },
     },
+    ...(process.env.NODE_ENV !== "production" ? { strictTransportSecurity: false } : {}),
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
   }),
@@ -92,8 +95,8 @@ app.use(
   cookieParser(process.env.SESSION_SECRET),
 );
 
-app.use(express.json({ limit: "5mb" }));
-app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+app.use(express.json({ limit: "12mb" }));
+app.use(express.urlencoded({ extended: true, limit: "12mb" }));
 
 // 6. Rate Limiting Global
 app.use(globalRateLimiter);
@@ -118,6 +121,24 @@ app.get("/api/health", (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
   });
+});
+
+// Desativa automaticamente qualquer Service Worker órfão registrado na mesma origem
+app.get("/sw.js", (req, res) => {
+  res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.send(
+    [
+      "self.addEventListener('install', () => self.skipWaiting());",
+      "self.addEventListener('activate', (event) => {",
+      "  event.waitUntil(",
+      "    self.registration.unregister().then(() => self.clients.matchAll({ type: 'window' })).then((clients) => {",
+      "      clients.forEach((c) => { if ('navigate' in c) c.navigate(c.url).catch(() => {}); });",
+      "    })",
+      "  );",
+      "});",
+    ].join("\n"),
+  );
 });
 
 // 9. Rotas com separação de responsabilidade

@@ -123,35 +123,35 @@ export const PhonePersonsInterpreter = {
       <!-- ============================================================== -->
       <!-- CABEÇALHO DA CONSULTA DE TELEFONIA & TITULARES                 -->
       <!-- ============================================================== -->
-      <div class="card" style="margin-bottom: var(--space-4); border-top: 4px solid #8B5CF6; background: radial-gradient(circle at 95% 10%, rgba(139, 92, 246, 0.12) 0%, transparent 70%), var(--color-surface);">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+      <div class="card osint-section-card osint-section-card--purple" style="background: radial-gradient(circle at 95% 10%, rgba(139, 92, 246, 0.12) 0%, transparent 70%), var(--color-surface);">
+        <div class="osint-person-top">
           <div>
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
-              <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #C4B5FD; font-weight: 700;">
-                <i data-lucide="phone-call" style="width: 12px; height: 12px;"></i> TELEFONIA & VÍNCULOS CADASTRAIS
+            <div class="osint-chip-row mb-4" style="margin-bottom: 6px;">
+              <span class="badge badge-purple">
+                <i data-lucide="phone-call" class="icon-xs"></i> TELEFONIA & VÍNCULOS CADASTRAIS
               </span>
-              <span class="badge badge-dark" style="font-size: 0.72rem;">
+              <span class="badge badge-dark">
                 ${totalCount} ${totalCount === 1 ? "Titular Localizado" : "Titulares / Vínculos Localizados"}
               </span>
-              ${operadora && operadora !== "Não informada" ? `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">Operadora: ${escapeHtml(operadora)}</span>` : ""}
+              ${operadora && operadora !== "Não informada" ? `<span class="badge badge-blue">Operadora: ${escapeHtml(operadora)}</span>` : ""}
             </div>
 
-            <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--color-text); margin: 0; font-family: var(--font-mono); letter-spacing: 0.5px;">
+            <h2 class="osint-person-name text-mono">
               ${escapeHtml(formattedPhone)}
             </h2>
-            <p style="color: var(--color-text-muted); font-size: 0.8125rem; margin-top: 4px;">
+            <p class="osint-page-subtitle">
               Cruzamento de dados entre bases de telecomunicações, birôs de crédito e registros cadastrais federais.
             </p>
           </div>
 
           <!-- AÇÕES DO TOPO: RELATÓRIO & EXPORTAÇÃO -->
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-            <button type="button" class="btn btn-primary btn-sm btn-gerar-relatorio-geral" style="font-weight: 700; box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);">
-              <i data-lucide="file-text" style="width: 14px; height: 14px;"></i>
+          <div class="osint-toolbar-group">
+            <button type="button" class="btn btn-primary btn-sm btn-osint-violet btn-gerar-relatorio-geral">
+              <i data-lucide="file-text" class="icon-sm"></i>
               <span>Gerar Relatório OSINT</span>
             </button>
             <button type="button" class="btn btn-outline btn-sm btn-copiar-todos-cpfs" title="Copiar lista de CPFs">
-              <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+              <i data-lucide="copy" class="icon-xs"></i>
               <span>Copiar CPFs</span>
             </button>
           </div>
@@ -160,34 +160,34 @@ export const PhonePersonsInterpreter = {
         <!-- ============================================================== -->
         <!-- BARRA DE PESQUISA & FILTROS EM TEMPO REAL                      -->
         <!-- ============================================================== -->
-        <div style="margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--color-border);">
-          <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+        <div class="mt-5" style="padding-top: var(--space-4); border-top: 1px solid var(--color-border);">
+          <div class="osint-toolbar" style="margin-bottom: 0;">
             <!-- Campo de Busca em Tempo Real (Nome ou Dígitos do CPF) -->
-            <div style="position: relative; flex: 1; min-width: 280px;">
-              <i data-lucide="search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--color-text-muted);"></i>
+            <div class="input-search-wrap" style="min-width: 280px;">
+              <i data-lucide="search"></i>
               <input 
                 type="text" 
                 id="inputFiltroPessoasTelefone" 
+                class="input-search"
                 placeholder="Buscar por nome, dígitos do CPF (ex: 886, 143), cidade..." 
-                style="width: 100%; padding: 10px 16px 10px 40px; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); color: var(--color-text); font-size: 0.875rem; outline: none; transition: all 0.2s;"
               >
             </div>
 
             <!-- Contador de Resultados Visíveis -->
             <div style="font-size: 0.8125rem; color: var(--color-text-muted);">
-              Exibindo <strong id="contadorPessoasVisiveis" style="color: #6EE7B7;">${totalCount}</strong> de ${totalCount} registros
+              Exibindo <strong id="contadorPessoasVisiveis" class="osint-kv-value--mint">${totalCount}</strong> de ${totalCount} registros
             </div>
           </div>
 
           <!-- Pílulas de Filtro Rápido -->
-          <div class="filtros-pills-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
+          <div class="filtros-pills-container osint-chip-row mt-3">
             <button type="button" class="btn-filtro-pill active" data-filter="todos">
               Todos (${totalCount})
             </button>
             <button type="button" class="btn-filtro-pill" data-filter="regular">
               Regulares (${regularesCount})
             </button>
-            ${falecidosCount > 0 ? `<button type="button" class="btn-filtro-pill" data-filter="falecido" style="border-color: rgba(239, 68, 68, 0.4); color: #F87171;">Falecidos (${falecidosCount})</button>` : ""}
+            ${falecidosCount > 0 ? `<button type="button" class="btn-filtro-pill btn-filtro-pill--danger" data-filter="falecido">Falecidos (${falecidosCount})</button>` : ""}
             ${comVeiculosCount > 0 ? `<button type="button" class="btn-filtro-pill" data-filter="veiculos">Com Veículos (${comVeiculosCount})</button>` : ""}
             ${comEmpresasCount > 0 ? `<button type="button" class="btn-filtro-pill" data-filter="empresas">Com Empresas (${comEmpresasCount})</button>` : ""}
             ${comEmailsCount > 0 ? `<button type="button" class="btn-filtro-pill" data-filter="emails">Com E-mail (${comEmailsCount})</button>` : ""}
@@ -269,87 +269,84 @@ export const PhonePersonsInterpreter = {
 
             return `
             <div 
-              class="card card-item-pessoa-telefone" 
+              class="card card-item-pessoa-telefone osint-person-card ${isFalecido ? "osint-person-card--falecido" : ""}" 
               data-search="${escapeHtml(searchIndex)}"
               data-status="${isFalecido ? "falecido" : situacaoReceita === "REGULAR" ? "regular" : "outro"}"
               data-has-veiculos="${veiculosList.length > 0 ? "true" : "false"}"
               data-has-empresas="${empresasList.length > 0 ? "true" : "false"}"
               data-has-emails="${emailsList.length > 0 ? "true" : "false"}"
-              style="margin-bottom: 0; border-left: 4px solid ${isFalecido ? "#EF4444" : "#8B5CF6"};"
             >
               <!-- Top Row: Titular Index, Status and Actions -->
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+              <div class="osint-person-top">
                 <div>
-                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
-                    <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #C4B5FD; font-weight: 700;">
+                  <div class="osint-chip-row" style="margin-bottom: 6px;">
+                    <span class="badge badge-purple">
                       #${idx + 1} • TITULAR VINCULADO
                     </span>
                     ${
                       isFalecido
-                        ? `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #F87171; font-weight: 700; border: 1px solid rgba(239, 68, 68, 0.3);">
-                            <i data-lucide="alert-octagon" style="width: 12px; height: 12px;"></i> TITULAR FALECIDO
+                        ? `<span class="badge badge-red">
+                            <i data-lucide="alert-octagon" class="icon-xs"></i> TITULAR FALECIDO
                            </span>`
-                        : `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-weight: 700;">
-                            <i data-lucide="check-circle-2" style="width: 12px; height: 12px;"></i> REGULAR NA RECEITA
+                        : `<span class="badge badge-success">
+                            <i data-lucide="check-circle-2" class="icon-xs"></i> REGULAR NA RECEITA
                            </span>`
                     }
-                    <span class="badge badge-dark" style="font-size: 0.72rem;">PF</span>
+                    <span class="badge badge-dark">PF</span>
                   </div>
 
-                  <h3 style="font-size: 1.35rem; font-weight: 800; color: var(--color-text); margin: 0;">
+                  <h3 class="osint-person-name">
                     ${escapeHtml(nome)}
                   </h3>
 
-                  <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                    <span style="font-family: var(--font-mono); font-size: 1.05rem; font-weight: 700; color: #6EE7B7;">${formattedCpf}</span>
-                    <button type="button" class="btn btn-ghost btn-sm btn-copiar-cpf" data-cpf="${rawCpf}" title="Copiar CPF">
-                      <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+                  <div class="osint-cpf-row">
+                    <span class="osint-cpf-code">${formattedCpf}</span>
+                    <button type="button" class="btn btn-ghost btn-copy-inline btn-copiar-cpf" data-cpf="${rawCpf}" title="Copiar CPF">
+                      <i data-lucide="copy" class="icon-xs"></i>
                     </button>
                   </div>
                 </div>
 
                 <!-- Botões de Ação Direta no Card -->
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <div class="osint-toolbar-group">
                   <button type="button" class="btn btn-primary btn-sm btn-puxar-cpf-item" data-cpf="${rawCpf}" title="Consultar Dossiê Completo por CPF">
-                    <i data-lucide="search" style="width: 13px; height: 13px;"></i>
+                    <i data-lucide="search" class="icon-xs"></i>
                     <span>Investigar CPF</span>
                   </button>
                   <button type="button" class="btn btn-outline btn-sm btn-relatorio-individual" data-idx="${idx}" title="Gerar Relatório Deste Titular">
-                    <i data-lucide="file-text" style="width: 13px; height: 13px;"></i>
+                    <i data-lucide="file-text" class="icon-xs"></i>
                     <span>Relatório</span>
                   </button>
                 </div>
               </div>
 
               <!-- Grid de Dados Cadastrais Essenciais -->
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: var(--space-4);">
-                <div style="background: var(--color-surface-2); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-                  <span style="font-size: 0.72rem; color: var(--color-text-muted); text-transform: uppercase; display: block;">Nascimento / Idade</span>
-                  <strong style="color: var(--color-text); font-size: 0.875rem;">${birthDate} ${age !== null ? `(${age} anos)` : ""}</strong>
+              <div class="osint-kv-grid mt-4">
+                <div class="osint-kv-item">
+                  <span class="osint-kv-label">Nascimento / Idade</span>
+                  <strong class="osint-kv-value">${birthDate} ${age !== null ? `(${age} anos)` : ""}</strong>
                 </div>
 
-                <div style="background: var(--color-surface-2); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-                  <span style="font-size: 0.72rem; color: var(--color-text-muted); text-transform: uppercase; display: block;">Mãe</span>
-                  <strong style="color: var(--color-text); font-size: 0.875rem;" title="${escapeHtml(mother)}">${escapeHtml(mother)}</strong>
+                <div class="osint-kv-item">
+                  <span class="osint-kv-label">Mãe</span>
+                  <strong class="osint-kv-value" title="${escapeHtml(mother)}">${escapeHtml(mother)}</strong>
                 </div>
 
-                <div style="background: var(--color-surface-2); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-                  <span style="font-size: 0.72rem; color: var(--color-text-muted); text-transform: uppercase; display: block;">Profissão</span>
-                  <strong style="color: var(--color-text); font-size: 0.875rem;">${escapeHtml(occupation)}</strong>
+                <div class="osint-kv-item">
+                  <span class="osint-kv-label">Profissão</span>
+                  <strong class="osint-kv-value">${escapeHtml(occupation)}</strong>
                 </div>
 
-                <div style="background: var(--color-surface-2); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-                  <span style="font-size: 0.72rem; color: var(--color-text-muted); text-transform: uppercase; display: block;">Renda Estimada</span>
-                  <strong style="color: #10B981; font-size: 0.875rem;">${incomeFmt}</strong>
+                <div class="osint-kv-item">
+                  <span class="osint-kv-label">Renda Estimada</span>
+                  <strong class="osint-kv-value osint-kv-value--success">${incomeFmt}</strong>
                 </div>
               </div>
 
               <!-- Endereço Cadastrado -->
-              <div style="margin-top: 10px; background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border); display: flex; align-items: center; gap: 10px;">
-                <i data-lucide="map-pin" style="width: 18px; height: 18px; color: #10B981; flex-shrink: 0;"></i>
-                <div style="font-size: 0.8125rem; color: var(--color-text);">
-                  ${escapeHtml(fullAddress)}
-                </div>
+              <div class="osint-address-bar">
+                <i data-lucide="map-pin" class="icon-md icon-emerald"></i>
+                <div>${escapeHtml(fullAddress)}</div>
               </div>
 
               <!-- Seção de Vínculos Especiais: Telefones, Veículos, Empresas e E-mails -->
@@ -463,39 +460,16 @@ export const PhonePersonsInterpreter = {
       </div>
 
       <!-- Estado Vazio após Filtragem -->
-      <div id="emptyStateFiltroTelefone" style="display: none; text-align: center; padding: var(--space-8); background: var(--color-surface); border: 1px dashed var(--color-border); border-radius: var(--radius-lg); margin-top: var(--space-4);">
-        <i data-lucide="user-x" style="width: 36px; height: 36px; color: #F59E0B; margin-bottom: 8px;"></i>
-        <h4 style="font-size: 1.05rem; font-weight: 600; color: var(--color-text);">Nenhum titular corresponde ao filtro atual</h4>
-        <p style="color: var(--color-text-muted); font-size: 0.85rem;">Tente ajustar o termo de busca ou limpar os filtros de categoria.</p>
-        <button type="button" class="btn btn-outline btn-sm" id="btnLimparFiltrosTelefone" style="margin-top: 10px;">
+      <div id="emptyStateFiltroTelefone" class="card osint-empty-card osint-empty-card--dashed is-hidden">
+        <div class="osint-empty-icon osint-empty-icon--warning">
+          <i data-lucide="user-x" class="icon-xl"></i>
+        </div>
+        <h4 class="osint-empty-title">Nenhum titular corresponde ao filtro atual</h4>
+        <p class="osint-empty-desc">Tente ajustar o termo de busca ou limpar os filtros de categoria.</p>
+        <button type="button" class="btn btn-outline btn-sm mt-3" id="btnLimparFiltrosTelefone">
           Limpar Filtros
         </button>
       </div>
-
-      <style>
-        .btn-filtro-pill {
-          background: var(--color-surface-2);
-          border: 1px solid var(--color-border);
-          color: var(--color-text-muted);
-          padding: 5px 12px;
-          border-radius: var(--radius-full, 9999px);
-          font-size: 0.75rem;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.15s ease;
-        }
-        .btn-filtro-pill:hover {
-          background: var(--color-surface-3);
-          color: var(--color-text);
-          border-color: rgba(139, 92, 246, 0.4);
-        }
-        .btn-filtro-pill.active {
-          background: rgba(139, 92, 246, 0.25);
-          border-color: #8B5CF6;
-          color: #FFFFFF;
-          box-shadow: 0 0 10px rgba(139, 92, 246, 0.25);
-        }
-      </style>
     `;
   },
 };

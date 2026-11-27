@@ -16,8 +16,26 @@ export const CpfDossierInterpreter = {
    * @returns {string} HTML markup
    */
   render(dataRoot) {
-    const payload = dataRoot.data || dataRoot;
+    const payload = dataRoot?.data || dataRoot || {};
     const basicData = payload.dadosBasicos || {};
+    const isEmptyBasic =
+      Boolean(dataRoot?.notFound || payload?.notFound) ||
+      (!basicData.nome && !payload.nome && !basicData.cpf && !payload.cpf);
+
+    if (isEmptyBasic) {
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--warning">
+            <i data-lucide="user-x" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">Nenhum Registro Localizado</h3>
+          <p class="osint-empty-desc">
+            Não encontramos dados cadastrais para o CPF consultado na Zeroy API.
+          </p>
+        </div>
+      `;
+    }
+
     const parents = basicData.filiacao || {};
     const driverLicense = payload.carteriaHabilitacao || {};
     const phones = payload.telefonesHistorico || [];

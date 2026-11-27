@@ -30,11 +30,17 @@ export const Formatters = {
    * @returns {{ regiao: string, estados: string, descricao: string }}
    */
   cpfRegion(value) {
-    const clean = String(value || "").replace(/\D/g, "");
-    if (clean.length < 9) {
+    const rawStr = String(value || "");
+    const clean = rawStr.replace(/\D/g, "");
+    let digit = "";
+    if (clean.length >= 9) {
+      digit = clean.charAt(8);
+    } else if (clean.length === 6 && /\*{2,3}/.test(rawStr)) {
+      // CPF mascarado padrão PIX (***.123.456-**): o 6º dígito visível corresponde ao 9º dígito do CPF
+      digit = clean.charAt(5);
+    } else {
       return { regiao: "N/I", estados: "Não identificado", descricao: "Dígitos insuficientes" };
     }
-    const digit = clean.charAt(8);
     const map = {
       "1": { regiao: "1ª RF", estados: "DF, GO, MT, MS, TO", descricao: "1ª Região Fiscal (DF, GO, MT, MS, TO)" },
       "2": { regiao: "2ª RF", estados: "AC, AM, AP, PA, RO, RR", descricao: "2ª Região Fiscal (AC, AM, AP, PA, RO, RR)" },

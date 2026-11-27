@@ -135,7 +135,14 @@ window.copyToClipboard = async function (text, btnOrMessage = null, maybeCustomM
 window.masks = {
   telefone(value) {
     if (!value) return '';
-    let clean = value.replace(/\D/g, '');
+    const raw = String(value).trim();
+    let clean = raw.replace(/\D/g, '');
+    if ((raw.startsWith('+55') || (clean.length >= 12 && clean.length <= 13)) && clean.startsWith('55')) {
+      clean = clean.slice(2);
+    }
+    if (clean.startsWith('0') && clean.length >= 11) {
+      clean = clean.slice(1);
+    }
     if (clean.length > 11) clean = clean.slice(0, 11);
 
     if (clean.length > 10) {

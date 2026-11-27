@@ -7,7 +7,28 @@
  * ==============================================================================
  */
 
-import { Formatters } from "../../utils.js";
+import { Formatters, escapeHtml } from "../../utils.js";
+
+function cleanZeroyPhoneVal(val) {
+  if (val === null || val === undefined) return "";
+  const s = String(val).trim();
+  const up = s.replace(/[()]/g, "").trim().toUpperCase();
+  if (
+    up === "" ||
+    up === "N/I" ||
+    up === "N/A" ||
+    up === "SEM RESULTADO" ||
+    up === "NULL" ||
+    up === "NONE" ||
+    up === "NAO INFORMADO" ||
+    up === "NÃO INFORMADO" ||
+    up === "TITULAR NÃO INFORMADO" ||
+    up === "OPERADORA NÃO INFORMADA"
+  ) {
+    return "";
+  }
+  return s;
+}
 
 export const PhoneInterpreter = {
   /**
@@ -20,22 +41,22 @@ export const PhoneInterpreter = {
     const payload = dataPayload?.data || dataPayload?.dados || dataPayload || {};
     const record = Array.isArray(payload) ? payload[0] || {} : payload;
 
-    const rawTerm = String(responseData.termo || "").replace(/\D/g, "");
+    const rawTerm = String(responseData?.termo || record?.telefone || "").replace(/\D/g, "");
     const areaCode =
-      record.ddd || (rawTerm.length >= 10 ? rawTerm.slice(0, 2) : "N/I");
+      record.ddd || (rawTerm.length >= 10 ? rawTerm.slice(0, 2) : "");
     const phoneNumber =
       record.numero ||
       record.telefone ||
       (rawTerm.length >= 10 ? rawTerm.slice(2) : rawTerm);
-    const formattedPhone = Formatters.phone(areaCode, phoneNumber);
+    const formattedPhone = Formatters.phone(areaCode || "N/I", phoneNumber);
     const fullPhoneDigits = `${areaCode}${phoneNumber}`.replace(/\D/g, "");
 
-    const holder =
+    const rawHolder = cleanZeroyPhoneVal(
       (typeof record.titular === "object" ? record.titular?.nome : record.titular) ||
       record.nome ||
       record.razaoSocial ||
-      record.cliente ||
-      "Titular Não Informado";
+      record.cliente
+    );
 
     const rawDoc = String(
       record.cpf ||
@@ -45,6 +66,32 @@ export const PhoneInterpreter = {
       ""
     ).replace(/\D/g, "");
 
+    const rawCarrier = cleanZeroyPhoneVal(record.operadora || record.prestadora || record.provedor);
+    const rawRegion = cleanZeroyPhoneVal(record.uf || record.estado || record.cidade);
+    const rawActivation = cleanZeroyPhoneVal(record.dataAtivacao || record.instalacao || record.data);
+
+    const isEmptyRecord =
+      Boolean(responseData?.notFound || dataPayload?.notFound || payload?.notFound || record?.notFound) ||
+      (Array.isArray(payload) && payload.length === 0) ||
+      (!rawHolder && !rawDoc && !rawCarrier && !rawRegion && !rawActivation);
+
+    if (isEmptyRecord) {
+      const targetPhone = formattedPhone && formattedPhone !== "N/I" ? formattedPhone : (responseData?.termo || "");
+      return `
+        <div class="card osint-empty-card osint-empty-card--purple">
+          <div class="osint-empty-icon osint-empty-icon--warning">
+            <i data-lucide="phone-off" class="icon-xl"></i>
+          </div>
+          <h3 class="osint-empty-title">Nenhum Dado Encontrado</h3>
+          <p class="osint-empty-desc">
+            Não foi localizado nenhum registro de titular, operadora ou vínculo cadastral ${targetPhone ? `para o número <strong>${escapeHtml(targetPhone)}</strong> ` : ""}na base da Zeroy API.
+          </p>
+        </div>
+      `;
+    }
+
+    const holder = rawHolder || "Titular Não Informado";
+
     const formattedDoc =
       rawDoc.length === 14
         ? Formatters.cnpj(rawDoc)
@@ -52,12 +99,7 @@ export const PhoneInterpreter = {
           ? Formatters.cpf(rawDoc)
           : rawDoc || "Não informado";
 
-    const carrier = String(
-      record.operadora ||
-      record.prestadora ||
-      record.provedor ||
-      "Operadora Não Informada"
-    ).toUpperCase();
+    const carrier = (rawCarrier || "Operadora Não Informada").toUpperCase();
 
     const lineType =
       record.tipoLinha ||
@@ -70,16 +112,12 @@ export const PhoneInterpreter = {
     const portability = record.portabilidade || record.portado || null;
     const donorCarrier =
       record.operadoraOrigem || record.operadoraDoadora || null;
-    const region =
-      record.uf ||
-      record.estado ||
-      (record.cidade ? `${record.cidade}` : "N/I");
-    const activationDate =
-      record.dataAtivacao || record.instalacao || record.data
-        ? Formatters.date(
-            record.dataAtivacao || record.instalacao || record.data
-          )
-        : null;
+    const region = rawRegion || "N/I";
+    const activationDate = rawActivation
+      ? Formatters.date(
+          record.dataAtivacao || record.instalacao || record.data
+        )
+      : null;
 
     const isMobile =
       fullPhoneDigits.length === 11 ||

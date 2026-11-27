@@ -1,4 +1,4 @@
-import { rimuApi, consultarRimuApi } from "./rimuapi.service.js";
+import { rimuApi, consultarRimuApi, limparTelefoneBr } from "./rimuapi.service.js";
 import { interpretRimuApi } from "./interpreter/modules/rimuapi/index.js";
 import { cacheService } from "../core/cache.service.js";
 import { getModuleByIdService } from "../core/modules.service.js";
@@ -16,6 +16,113 @@ import { consultarEnderecoCep } from "./cep.service.js";
  * ==============================================================================
  */
 
+function isStaleCachedResult(tipo, data) {
+  if (!data || typeof data !== "object") return false;
+  if (data.raw !== undefined) return true;
+  if (tipo === "cep" || tipo === "cep_avancado" || tipo === "endereco") {
+    if (Array.isArray(data.residentes) || data.resultado !== undefined) return true;
+    const lista = Array.isArray(data.moradores) ? data.moradores : [];
+    if (lista.some((m) => !m || !m.endereco || !m.dados || m.endereco.numero === undefined)) return true;
+    const compl = String(data.complemento || "").toUpperCase();
+    if (compl.includes("SEM RESULTADO")) return true;
+    if (data.uf === "N/" || data.uf === "N/I") return true;
+  }
+  if (tipo === "oab") {
+    if (!Array.isArray(data.advogados) && !data.CNA_ADVOGADOS) return true;
+    if (Array.isArray(data.advogados) && data.advogados.length === 0) return true;
+    if (data.resultado !== undefined || data.fotoUrl !== undefined) return true;
+    if (String(data.nomeSocial || "").toUpperCase().includes("SEM RESULTADO")) return true;
+  }
+  if (["cloud_url", "cloud_usuario", "dump_cpf", "dump_email", "dump_telefone"].includes(tipo)) {
+    if (data.resultado !== undefined) return true;
+  }
+  if (tipo === "telefone" || tipo === "celular" || tipo === "telefone_puxar" || tipo === "operadora") {
+    if (data.notFound || data.isNotFound) return true;
+    if (!data.cpf && !data.nome && !data.name && data.operadora === "Telefonia Móvel" && Array.isArray(data.telefones) && data.telefones.length === 0) {
+      return true;
+    }
+  }
+  if (tipo === "email" || tipo === "email_puxar") {
+    if (
+      !data.notFound &&
+      !data.isNotFound &&
+      (!data.nome || data.nome === "NOME NÃO INFORMADO") &&
+      !data.cpf_raw &&
+      !data.perfil_google &&
+      (!Array.isArray(data.vinculos) || data.vinculos.length === 0)
+    ) {
+      return true;
+    }
+  }
+  if (tipo === "mae" || tipo === "pai") {
+    if (data.resultado !== undefined || !Array.isArray(data.filhos)) return true;
+    if (!data.notFound && data.filhos.length === 0) return true;
+    if (data.filhos.some((f) => f && f.regiaoFiscal === undefined)) return true;
+  }
+  if (tipo === "arvore_familiar") {
+    if (!data.url && !data.link && !data.notFound) return true;
+  }
+  if (tipo === "funcionarios" || tipo === "empregos") {
+    if (data.notFound || data.isNotFound) return true;
+    const list = Array.isArray(data[tipo]) ? data[tipo] : [];
+    if (list.length === 0) return true;
+    // Reprocessa caches legados que descartavam dados reais (CPF/Razão Social/Situação)
+    if (tipo === "empregos" && list.some((item) => item && item.cpf === undefined && item.situacao === undefined)) {
+      return true;
+    }
+    if (tipo === "funcionarios" && (!data.razaoSocial || list.some((item) => item && item.situacao === undefined))) {
+      return true;
+    }
+  }
+  if (tipo === "razao_social" || tipo === "socios" || tipo === "socios2" || tipo === "cnpj2") {
+    if (data.notFound || data.isNotFound) return true;
+  }
+  return false;
+}
+
+function isNotFoundConsultaError(err) {
+  if (!err) return false;
+  return (
+    err.code === "NOT_FOUND" ||
+    err.code === "CONSULTA_NOT_FOUND" ||
+    err.status === 404 ||
+    /nenhum|n[aã]o\s+encontrad|n[aã]o\s+localizad|not\s+found|sem\s+resultado/i.test(String(err.message || ""))
+  );
+}
+
+async function executarComNotFoundSuave(fn, termo) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (isNotFoundConsultaError(err)) {
+      return { __notFound: true, termo };
+    }
+    throw err;
+  }
+}
+
+function temAdvogadosOab(raw) {
+  if (!raw) return false;
+  const checkArr = (arr) =>
+    Array.isArray(arr) &&
+    arr.some((a) => a && typeof a === "object" && (a.NOME || a.nome || a.INSCRICAO || a.inscricao));
+
+  if (checkArr(raw)) return true;
+  const candidates = [
+    raw.CNA_ADVOGADOS,
+    raw.ADVOGADOS,
+    raw.advogados,
+    raw.response?.CNA_ADVOGADOS,
+    raw.response?.ADVOGADOS,
+    raw.conteudo?.CNA_ADVOGADOS,
+    raw.conteudo?.ADVOGADOS,
+    raw.data?.response?.CNA_ADVOGADOS,
+    raw.data?.conteudo?.CNA_ADVOGADOS,
+    raw.data?.CNA_ADVOGADOS,
+  ];
+  return candidates.some(checkArr);
+}
+
 export async function puxarDados({
   tipo = "cpf",
   termo = "",
@@ -24,9 +131,26 @@ export async function puxarDados({
   params = null,
 }) {
   const isMock = process.env.MOCK_MODE === "true";
-  const cleanTerm = String(termo || "").trim();
   const tipoNormalizado = String(tipo || "cpf").toLowerCase().trim();
+  const isTelefoneModulo = ["telefone", "celular", "telefone_puxar", "operadora"].includes(tipoNormalizado);
+  const isCnpjModulo = ["cnpj", "cnpj2", "socios", "socios2", "funcionarios"].includes(tipoNormalizado);
+  const isCpfEmpregoModulo = tipoNormalizado === "empregos";
+  const cleanTerm = isTelefoneModulo
+    ? limparTelefoneBr(termo)
+    : isCnpjModulo || isCpfEmpregoModulo
+      ? String(termo || "").replace(/\D/g, "")
+      : String(termo || "").trim();
+
+  if (isCnpjModulo && cleanTerm.length !== 14) {
+    throw new Error("Informe um CNPJ válido com 14 dígitos (00.000.000/0000-00).");
+  }
+  if (isCpfEmpregoModulo && cleanTerm.length !== 11) {
+    throw new Error("Informe um CPF válido com 11 dígitos (000.000.000-00) para consultar o histórico trabalhista.");
+  }
+
   const cacheKeyModulo = `consulta_${tipoNormalizado}`;
+  const oabUfCache = tipoNormalizado === "oab" ? String(param2 || uf || "").trim().toUpperCase() : "";
+  const cacheTerm = oabUfCache && !cleanTerm.toUpperCase().includes(oabUfCache) ? `${cleanTerm}:${oabUfCache}` : cleanTerm;
 
   // 0. Interdição / Manutenção: Valida se o módulo está ativo ou interditado pela administração no Supabase
   try {
@@ -56,9 +180,9 @@ export async function puxarDados({
 
   // 1. Tenta recuperar resultado do Cache Multi-Tier (RAM -> Supabase api_cache)
   try {
-    const cached = await cacheService.get(cacheKeyModulo, cleanTerm);
-    if (cached && cached.data) {
-      console.log(`[RIMUAPI CACHE HIT] Tipo: ${tipoNormalizado} (${cleanTerm}) via ${cached.source}`);
+    const cached = await cacheService.get(cacheKeyModulo, cacheTerm);
+    if (cached && cached.data && !isStaleCachedResult(tipoNormalizado, cached.data)) {
+      console.log(`[RIMUAPI CACHE HIT] Tipo: ${tipoNormalizado} (${cacheTerm}) via ${cached.source}`);
       return {
         tipo: tipoNormalizado,
         termo: cleanTerm,
@@ -69,6 +193,9 @@ export async function puxarDados({
         remainingCredits: null,
         dados: cached.data,
       };
+    }
+    if (cached && cached.data) {
+      console.log(`[RIMUAPI CACHE STALE] Ignorando cache legado para ${tipoNormalizado} (${cacheTerm}).`);
     }
   } catch (cacheErr) {
     console.warn(`[RIMUAPI CACHE READ ERROR]: ${cacheErr.message}`);
@@ -102,11 +229,11 @@ export async function puxarDados({
             break;
 
           case "nome":
-            rimuResult = await rimuApi.nome(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.nome(cleanTerm), cleanTerm);
             break;
 
           case "nome_similar":
-            rimuResult = await rimuApi.nomeSimilar(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.nomeSimilar(cleanTerm), cleanTerm);
             break;
 
           case "rg":
@@ -138,12 +265,12 @@ export async function puxarDados({
           case "celular":
           case "telefone_puxar":
           case "operadora":
-            rimuResult = await rimuApi.telefone(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.telefone(cleanTerm), cleanTerm);
             break;
 
           case "email":
           case "email_puxar":
-            rimuResult = await rimuApi.email(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.email(cleanTerm), cleanTerm);
             break;
 
           case "cep":
@@ -201,6 +328,24 @@ export async function puxarDados({
             if (cleanCnpj.length === 14) {
               try {
                 rimuResult = await rimuApi.cnpj(cleanCnpj);
+                const cnpjArr = Array.isArray(rimuResult) ? rimuResult : [rimuResult];
+                const hasCnpjData = cnpjArr.some((item) => {
+                  if (!item || typeof item !== "object") return false;
+                  const emp = Array.isArray(item.EMPRESA) ? item.EMPRESA[0] : item.EMPRESA;
+                  const est = Array.isArray(item.ESTABELECIMENTO) ? item.ESTABELECIMENTO[0] : item.ESTABELECIMENTO;
+                  return Boolean(
+                    emp?.CNPJ ||
+                    emp?.RAZAO_SOCIAL ||
+                    est?.CNPJ ||
+                    est?.NOME_FANTASIA ||
+                    item.CNPJ ||
+                    item.cnpj ||
+                    item.razaoSocial
+                  );
+                });
+                if (!hasCnpjData) {
+                  throw new Error("RimuAPI retornou registro CNPJ vazio.");
+                }
               } catch (cnpjErr) {
                 console.warn(`[RIMUAPI CNPJ FALLBACK] ${cnpjErr.message}. Alternando para BrasilAPI...`);
                 rimuResult = await consultarCnpjOficial(cleanCnpj);
@@ -212,32 +357,32 @@ export async function puxarDados({
           }
 
           case "cnpj2":
-            rimuResult = await rimuApi.cnpj2(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.cnpj2(cleanTerm), cleanTerm);
             break;
 
           case "razao_social":
-            rimuResult = await rimuApi.razaoSocial(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.razaoSocial(cleanTerm), cleanTerm);
             break;
 
           case "socios":
-            rimuResult = await rimuApi.socios(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.socios(cleanTerm), cleanTerm);
             break;
 
           case "socios2":
-            rimuResult = await rimuApi.socios2(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.socios2(cleanTerm), cleanTerm);
             break;
 
           case "funcionarios":
-            rimuResult = await rimuApi.funcionarios(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.funcionarios(cleanTerm), cleanTerm);
             break;
 
           case "empregos":
-            rimuResult = await rimuApi.empregos(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.empregos(cleanTerm), cleanTerm);
             break;
 
           case "oab": {
-            let numOab = String(cleanTerm || "").trim();
-            let ufOab = String(param2 || uf || "").trim().toUpperCase();
+            let numOab = String(cleanTerm || "").replace(/^oab[\s\/-]*/i, "").trim();
+            let ufOab = String(param2 || uf || "").trim().toUpperCase().replace(/[^A-Z]/g, "").slice(0, 2);
 
             // Se o usuário digitou tudo no primeiro campo (ex: "18442 ES" ou "18442/ES" ou "18442-ES")
             if (!ufOab && /\s+|\/|-/.test(numOab)) {
@@ -250,17 +395,43 @@ export async function puxarDados({
               }
             }
 
-            const chaveOab = ufOab ? `${numOab} ${ufOab}` : numOab;
-            rimuResult = await rimuApi.oab(chaveOab, ufOab);
+            const isNotFoundErr = (e) =>
+              e.code === "NOT_FOUND" ||
+              e.status === 404 ||
+              /nenhum|n[aã]o\s+encontrad|n[aã]o\s+localizad|not\s+found|sem\s+resultado/i.test(String(e.message || ""));
+
+            // Tenta formato canônico separado (chave: número OAB, param2: UF)
+            try {
+              rimuResult = await rimuApi.oab(numOab, ufOab || null);
+            } catch (oabErr1) {
+              if (!ufOab || !isNotFoundErr(oabErr1)) throw oabErr1;
+              rimuResult = null;
+            }
+
+            // Fallback caso a instância RimuAPI espere "NUM UF" concatenado em chave
+            if (!temAdvogadosOab(rimuResult) && ufOab) {
+              try {
+                const altResult = await rimuApi.oab(`${numOab} ${ufOab}`, null);
+                if (temAdvogadosOab(altResult) || !rimuResult) {
+                  rimuResult = altResult;
+                }
+              } catch (oabErr2) {
+                if (!rimuResult && !isNotFoundErr(oabErr2)) throw oabErr2;
+              }
+            }
+
+            if (!rimuResult) {
+              rimuResult = { CNA_ADVOGADOS: [], CNA_FOTOS: [], CNA_SOCIEDADES: [] };
+            }
             break;
           }
 
           case "mae":
-            rimuResult = await rimuApi.mae(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.mae(cleanTerm), cleanTerm);
             break;
 
           case "pai":
-            rimuResult = await rimuApi.pai(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.pai(cleanTerm), cleanTerm);
             break;
 
           case "parentes":
@@ -269,7 +440,7 @@ export async function puxarDados({
             break;
 
           case "arvore_familiar":
-            rimuResult = await rimuApi.arvoreFamiliar(cleanTerm);
+            rimuResult = await executarComNotFoundSuave(() => rimuApi.arvoreFamiliar(cleanTerm), cleanTerm);
             break;
 
           case "desmascarador": {
@@ -356,33 +527,38 @@ export async function puxarDados({
         const rawPayload = rimuResult.resultado !== undefined ? rimuResult.resultado : rimuResult;
         const payloadData = interpretRimuApi(tipoNormalizado, rawPayload, cleanTerm);
 
-        // Grava no cache persistente com TTL inteligente:
-        // 7 dias para documentos cadastrais (cpf, rg, titulo, foto, parentes, cnpj, cep)
-        // 24 horas para dados dinâmicos de telecomunicações/localização
-        try {
-          const isDocEstatico = [
-            "cpf",
-            "cpf_completo",
-            "rg",
-            "titulo",
-            "foto",
-            "fotos",
-            "parentes",
-            "arvore_familiar",
-            "cnpj",
-            "cnpj2",
-            "cep",
-            "endereco",
-            "oab",
-          ].includes(tipoNormalizado);
+        const deveEvitarCache =
+          Boolean(payloadData?.notFound || payloadData?.isNotFound) ||
+          (tipoNormalizado === "oab" && (!Array.isArray(payloadData?.advogados) || payloadData.advogados.length === 0));
 
-          const ttlMs = isDocEstatico ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-          await cacheService.set(cacheKeyModulo, cleanTerm, payloadData, {
-            ttlMs,
-            metadata: { tipo: tipoNormalizado },
-          });
-        } catch (cacheSaveErr) {
-          console.warn(`[RIMUAPI CACHE SAVE ERROR]: ${cacheSaveErr.message}`);
+        // Grava no cache persistente com TTL inteligente (evitando cachear resultados vazios/notFound)
+        if (!deveEvitarCache) {
+          try {
+            const isDocEstatico = [
+              "cpf",
+              "cpf_completo",
+              "rg",
+              "titulo",
+              "foto",
+              "fotos",
+              "parentes",
+              "arvore_familiar",
+              "cnpj",
+              "cnpj2",
+              "cep",
+              "cep_avancado",
+              "endereco",
+              "oab",
+            ].includes(tipoNormalizado);
+
+            const ttlMs = isDocEstatico ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+            await cacheService.set(cacheKeyModulo, cacheTerm, payloadData, {
+              ttlMs,
+              metadata: { tipo: tipoNormalizado },
+            });
+          } catch (cacheSaveErr) {
+            console.warn(`[RIMUAPI CACHE SAVE ERROR]: ${cacheSaveErr.message}`);
+          }
         }
 
         const defaultFonte =
@@ -398,8 +574,8 @@ export async function puxarDados({
           fonte: defaultFonte,
           timestamp: new Date().toISOString(),
           remainingCredits: null,
+          ...(payloadData?.notFound || payloadData?.isNotFound ? { notFound: true } : {}),
           dados: payloadData,
-          raw: rimuResult,
         };
       } else {
         throw new Error("Nenhum dado retornado para a consulta informada.");
@@ -498,7 +674,6 @@ function gerarMockPorTipo(tipo, termo) {
       };
 
     case "nome":
-    case "nome_similar":
       return {
         tipo: "nome",
         termo,
@@ -507,18 +682,30 @@ function gerarMockPorTipo(tipo, termo) {
         dados: [
           {
             nome: termo.toUpperCase(),
-            cpf: "***.452.190-**",
+            cpf: "193.663.371-04",
             nascimento: "14/08/1986",
             nomeMae: "MARIA APARECIDA DA SILVA PEREIRA",
             cidade: "São Paulo - SP",
           },
           {
             nome: termo.toUpperCase(),
-            cpf: "***.891.234-**",
+            cpf: "726.672.069-91",
             nascimento: "22/03/1992",
             nomeMae: "LUCIA HELENA SANTOS",
-            cidade: "Campinas - SP",
+            cidade: "Curitiba - PR",
           },
+        ],
+      };
+
+    case "nome_similar":
+      return {
+        tipo: "nome_similar",
+        termo,
+        fonte: "Simulação Nome Similar / Adapter Mock",
+        timestamp: baseTimestamp,
+        dados: [
+          { NOME: `${termo.toUpperCase()} BITTENCOURT`, CPF: "19366337104" },
+          { NOME: `${termo.toUpperCase()} BADLUK`, CPF: "72667206991" },
         ],
       };
 

@@ -47,6 +47,7 @@ export const CpfDossierInterpreter = {
     const rawGender = String(data.gender || "").trim().toUpperCase();
     const gender = rawGender === "F" ? "Feminino" : rawGender === "M" ? "Masculino" : data.gender || "Não informado";
     const originUf = data.estado_cpf || null;
+    const cpfRegionInfo = Formatters.cpfRegion(data.cpf_masked || data.cpf || rawCpf);
 
     // 2. Photo / Avatar Resolution
     const photoUrl =
@@ -212,18 +213,38 @@ export const CpfDossierInterpreter = {
         : [];
 
     // 11. Leaks & Compromised Passwords
-    const senhasVazadas = (Array.isArray(data.senhasVazadas) && data.senhasVazadas.length > 0)
-      ? data.senhasVazadas
-      : (data.raw && Array.isArray(data.raw.SENHA_CPF))
-        ? data.raw.SENHA_CPF.map((s) => ({
-            senha: s.SENHA || s.senha,
-            fonte: "Vazamento Público CPF",
-            data: s.DATA || null,
-          }))
-        : [];
+    const rawSenhasCpf = data.raw && Array.isArray(data.raw.SENHA_CPF) ? data.raw.SENHA_CPF : [];
+    const senhasFromArray = Array.isArray(data.senhasVazadas) ? data.senhasVazadas : [];
+    const senhasFromLeaks = Array.isArray(data.vazamentos)
+      ? data.vazamentos.filter((vz) => vz && (vz.senha || vz.SENHA))
+      : [];
+    const senhasBase =
+      senhasFromArray.length > 0
+        ? senhasFromArray
+        : rawSenhasCpf.length > 0
+          ? rawSenhasCpf.map((s) => ({
+              senha: s.SENHA || s.senha,
+              data: s.DATA || s.DT_INCLUSAO || null,
+            }))
+          : senhasFromLeaks;
+
+    const senhasSeen = new Set();
+    const senhasVazadas = senhasBase.filter((item) => {
+      const p = String(item?.senha || item?.SENHA || "").trim();
+      if (!p || senhasSeen.has(p)) return false;
+      senhasSeen.add(p);
+      return true;
+    });
+
     const rawLeaks = Array.isArray(data.vazamentos) ? data.vazamentos : [];
-    const leaks = [...rawLeaks];
-    const totalLeaks = data.total_vazamentos || leaks.length + senhasVazadas.length;
+    const leaks = rawLeaks.filter((vz) => {
+      if (!vz || typeof vz !== "object") return false;
+      if (vz.senha && !vz.nome && !vz.name && !vz.campos) return false;
+      const nome = String(vz.nome || vz.name || "").trim();
+      const hasCampos = Array.isArray(vz.campos) ? vz.campos.length > 0 : Boolean(String(vz.campos || "").trim());
+      return Boolean(nome || hasCampos);
+    });
+    const totalLeaks = leaks.length + senhasVazadas.length;
     const auditedTargets = data.alvos_verificados_vazamentos || 0;
 
     // 12. Neighbors
@@ -236,23 +257,23 @@ export const CpfDossierInterpreter = {
       ${
         queryType === "desmascarador"
           ? `
-        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: var(--radius-md); padding: 12px 18px; margin-bottom: var(--space-4); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              <i data-lucide="check-circle" style="width: 20px; height: 20px; color: #10B981;"></i>
+        <div class="osint-banner-alert osint-banner-alert--success">
+          <div class="osint-chip-row">
+            <div class="osint-empty-icon osint-empty-icon--emerald" style="width: 36px; height: 36px; margin-bottom: 0;">
+              <i data-lucide="check-circle" class="icon-lg"></i>
             </div>
             <div>
               <div style="font-size: 0.9375rem; font-weight: 700; color: #6EE7B7;">
                 Chave PIX Desmascarada com Sucesso
               </div>
-              <div style="font-size: 0.8125rem; color: #E2E8F0; margin-top: 2px;">
+              <div style="font-size: 0.8125rem; margin-top: 2px;">
                 Identidade completa revelada a partir do nome do favorecido e dos 6 dígitos centrais.
                 ${data.banco ? ` • <strong>Banco:</strong> ${escapeHtml(data.banco)}` : ""}
                 ${data.chavePix ? ` • <strong>Chave:</strong> <code>${escapeHtml(data.chavePix)}</code>` : ""}
               </div>
             </div>
           </div>
-          <span class="badge badge-success" style="font-weight: 700;">PIX VALIDADO</span>
+          <span class="badge badge-success">PIX VALIDADO</span>
         </div>
       `
           : ""
@@ -261,30 +282,29 @@ export const CpfDossierInterpreter = {
       <!-- ============================================================== -->
       <!-- CARTÃO PRINCIPAL (HERO) COM AVATAR BIOMÉTRICO                  -->
       <!-- ============================================================== -->
-      <div class="card" style="margin-bottom: var(--space-4); border-top: 4px solid #8B5CF6;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+      <div class="card osint-section-card osint-section-card--purple">
+        <div class="osint-person-top">
           
-          <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+          <div class="osint-person-hero">
             <!-- Avatar / Foto Biometria Facial -->
             <div style="position: relative; flex-shrink: 0;">
               ${
                 photoUrl
                   ? `
-                <div style="position: relative; width: 100px; height: 120px; border-radius: var(--radius-md); overflow: hidden; border: 2px solid #8B5CF6; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35);">
+                <div class="osint-avatar-frame">
                   <img 
                     src="${photoUrl}" 
                     alt="Biometria Facial" 
-                    style="width: 100%; height: 100%; object-fit: cover;"
                     onerror="this.parentElement.style.display='none'"
                   >
-                  <a href="${photoUrl}" target="_blank" title="Visualizar Imagem em Alta Resolução" style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.7); color: #FFF; border-radius: 4px; padding: 2px 4px; font-size: 0.65rem; display: flex; align-items: center;">
-                    <i data-lucide="maximize-2" style="width: 11px; height: 11px;"></i>
+                  <a href="${photoUrl}" target="_blank" title="Visualizar Imagem em Alta Resolução" style="position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.7); color: #FFF; border-radius: 4px; padding: 2px 4px; display: flex; align-items: center;">
+                    <i data-lucide="maximize-2" class="icon-xs"></i>
                   </a>
                 </div>
               `
                   : `
-                <div style="width: 80px; height: 95px; background: var(--color-surface-2); border-radius: var(--radius-md); border: 1px dashed var(--color-border); display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--color-text-dim);">
-                  <i data-lucide="user" style="width: 32px; height: 32px;"></i>
+                <div class="osint-avatar-empty">
+                  <i data-lucide="user" class="icon-xl"></i>
                   <span style="font-size: 0.65rem; margin-top: 4px;">Sem Foto</span>
                 </div>
               `
@@ -293,61 +313,67 @@ export const CpfDossierInterpreter = {
 
             <!-- Dados Identificadores -->
             <div>
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
-                <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #C4B5FD; font-weight: 700;">
-                  <i data-lucide="id-card" style="width: 12px; height: 12px;"></i> PESSOA FÍSICA
+              <div class="osint-chip-row" style="margin-bottom: 4px;">
+                <span class="badge badge-purple">
+                  <i data-lucide="id-card" class="icon-xs"></i> PESSOA FÍSICA
                 </span>
-                <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10B981; font-weight: 700;">
+                <span class="badge badge-success">
                   ${escapeHtml(federalStatus)}
                 </span>
-                ${originUf ? `<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60A5FA;">UF Origem: ${escapeHtml(originUf)}</span>` : ""}
-                <span class="badge badge-dark" style="font-size: 0.72rem;">✓ ${totalSources} Fontes Auditadas</span>
+                ${
+                  originUf
+                    ? `<span class="badge badge-blue">UF Origem: ${escapeHtml(originUf)}</span>`
+                    : cpfRegionInfo.regiao !== "N/I"
+                      ? `<span class="badge badge-blue" title="${escapeHtml(cpfRegionInfo.descricao)}">Emissão CPF (${escapeHtml(cpfRegionInfo.regiao)}): ${escapeHtml(cpfRegionInfo.estados)}</span>`
+                      : ""
+                }
+                <span class="badge badge-dark">✓ ${totalSources} Fontes Auditadas</span>
                 ${
                   auditedTargets > 0
-                    ? `<span class="badge" style="background: ${totalLeaks === 0 ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)"}; color: ${totalLeaks === 0 ? "#10B981" : "#EF4444"}; font-size: 0.72rem;">
-                        <i data-lucide="${totalLeaks === 0 ? "shield-check" : "shield-alert"}" style="width: 11px; height: 11px;"></i>
+                    ? `<span class="badge ${totalLeaks === 0 ? "badge-success" : "badge-red"}">
+                        <i data-lucide="${totalLeaks === 0 ? "shield-check" : "shield-alert"}" class="icon-xs"></i>
                         ${totalLeaks === 0 ? `Seguro (${auditedTargets} alvos)` : `${totalLeaks} vazamentos`}
                       </span>`
                     : ""
                 }
               </div>
 
-              <h2 style="font-size: 1.45rem; font-weight: 800; color: var(--color-text); margin: 0;">
+              <h2 class="osint-person-name">
                 ${escapeHtml(fullName)}
               </h2>
 
-              <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
-                <span style="font-family: var(--font-mono); font-size: 1.05rem; font-weight: 700; color: #6EE7B7;">${formattedCpf}</span>
-                <button type="button" class="btn btn-ghost btn-sm btn-copiar-cpf" data-cpf="${rawCpf}" title="Copiar CPF">
-                  <i data-lucide="copy" style="width: 13px; height: 13px;"></i>
+              <div class="osint-cpf-row">
+                <span class="osint-cpf-code">${formattedCpf}</span>
+                <button type="button" class="btn btn-ghost btn-copy-inline btn-copiar-cpf" data-cpf="${rawCpf}" title="Copiar CPF">
+                  <i data-lucide="copy" class="icon-xs"></i>
                 </button>
               </div>
 
               <!-- Quick Action Shortcuts -->
-              <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
-                <button type="button" class="btn btn-outline btn-sm btn-puxar-foto" data-cpf="${rawCpf}" title="Consultar Biometria Facial na Hexys">
-                  <i data-lucide="camera" style="width: 13px; height: 13px;"></i> Biometria Facial
+              <div class="osint-chip-row mt-3">
+                <button type="button" class="btn btn-outline btn-sm btn-puxar-foto" data-cpf="${rawCpf}" title="Consultar Biometria Facial">
+                  <i data-lucide="camera" class="icon-xs"></i> Biometria Facial
                 </button>
                 <button type="button" class="btn btn-outline btn-sm btn-puxar-vizinhos" data-cpf="${rawCpf}" title="Mapear Vizinhos no Logradouro">
-                  <i data-lucide="home" style="width: 13px; height: 13px;"></i> Mapear Vizinhos
+                  <i data-lucide="home" class="icon-xs"></i> Mapear Vizinhos
                 </button>
               </div>
             </div>
           </div>
 
           <!-- Score & Renda Widgets -->
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <div style="background: var(--color-surface-2); padding: 8px 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--color-border); min-width: 120px;">
-              <span style="font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase;">Score de Crédito</span>
+          <div class="osint-chip-row">
+            <div class="osint-score-widget">
+              <span class="osint-kv-label">Score de Crédito</span>
               <div style="font-size: 1.25rem; font-weight: 800; color: #60A5FA;">${escapeHtml(scoreVal)}</div>
-              <div style="display: flex; gap: 6px; justify-content: center; margin-top: 2px; flex-wrap: wrap;">
+              <div class="osint-chip-row" style="justify-content: center; margin-top: 2px; gap: 6px;">
                 ${scoreObj.csb8 ? `<span style="font-size: 0.65rem; color: #34D399; font-weight: 700;" title="Score CSB8">CSB8: ${escapeHtml(scoreObj.csb8)}</span>` : csb8Range ? `<span style="font-size: 0.65rem; color: #34D399; font-weight: 700;">${escapeHtml(csb8Range)}</span>` : ""}
                 ${scoreObj.csba ? `<span style="font-size: 0.65rem; color: #A78BFA; font-weight: 700;" title="Score CSBA">CSBA: ${escapeHtml(scoreObj.csba)}</span>` : ""}
               </div>
             </div>
 
-            <div style="background: var(--color-surface-2); padding: 8px 14px; border-radius: var(--radius-md); text-align: center; border: 1px solid var(--color-border); min-width: 130px;">
-              <span style="font-size: 0.7rem; color: var(--color-text-muted); text-transform: uppercase;">Renda Estimada</span>
+            <div class="osint-score-widget">
+              <span class="osint-kv-label">Renda Estimada</span>
               <div style="font-size: 1.15rem; font-weight: 800; color: #10B981;">${formattedIncome}</div>
               ${purchasingPowerVal ? `<span style="font-size: 0.68rem; color: #60A5FA; display: block; font-weight: 600;" title="Poder Aquisitivo Serasa">Poder Aq.: ${purchasingPowerVal}</span>` : purchasingPowerDesc ? `<span style="font-size: 0.65rem; color: var(--color-text-dim); display: block;">${escapeHtml(purchasingPowerDesc)}</span>` : ""}
             </div>
@@ -358,68 +384,68 @@ export const CpfDossierInterpreter = {
       <!-- ============================================================== -->
       <!-- 1. DADOS CADASTRAIS & DOCUMENTOS CIVIS                          -->
       <!-- ============================================================== -->
-      <div class="card" style="margin-bottom: var(--space-4);">
+      <div class="card osint-section-card">
         <div class="card-header">
-          <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
-            <i data-lucide="user-check" style="color: #60A5FA; width: 18px; height: 18px;"></i>
+          <h3 class="card-title">
+            <i data-lucide="user-check" class="icon-md icon-blue"></i>
             <span>Documentos Civis & Filiação</span>
           </h3>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Nome da Mãe</span>
-            <strong style="color: var(--color-text);">${escapeHtml(motherName)}</strong>
+        <div class="osint-kv-grid">
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Nome da Mãe</span>
+            <strong class="osint-kv-value">${escapeHtml(motherName)}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Nome do Pai</span>
-            <strong style="color: var(--color-text);">${escapeHtml(fatherName)}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Nome do Pai</span>
+            <strong class="osint-kv-value">${escapeHtml(fatherName)}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Nascimento / Idade</span>
-            <strong style="color: var(--color-text);">${birthDate} ${age !== null ? `(${age} anos)` : ""}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Nascimento / Idade</span>
+            <strong class="osint-kv-value">${birthDate} ${age !== null ? `(${age} anos)` : ""}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Gênero</span>
-            <strong style="color: var(--color-text);">${escapeHtml(gender)}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Gênero</span>
+            <strong class="osint-kv-value">${escapeHtml(gender)}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Registro Geral (RG)</span>
-            <strong style="color: #6EE7B7; font-family: var(--font-mono);">${escapeHtml(rgDoc)}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Registro Geral (RG)</span>
+            <strong class="osint-kv-value osint-kv-value--mint">${escapeHtml(rgDoc)}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Título de Eleitor</span>
-            <strong style="color: #6EE7B7; font-family: var(--font-mono);">${escapeHtml(voterId)}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Título de Eleitor</span>
+            <strong class="osint-kv-value osint-kv-value--mint">${escapeHtml(voterId)}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Carteira de Habilitação (CNH)</span>
-            <strong style="color: var(--color-text);">${escapeHtml(cnh)} ${cnhFirst ? `<span style="font-size: 0.7rem; color: var(--color-text-dim);">(1ª: ${cnhFirst})</span>` : ""}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Carteira de Habilitação (CNH)</span>
+            <strong class="osint-kv-value">${escapeHtml(cnh)} ${cnhFirst ? `<span style="font-size: 0.7rem; color: var(--color-text-dim);">(1ª: ${cnhFirst})</span>` : ""}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Ocupação / CBO</span>
-            <strong style="color: var(--color-text);">${escapeHtml(occupation)} ${cbo ? `<span style="font-size: 0.7rem; color: #60A5FA;">(${cbo})</span>` : ""}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Ocupação / CBO</span>
+            <strong class="osint-kv-value">${escapeHtml(occupation)} ${cbo ? `<span style="font-size: 0.7rem; color: #60A5FA;">(${cbo})</span>` : ""}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Mosaico / Classe Social</span>
-            <strong style="color: #F59E0B;">${escapeHtml(mosaic)}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Mosaico / Classe Social</span>
+            <strong class="osint-kv-value osint-kv-value--amber">${escapeHtml(mosaic)}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">Cartão SUS (CNS)</span>
-            <strong style="color: #38BDF8; font-family: var(--font-mono);">${escapeHtml(cnsPrimary)}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">Cartão SUS (CNS)</span>
+            <strong class="osint-kv-value osint-kv-value--cyan">${escapeHtml(cnsPrimary)}</strong>
           </div>
 
-          <div style="background: var(--color-surface-2); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
-            <span style="font-size: 0.75rem; color: var(--color-text-muted); display: block;">PIS / NIS</span>
-            <strong style="color: #A78BFA; font-family: var(--font-mono);">${escapeHtml(pisDoc)}</strong>
+          <div class="osint-kv-item">
+            <span class="osint-kv-label">PIS / NIS</span>
+            <strong class="osint-kv-value osint-kv-value--purple">${escapeHtml(pisDoc)}</strong>
           </div>
         </div>
       </div>
@@ -1301,17 +1327,18 @@ export const CpfDossierInterpreter = {
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
             ${leaks
               .map((vz) => {
-                const leakName = vz.nome || vz.name || vz.fonte || "Vazamento Público";
-                const leakDate = vz.data || vz.date || "Data não registrada";
-                const fields = Array.isArray(vz.campos) ? vz.campos.join(", ") : vz.campos || "Dados Cadastrais";
+                const leakName = vz.nome || vz.name || (vz.fonte && vz.fonte !== "Vazamento Público de Credenciais" ? vz.fonte : "");
+                const leakDate = vz.data || vz.date || "";
+                const rawFields = Array.isArray(vz.campos) ? vz.campos.join(", ") : (vz.campos || "");
+                const fields = rawFields && rawFields !== "Dados Cadastrais" ? rawFields : "";
+
+                if (!leakName && !leakDate && !fields) return "";
 
                 return `
                 <div style="background: var(--color-surface-2); padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid rgba(239, 68, 68, 0.25);">
-                  <strong style="color: #F87171; font-size: 0.875rem; display: block;">${escapeHtml(leakName)}</strong>
-                  <span style="font-size: 0.72rem; color: var(--color-text-dim);">Data: ${escapeHtml(leakDate)}</span>
-                  <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px;">
-                    Campos Expostos: <em>${escapeHtml(fields)}</em>
-                  </div>
+                  ${leakName ? `<strong style="color: #F87171; font-size: 0.875rem; display: block;">${escapeHtml(leakName)}</strong>` : ""}
+                  ${leakDate && leakDate !== "Data não registrada" ? `<span style="font-size: 0.72rem; color: var(--color-text-dim);">Data: ${escapeHtml(leakDate)}</span>` : ""}
+                  ${fields ? `<div style="font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px;">Campos Expostos: <em>${escapeHtml(fields)}</em></div>` : ""}
                 </div>
               `;
               })

@@ -256,6 +256,22 @@
     "path": "/api/v1/fotonc"
   },
   {
+    "id": "reconnc",
+    "nome": "Reconhecimento Facial Nacional",
+    "categoria": "fotos-biometria",
+    "categoriaNome": "Fotos & Biometria",
+    "tipoHttp": "POST",
+    "formato": "REST JSON",
+    "custo": 0.05,
+    "descricao": "Envie uma foto de rosto e receba os cadastros mais parecidos em base nacional, com foto cadastral e dados do titular.",
+    "parametro": "imagem",
+    "parametroLabel": "Foto do Rosto (Upload de Imagem)",
+    "placeholder": "Selecione ou arraste uma foto facial (JPG, PNG, WEBP)",
+    "icone": "scan-face",
+    "corIcone": "#EC4899",
+    "path": "/api/v1/reconnc"
+  },
+  {
     "id": "placa",
     "nome": "Módulo Placa",
     "categoria": "veiculos",

@@ -25,7 +25,7 @@ import {
   HealthInterpreter,
   CivilRegistryInterpreter,
   GenericInterpreter as ZeroyGenericInterpreter,
-} from "./modules/zeroy/index.js";
+} from "./modules/zeroy/index.js?v=2.9";
 
 import {
   HexysInterpreter,
@@ -40,9 +40,16 @@ import {
   RelativesInterpreter as HexysRelativesInterpreter,
   EmailInterpreter as HexysEmailInterpreter,
   CompanyInterpreter as HexysCompanyInterpreter,
+  EmploymentInterpreter as HexysEmploymentInterpreter,
   CepInterpreter as HexysCepInterpreter,
+  OabInterpreter as HexysOabInterpreter,
+  NameProfileInterpreter as HexysNameProfileInterpreter,
+  LeaksInterpreter as HexysLeaksInterpreter,
+  bindCepResidentsFilters,
+  bindEmploymentFilters,
+  bindLeaksFilters,
   extractPersonsList,
-} from "./modules/hexys/index.js";
+} from "./modules/hexys/index.js?v=2.11";
 
 /**
  * Multi-provider Dispatcher
@@ -117,7 +124,14 @@ export const RimuInterpreters = {
   HexysRelatives: HexysRelativesInterpreter,
   HexysEmail: HexysEmailInterpreter,
   HexysCompany: HexysCompanyInterpreter,
+  HexysEmployment: HexysEmploymentInterpreter,
   HexysCep: HexysCepInterpreter,
+  HexysOab: HexysOabInterpreter,
+  HexysNameProfile: HexysNameProfileInterpreter,
+  HexysLeaks: HexysLeaksInterpreter,
+  bindCepResidentsFilters,
+  bindEmploymentFilters,
+  bindLeaksFilters,
   extractPersonsList,
 
   // Zeroy Visual Modules
@@ -153,10 +167,17 @@ export {
   dispatchZeroy,
   HexysInterpreter,
   ZeroyInterpreter,
+  HexysOabInterpreter,
+  HexysNameProfileInterpreter,
+  HexysLeaksInterpreter,
+  HexysEmploymentInterpreter,
   Formatters,
   escapeHtml,
   renderScoreBadge,
   extractPersonsList,
+  bindCepResidentsFilters,
+  bindEmploymentFilters,
+  bindLeaksFilters,
 };
 
 export default RimuInterpreters;

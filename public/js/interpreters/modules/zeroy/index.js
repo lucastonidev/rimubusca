@@ -6,17 +6,18 @@
  * ==============================================================================
  */
 
-import { CpfDossierInterpreter } from "./cpf-dossier.js";
+import { CpfDossierInterpreter } from "./cpf-dossier.js?v=2.9";
 import { NameHomonymsInterpreter } from "./name-homonyms.js";
 import { VehicleInterpreter } from "./vehicle.js";
 import { CompanyInterpreter } from "./company.js";
 import { FinancialPixInterpreter } from "./financial-pix.js";
-import { PhoneInterpreter } from "./phone.js";
-import { BiometricsInterpreter } from "./biometrics.js";
+import { PhoneInterpreter } from "./phone.js?v=2.9";
+import { BiometricsInterpreter } from "./biometrics.js?v=2.9";
 import { HealthInterpreter } from "./health.js";
 import { CivilRegistryInterpreter } from "./civil-registry.js";
 import { GenericInterpreter } from "./generic.js";
-import { CepInterpreter } from "../hexys/cep.js";
+import { CepInterpreter } from "../hexys/cep.js?v=2.6";
+import { escapeHtml } from "../../utils.js";
 
 export {
   CpfDossierInterpreter,
@@ -44,6 +45,27 @@ export function dispatchZeroy(responseData) {
   const moduleType = String(
     responseData.tipo || responseData.id || responseData.moduloId || ""
   ).toLowerCase();
+
+  // Estado vazio padronizado para qualquer módulo Zeroy com notFound
+  if (responseData.notFound || payload?.notFound || payload?.isNotFound) {
+    if (moduleType === "telefone" || moduleType.includes("telefone")) {
+      return PhoneInterpreter.render(responseData, payload);
+    }
+    if (moduleType === "reconnc") {
+      return BiometricsInterpreter.render(responseData, payload);
+    }
+    const termoEmpty = responseData.termo ? ` para <strong>${escapeHtml(String(responseData.termo))}</strong>` : "";
+    const msgEmpty = payload?.mensagem ? escapeHtml(String(payload.mensagem)) : `Não foi localizado nenhum registro${termoEmpty} na base da Zeroy API.`;
+    return `
+      <div class="card osint-empty-card osint-empty-card--purple">
+        <div class="osint-empty-icon osint-empty-icon--warning">
+          <i data-lucide="search-x" class="icon-xl"></i>
+        </div>
+        <h3 class="osint-empty-title">Nenhum Registro Localizado</h3>
+        <p class="osint-empty-desc">${msgEmpty}</p>
+      </div>
+    `;
+  }
 
   // 0. CEP & Endereçamento Postal
   if (
@@ -79,10 +101,12 @@ export function dispatchZeroy(responseData) {
     return FinancialPixInterpreter.render(responseData, payload);
   }
 
-  // 3. Facial Biometrics & CNH Mirror
+  // 3. Facial Biometrics, Facial Recognition (reconnc) & CNH Mirror
   if (
+    moduleType === "reconnc" ||
     moduleType.includes("foto") ||
     moduleType.includes("biometria") ||
+    Array.isArray(payload.matches) ||
     payload.foto ||
     payload.fotoBase64 ||
     payload.face ||

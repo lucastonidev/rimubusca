@@ -30,7 +30,12 @@ class TelefoneController {
 
       // Se for Brasil (+55), aplica máscara brasileira inteligente (fixo ou celular)
       if (ddi === '+55') {
-        let val = e.target.value.replace(/\D/g, '');
+        const raw = String(e.target.value || '').trim();
+        let val = raw.replace(/\D/g, '');
+        if ((raw.startsWith('+55') || (val.length >= 12 && val.length <= 13)) && val.startsWith('55')) {
+          val = val.slice(2);
+        }
+        if (val.startsWith('0') && val.length >= 11) val = val.slice(1);
         if (val.length > 11) val = val.slice(0, 11);
 
         if (val.length > 10) {
